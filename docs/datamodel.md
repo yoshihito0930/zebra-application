@@ -18,7 +18,6 @@
 | date | DATE | 予約可能日 |
 | start_time | TIME | その日の利用開始時間 |
 | end_time | TIME | その日の利用終了時間 |
-| is_available | BOOLEAN | その時間帯が予約可能かどうか |
 
 ### Reservation（予約）テーブル
 | カラム名 | データ型 | 説明 |
