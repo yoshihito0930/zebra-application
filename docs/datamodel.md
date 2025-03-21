@@ -15,15 +15,15 @@
 | カラム名 | データ型 | 説明 |
 | --- | --- | --- |
 | id | UUID (PK) | カレンダーID（主キー） |
-| date | DATE | 予約可能日 |
-| start_time | TIME | その日の利用開始時間 |
-| end_time | TIME | その日の利用終了時間 |
+| date | DATE | 日 |
+| reservationDetails | json | 予約の詳細（Id, Date, StartTime, EndTime） |
 
 ### Reservation（予約）テーブル
 | カラム名 | データ型 | 説明 |
 | --- | --- | --- |
 | id | UUID (PK) | 予約ID（主キー） |
 | user_id | UUID (FK → User.id) | 予約したユーザー（外部キー） |
+| date | DATE | 日 |
 | start_time | TIMESTAMP | 予約開始日時 |
 | end_time | TIMESTAMP | 予約終了日時 |
 | status | ENUM('pending', 'confirmed', 'canceled') | 予約の状態（申請中、確定、キャンセル済み） |

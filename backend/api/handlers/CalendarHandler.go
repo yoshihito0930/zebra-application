@@ -8,7 +8,7 @@ import (
 )
 
 // 各日の予約詳細データ
-type Reservations struct {
+type reservations struct {
 	Id        int    `json:"id"`
 	Date      string `json:"date"`
 	StartTime string `json:"start_time"`
@@ -16,20 +16,20 @@ type Reservations struct {
 }
 
 // レスポンスデータ
-type Calendar struct {
+type calendarDay struct {
 	Date               string         `json:"date"`
-	ReservationDetails []Reservations `json:"reservation_details"`
+	ReservationDetails []reservations `json:"reservation_details"`
 }
 
 // カレンダーレスポンス
-type CalendarResponse struct {
-	Year  int        `json:"year"`
-	Month int        `json:"month"`
-	Days  []Calendar `json:"days"`
+type calendarResponse struct {
+	Year  int           `json:"year"`
+	Month int           `json:"month"`
+	Days  []calendarDay `json:"days"`
 }
 
 // 仮データ（本来はDBから取得）
-var dayInfo = map[string][]Reservations{
+var dayInfo = map[string][]reservations{
 	"2025-03-02": {
 		{Id: 1, Date: "2025-03-02", StartTime: "10:00", EndTime: "12:00"},
 		{Id: 2, Date: "2025-03-02", StartTime: "13:00", EndTime: "17:00"},
@@ -82,7 +82,7 @@ func CalendarHandler(w http.ResponseWriter, r *http.Request) {
 
 		if exists {
 			// 予約がある場合
-			response := Calendar{
+			response := calendarDay{
 				Date:               dateStr,
 				ReservationDetails: reservationForDay,
 			}
@@ -90,7 +90,7 @@ func CalendarHandler(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(response)
 		} else {
 			// 予約がない場合
-			response := Calendar{
+			response := calendarDay{
 				Date: dateStr,
 			}
 			w.Header().Set("Content-Type", "application/json")
@@ -101,10 +101,10 @@ func CalendarHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 月単位指定の場合
 	daysInMonth := daysInMonth(year, month)
-	calendar := CalendarResponse{
+	calendar := calendarResponse{
 		Year:  year,
 		Month: month,
-		Days:  []Calendar{},
+		Days:  []calendarDay{},
 	}
 
 	// カレンダーの日付を作成
@@ -116,13 +116,13 @@ func CalendarHandler(w http.ResponseWriter, r *http.Request) {
 
 		// 予約がある場合は、予約情報のみを格納
 		if exists {
-			calendar.Days = append(calendar.Days, Calendar{
+			calendar.Days = append(calendar.Days, calendarDay{
 				Date:               dateStr,
 				ReservationDetails: reservationsForDay,
 			})
 		} else {
 			// 予約がない日
-			calendar.Days = append(calendar.Days, Calendar{
+			calendar.Days = append(calendar.Days, calendarDay{
 				Date: dateStr,
 			})
 		}
