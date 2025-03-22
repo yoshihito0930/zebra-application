@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 )
@@ -82,6 +83,7 @@ var reservation_info = []reservation{
 func ReservationsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	queryUserId := r.URL.Query().Get("user_id")
+	queryReservationId := r.URL.Query().Get("id")
 
 	switch r.Method {
 	case http.MethodGet: // ユーザーの予約一覧を取得 (GET /reservations)
@@ -111,11 +113,34 @@ func ReservationsHandler(w http.ResponseWriter, r *http.Request) {
 
 	case http.MethodPost:
 		// 新規予約の申し込み  (POST /reservations)
+		notifyAdminNewReservation()
 	case http.MethodPut:
-		// 予約変更依頼 (PUT /reservations/{id})
+		// 予約変更依頼 (PUT /reservations?id={id})
+		if queryReservationId == "" {
+			http.Error(w, "use \"id\" parametar", http.StatusBadRequest)
+			return
+		}
+		notifyAdminModifyReservation()
 	case http.MethodDelete:
-		// 予約キャンセル依頼 (DELETE /reservations/{id})
+		// 予約キャンセル依頼 (DELETE /reservations?id={id})
+		if queryReservationId == "" {
+			http.Error(w, "use \"id\" parametar", http.StatusBadRequest)
+			return
+		}
+		notifyAdminDeleteReservation()
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+func notifyAdminNewReservation() {
+	fmt.Println("新しい予約申し込みがあります")
+}
+
+func notifyAdminModifyReservation() {
+	fmt.Println("予約の変更依頼があります")
+}
+
+func notifyAdminDeleteReservation() {
+	fmt.Println("予約の削除依頼があります")
 }
