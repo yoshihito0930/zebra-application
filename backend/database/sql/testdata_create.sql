@@ -1,0 +1,123 @@
+INSERT INTO reservations (
+    user_id, date, 
+    start_time, 
+    end_time, 
+    status, 
+    reservation_type, 
+    needs_protection, 
+    number_of_people,
+    plan_type, 
+    equipment_insurance, 
+    options, 
+    shooting_type, 
+    shooting_details, 
+    photographer_name
+) VALUES (
+        1, 
+        '2024-12-20',
+        '10:00',
+        '12:00',
+        'confirmed', 
+        'confirmed',
+        true,
+        5,
+        'A',
+        true,
+        'workshop',
+        'portrait',
+        'teettesttest',
+        '山田 太郎1'
+);
+
+INSERT INTO reservations (
+    user_id, date, 
+    start_time, 
+    end_time, 
+    status, 
+    reservation_type, 
+    needs_protection, 
+    number_of_people,
+    plan_type, 
+    equipment_insurance, 
+    options, 
+    shooting_type, 
+    shooting_details, 
+    photographer_name
+) VALUES (
+        2, 
+        '2024-12-22',
+        '10:00',
+        '18:00',
+        'confirmed', 
+        'confirmed',
+        true,
+        5,
+        'B',
+        true,
+        'workshop',
+        'portrait',
+        'teettesttest',
+        '山田 太郎2'
+);
+
+INSERT INTO reservations (
+    user_id, date, 
+    start_time, 
+    end_time, 
+    status, 
+    reservation_type, 
+    needs_protection, 
+    number_of_people,
+    plan_type, 
+    equipment_insurance, 
+    options, 
+    shooting_type, 
+    shooting_details, 
+    photographer_name
+) VALUES (
+        1, 
+        '2024-12-25',
+        '09:00',
+        '12:00',
+        'confirmed', 
+        'confirmed',
+        true,
+        8,
+        'A',
+        true,
+        'workshop',
+        'portrait',
+        'teettesttest',
+        '山田 太郎3'
+);
+
+INSERT INTO reservations (
+    user_id, date, 
+    start_time, 
+    end_time, 
+    status, 
+    reservation_type, 
+    needs_protection, 
+    number_of_people,
+    plan_type, 
+    equipment_insurance, 
+    options, 
+    shooting_type, 
+    shooting_details, 
+    photographer_name
+) VALUES (
+        2, 
+        '2024-12-20',
+        '13:00',
+        '19:00',
+        'confirmed', 
+        'confirmed',
+        true,
+        3,
+        'B',
+        true,
+        '',
+        'portrait',
+        'teettesttest',
+        '山田 太郎4'
+);

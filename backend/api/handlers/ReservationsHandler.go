@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -25,7 +26,7 @@ type reservation struct {
 	PhotgrapherName    string `json:"photographer_name"`
 }
 
-// 仮データ
+/* 仮データ
 var reservation_info = []reservation{
 	{
 		Id:                 1,
@@ -79,6 +80,15 @@ var reservation_info = []reservation{
 		PhotgrapherName:    "石原 ひこね",
 	},
 }
+*/
+
+// DB接続用のグローバル変数
+var db *sql.DB
+
+// DB接続をハンドラーにセット
+func SetDB(database *sql.DB) {
+	db = database
+}
 
 func ReservationsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -100,20 +110,31 @@ func ReservationsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// 指定されたUserIdの予約をフィルタリング
-		var filterdReservations []reservation
-		for _, reservation := range reservation_info {
-			if reservation.UserId == userId {
-				filterdReservations = append(filterdReservations, reservation)
+		// データベースから指定されたUserIdの予約を取得
+		rows, err := db.Query("SELECT date, start_time, end_time, status, reservation_type, needs_protection, number_of_people, plan_type, equipment_insurance, options, shooting_type, shooting_details, photographer_name FROM reservations WHERE user_id = $1", userId)
+		if err != nil {
+			http.Error(w, "Database query failed", http.StatusInternalServerError)
+			return
+		}
+
+		var reservations []reservation
+		for rows.Next() {
+			var res reservation
+			err := rows.Scan(&res.Date, &res.StartTime, &res.EndTime, &res.Status, &res.ReservationType, &res.NeedsProtection, &res.NumberOfPeople, &res.PlanType, &res.EquipmentInsurance, &res.Optinos, &res.ShootingType, &res.ShootingDetails, &res.PhotgrapherName)
+			if err != nil {
+				http.Error(w, "Failed to scan row", http.StatusInternalServerError)
+				return
 			}
+			reservations = append(reservations, res)
 		}
 
 		// 該当する予約がない場合、空のリストを返す
-		json.NewEncoder(w).Encode(filterdReservations)
+		json.NewEncoder(w).Encode(reservations)
 
 	case http.MethodPost:
 		// 新規予約の申し込み  (POST /reservations)
 		notifyAdminNewReservation()
+
 	case http.MethodPut:
 		// 予約変更依頼 (PUT /reservations?id={id})
 		if queryReservationId == "" {
@@ -121,6 +142,7 @@ func ReservationsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		notifyAdminModifyReservation()
+
 	case http.MethodDelete:
 		// 予約キャンセル依頼 (DELETE /reservations?id={id})
 		if queryReservationId == "" {
@@ -128,6 +150,7 @@ func ReservationsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		notifyAdminDeleteReservation()
+
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
