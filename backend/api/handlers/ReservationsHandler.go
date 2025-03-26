@@ -6,81 +6,41 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 )
 
-type reservation struct {
-	Id                 int    `json:"id"`
-	UserId             int    `json:"user_id"`
-	Date               string `json:"date"`
-	StartTime          string `json:"start_time"`
-	EndTime            string `json:"end_time"`
-	Status             string `json:"status"`
-	ReservationType    string `json:"reservation_type"`
-	NeedsProtection    bool   `json:"needs_protection"`
-	NumberOfPeople     int    `json:"number_of_people"`
-	PlanType           string `json:"plan_type"`
-	EquipmentInsurance bool   `json:"equipment_insurance"`
-	Optinos            string `json:"options"`
-	ShootingType       string `json:"shooting_type"`
-	ShootingDetails    string `json:"shooting_details"`
-	PhotgrapherName    string `json:"photographer_name"`
+// 日時の出力フォーマットを定義
+type customerDate time.Time
+
+func (cd customerDate) MarshalJSON() ([]byte, error) {
+	formatted := fmt.Sprintf("\"%s\"", time.Time(cd).Format("2006-01-02"))
+	return []byte(formatted), nil
 }
 
-/* 仮データ
-var reservation_info = []reservation{
-	{
-		Id:                 1,
-		UserId:             1,
-		Date:               "2025-03-20",
-		StartTime:          "10:00",
-		EndTime:            "15:00",
-		Status:             "pending",
-		ReservationType:    "confirmed",
-		NeedsProtection:    true,
-		NumberOfPeople:     5,
-		PlanType:           "A",
-		EquipmentInsurance: false,
-		Optinos:            "",
-		ShootingType:       "stills",
-		ShootingDetails:    "子猫の撮影",
-		PhotgrapherName:    "石原 ひこね",
-	},
-	{
-		Id:                 2,
-		UserId:             2,
-		Date:               "2025-03-21",
-		StartTime:          "10:00",
-		EndTime:            "15:00",
-		Status:             "pending",
-		ReservationType:    "confirmed",
-		NeedsProtection:    true,
-		NumberOfPeople:     2,
-		PlanType:           "A",
-		EquipmentInsurance: false,
-		Optinos:            "",
-		ShootingType:       "stills",
-		ShootingDetails:    "猫の撮影",
-		PhotgrapherName:    "石原 ひこね",
-	},
-	{
-		Id:                 3,
-		UserId:             1,
-		Date:               "2025-03-22",
-		StartTime:          "10:00",
-		EndTime:            "15:00",
-		Status:             "pending",
-		ReservationType:    "confirmed",
-		NeedsProtection:    true,
-		NumberOfPeople:     6,
-		PlanType:           "A",
-		EquipmentInsurance: false,
-		Optinos:            "",
-		ShootingType:       "stills",
-		ShootingDetails:    "子の撮影",
-		PhotgrapherName:    "石原 ひこね",
-	},
+type customerTime time.Time
+
+func (ct customerTime) MarshalJSON() ([]byte, error) {
+	formatted := fmt.Sprintf("\"%s\"", time.Time(ct).Format("15:04"))
+	return []byte(formatted), nil
 }
-*/
+
+type reservation struct {
+	Id                 int          `json:"id"`
+	UserId             int          `json:"user_id"`
+	Date               customerDate `json:"date"`
+	StartTime          customerTime `json:"start_time"`
+	EndTime            customerTime `json:"end_time"`
+	Status             string       `json:"status"`
+	ReservationType    string       `json:"reservation_type"`
+	NeedsProtection    bool         `json:"needs_protection"`
+	NumberOfPeople     int          `json:"number_of_people"`
+	PlanType           string       `json:"plan_type"`
+	EquipmentInsurance bool         `json:"equipment_insurance"`
+	Optinos            string       `json:"options"`
+	ShootingType       string       `json:"shooting_type"`
+	ShootingDetails    string       `json:"shooting_details"`
+	PhotgrapherName    string       `json:"photographer_name"`
+}
 
 // DB接続用のグローバル変数
 var db *sql.DB
@@ -111,7 +71,7 @@ func ReservationsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// データベースから指定されたUserIdの予約を取得
-		rows, err := db.Query("SELECT date, start_time, end_time, status, reservation_type, needs_protection, number_of_people, plan_type, equipment_insurance, options, shooting_type, shooting_details, photographer_name FROM reservations WHERE user_id = $1", userId)
+		rows, err := db.Query("SELECT * FROM reservations WHERE user_id = $1", userId)
 		if err != nil {
 			http.Error(w, "Database query failed", http.StatusInternalServerError)
 			return
@@ -120,7 +80,7 @@ func ReservationsHandler(w http.ResponseWriter, r *http.Request) {
 		var reservations []reservation
 		for rows.Next() {
 			var res reservation
-			err := rows.Scan(&res.Date, &res.StartTime, &res.EndTime, &res.Status, &res.ReservationType, &res.NeedsProtection, &res.NumberOfPeople, &res.PlanType, &res.EquipmentInsurance, &res.Optinos, &res.ShootingType, &res.ShootingDetails, &res.PhotgrapherName)
+			err := rows.Scan(&res.Id, &res.UserId, &res.Date, &res.StartTime, &res.EndTime, &res.Status, &res.ReservationType, &res.NeedsProtection, &res.NumberOfPeople, &res.PlanType, &res.EquipmentInsurance, &res.Optinos, &res.ShootingType, &res.ShootingDetails, &res.PhotgrapherName)
 			if err != nil {
 				http.Error(w, "Failed to scan row", http.StatusInternalServerError)
 				return

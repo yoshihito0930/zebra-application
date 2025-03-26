@@ -1,5 +1,6 @@
 INSERT INTO reservations (
-    user_id, date, 
+    user_id, 
+    date, 
     start_time, 
     end_time, 
     status, 
@@ -30,7 +31,8 @@ INSERT INTO reservations (
 );
 
 INSERT INTO reservations (
-    user_id, date, 
+    user_id, 
+    date, 
     start_time, 
     end_time, 
     status, 
@@ -61,7 +63,8 @@ INSERT INTO reservations (
 );
 
 INSERT INTO reservations (
-    user_id, date, 
+    user_id, 
+    date, 
     start_time, 
     end_time, 
     status, 
@@ -92,7 +95,8 @@ INSERT INTO reservations (
 );
 
 INSERT INTO reservations (
-    user_id, date, 
+    user_id, 
+    date, 
     start_time, 
     end_time, 
     status, 
