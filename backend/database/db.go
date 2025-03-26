@@ -4,11 +4,13 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+
+	_ "github.com/lib/pq"
 )
 
 func InitDB() *sql.DB {
 	host := "db"
-	port := 5431
+	port := 5432
 	user := "zebra"
 	password := "zebra"
 	dbname := "zebrabase"
