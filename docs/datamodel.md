@@ -11,13 +11,6 @@
 | address | VARCHAR(255) | 住所 |
 | role | ENUM('user', 'admin') | 権限（一般ユーザー or 管理者） |
 
-### Calendar（カレンダー）テーブル
-| カラム名 | データ型 | 説明 |
-| --- | --- | --- |
-| id | UUID (PK) | カレンダーID（主キー） |
-| date | DATE | 日 |
-| reservationDetails | json | 予約の詳細（Id, Date, StartTime, EndTime） |
-
 ### Reservation（予約）テーブル
 | カラム名 | データ型 | 説明 |
 | --- | --- | --- |

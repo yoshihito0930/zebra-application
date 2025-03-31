@@ -76,6 +76,7 @@ func ReservationsHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Database query failed", http.StatusInternalServerError)
 			return
 		}
+		defer rows.Close()
 
 		var reservations []reservation
 		for rows.Next() {

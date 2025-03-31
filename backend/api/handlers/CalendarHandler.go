@@ -7,36 +7,12 @@ import (
 	"time"
 )
 
-// 各日の予約詳細データ
-type reservations struct {
-	Id        int    `json:"id"`
-	Date      string `json:"date"`
-	StartTime string `json:"start_time"`
-	EndTime   string `json:"end_time"`
-}
-
-// レスポンスデータ
-type calendarDay struct {
-	Date               string         `json:"date"`
-	ReservationDetails []reservations `json:"reservation_details"`
-}
-
-// カレンダーレスポンス
-type calendarResponse struct {
-	Year  int           `json:"year"`
-	Month int           `json:"month"`
-	Days  []calendarDay `json:"days"`
-}
-
-// 仮データ（本来はDBから取得）
-var dayInfo = map[string][]reservations{
-	"2025-03-02": {
-		{Id: 1, Date: "2025-03-02", StartTime: "10:00", EndTime: "12:00"},
-		{Id: 2, Date: "2025-03-02", StartTime: "13:00", EndTime: "17:00"},
-	},
-	"2025-03-10": {
-		{Id: 3, Date: "2025-03-10", StartTime: "14:00", EndTime: "16:00"},
-	},
+// 各日の予約データ構造体
+type reservationForDay struct {
+	//Date            customerDate `json:"date"`
+	StartTime       customerTime `json:"start_time"`
+	EndTime         customerTime `json:"end_time"`
+	ReservationType string       `json:"reservation_type"`
 }
 
 func daysInMonth(year int, month int) int {
@@ -78,57 +54,70 @@ func CalendarHandler(w http.ResponseWriter, r *http.Request) {
 	// 日単位指定の場合
 	if isSpecificDay {
 		dateStr := fmt.Sprintf("%04d-%02d-%02d", year, month, day)
-		reservationForDay, exists := dayInfo[dateStr]
-
-		if exists {
-			// 予約がある場合
-			response := calendarDay{
-				Date:               dateStr,
-				ReservationDetails: reservationForDay,
-			}
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(response)
-		} else {
-			// 予約がない場合
-			response := calendarDay{
-				Date: dateStr,
-			}
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(response)
+		rows, err := db.Query("SELECT date, start_time, end_time, reservation_type FROM reservations WHERE date = $1", dateStr)
+		if err != nil {
+			http.Error(w, "Database query failed", http.StatusInternalServerError)
+			return
 		}
-		return
-	}
+		defer rows.Close()
 
-	// 月単位指定の場合
-	daysInMonth := daysInMonth(year, month)
-	calendar := calendarResponse{
-		Year:  year,
-		Month: month,
-		Days:  []calendarDay{},
-	}
-
-	// カレンダーの日付を作成
-	for day := 1; day <= daysInMonth; day++ {
-		dateStr := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC).Format("2006-01-02")
-
-		// 予約の有無を確認
-		reservationsForDay, exists := dayInfo[dateStr]
-
-		// 予約がある場合は、予約情報のみを格納
-		if exists {
-			calendar.Days = append(calendar.Days, calendarDay{
-				Date:               dateStr,
-				ReservationDetails: reservationsForDay,
-			})
-		} else {
-			// 予約がない日
-			calendar.Days = append(calendar.Days, calendarDay{
-				Date: dateStr,
-			})
+		var dayReservation []reservationForDay
+		for rows.Next() {
+			var res reservationForDay
+			err := rows.Scan(&res.StartTime, &res.EndTime, &res.ReservationType)
+			if err != nil {
+				http.Error(w, "Failed to scan row", http.StatusInternalServerError)
+				return
+			}
+			dayReservation = append(dayReservation, res)
 		}
-	}
 
-	// JSON レスポンスを返す
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(calendar)
+		// 該当する予約がない場合、空のリストを返す
+		json.NewEncoder(w).Encode(dayReservation)
+	} else {
+		// 月単位指定の場合
+		daysInMonth := daysInMonth(year, month)
+		/*
+			calendar := calendarResponse{
+				Year:  year,
+				Month: month,
+				Days:  []calendarDay{},
+			}
+		*/
+
+		// 結果を格納するマップ
+		calendar := make(map[string][]reservationForDay)
+
+		// カレンダーの日付を作成
+		for day := 1; day <= daysInMonth; day++ {
+			dateStr := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC).Format("2006-01-02")
+
+			rows, err := db.Query("SELECT start_time, end_time, reservation_type FROM reservations WHERE date = $1", dateStr)
+			if err != nil {
+				http.Error(w, "Database query failed", http.StatusInternalServerError)
+				return
+			}
+
+			var dayReservation []reservationForDay = []reservationForDay{}
+			for rows.Next() {
+				var res reservationForDay
+				err := rows.Scan(&res.StartTime, &res.EndTime, &res.ReservationType)
+				if err != nil {
+					rows.Close()
+					http.Error(w, "Failed to scan row", http.StatusInternalServerError)
+					return
+				}
+				dayReservation = append(dayReservation, res)
+			}
+			defer rows.Close()
+
+			// カレンダーマップに追加
+			calendar[dateStr] = dayReservation
+
+		}
+		// 該当する予約がない場合、空のリストを返す
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(calendar)
+
+	}
 }
