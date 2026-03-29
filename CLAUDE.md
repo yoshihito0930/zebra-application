@@ -291,6 +291,7 @@ Authorization: Bearer <access_token>
 | データベース設計 | [docs/database-design.md](docs/database-design.md) | DynamoDBテーブル設計、GSI、アクセスパターン |
 | データモデル定義 | [docs/data-model.md](docs/data-model.md) | エンティティ定義、アクセスパターン一覧 |
 | API設計 | [docs/api-design.md](docs/api-design.md) | エンドポイント、リクエスト/レスポンス、バリデーション、エラー定義 |
+| **運用設計** | **[docs/operations.md](docs/operations.md)** | **環境変数、ログ運用、監視、デプロイ、障害対応** |
 
 ## Claude Code利用時の注意点
 
@@ -299,6 +300,7 @@ Authorization: Bearer <access_token>
 - **新しいAPIエンドポイントを作成する場合**: [docs/api-design.md](docs/api-design.md) でリクエスト/レスポンス形式、バリデーションルール、エラー定義を確認
 - **DynamoDBアクセスを実装する場合**: [docs/database-design.md](docs/database-design.md) と [docs/data-model.md](docs/data-model.md) でテーブル構造、GSI、アクセスパターンを確認
 - **ビジネスロジックを実装する場合**: [docs/requirements.md](docs/requirements.md) でユースケース、状態遷移、予約ルールを確認
+- **環境変数やログ運用について**: [docs/operations.md](docs/operations.md) でLOG_LEVELの設定方法、ログの使い分け、監視方法を確認
 
 ### プロジェクト固有の用語
 
@@ -315,4 +317,4 @@ Authorization: Bearer <access_token>
 
 ---
 
-**最終更新日**: 2026-03-27
+**最終更新日**: 2026-03-29
