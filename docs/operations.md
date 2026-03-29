@@ -531,6 +531,53 @@ aws dynamodb restore-table-from-backup \
 3. 新しいアクセストークンを取得
 ```
 
+### CORS設定
+
+**本番環境では必ず特定のドメインのみを許可してください。**
+
+現在、`backend/pkg/response/response.go`の`addCORSHeaders`関数では、`Access-Control-Allow-Origin: *`がハードコードされています。これは開発段階では問題ありませんが、**本番環境ではセキュリティリスクがあります**。
+
+**環境変数 `ALLOWED_ORIGIN` を設定**:
+
+| 環境 | 設定値 | 説明 |
+|------|--------|------|
+| 開発環境 | `*` | すべてのドメインからのアクセスを許可（開発用） |
+| 本番環境 | `https://studio-zebra.com` | 特定のドメインのみ許可（推奨） |
+
+**修正が必要な理由**:
+- `*`を指定すると、悪意のあるサイトからもAPIにアクセス可能になる
+- 認証トークンを盗まれた場合、攻撃者のサイトからAPIを操作される危険性がある
+- 本番環境では必ずフロントエンドのドメインのみを許可すべき
+
+**デプロイ前に実装すべき修正**:
+
+```go
+func addCORSHeaders(resp *events.APIGatewayProxyResponse) {
+    allowedOrigin := os.Getenv("ALLOWED_ORIGIN")
+    if allowedOrigin == "" {
+        allowedOrigin = "*"  // デフォルト（開発環境用）
+    }
+    resp.Headers["Access-Control-Allow-Origin"] = allowedOrigin
+    resp.Headers["Access-Control-Allow-Methods"] = "GET, POST, PATCH, DELETE, OPTIONS"
+    resp.Headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+}
+```
+
+**Terraform設定例**:
+
+```hcl
+resource "aws_lambda_function" "reservation_create" {
+  function_name = "zebra-reservation-create"
+
+  environment {
+    variables = {
+      ALLOWED_ORIGIN = "https://studio-zebra.com"  # 本番環境
+      # ALLOWED_ORIGIN = "*"  # 開発環境
+    }
+  }
+}
+```
+
 ### セキュリティベストプラクティス
 
 1. **IAMロール最小権限の原則**:
