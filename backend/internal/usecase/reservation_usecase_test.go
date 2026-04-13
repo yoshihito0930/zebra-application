@@ -1,0 +1,443 @@
+package usecase
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/yoshihito0930/zebra-application/internal/domain/entity"
+	"github.com/yoshihito0930/zebra-application/pkg/apierror"
+)
+
+// MockReservationRepository は予約リポジトリのモック
+type MockReservationRepository struct {
+	FindByIDFunc               func(ctx context.Context, reservationID string) (*entity.Reservation, error)
+	FindConflictingFunc        func(ctx context.Context, studioID string, date time.Time, startTime, endTime string) ([]*entity.Reservation, error)
+	CreateFunc                 func(ctx context.Context, reservation *entity.Reservation) error
+	UpdateFunc                 func(ctx context.Context, reservation *entity.Reservation) error
+	FindByStudioAndStatusFunc  func(ctx context.Context, studioID string, status entity.ReservationStatus) ([]*entity.Reservation, error)
+}
+
+func (m *MockReservationRepository) FindByID(ctx context.Context, reservationID string) (*entity.Reservation, error) {
+	if m.FindByIDFunc != nil {
+		return m.FindByIDFunc(ctx, reservationID)
+	}
+	return nil, apierror.ErrReservationNotFound
+}
+
+func (m *MockReservationRepository) FindConflicting(ctx context.Context, studioID string, date time.Time, startTime, endTime string) ([]*entity.Reservation, error) {
+	if m.FindConflictingFunc != nil {
+		return m.FindConflictingFunc(ctx, studioID, date, startTime, endTime)
+	}
+	return []*entity.Reservation{}, nil
+}
+
+func (m *MockReservationRepository) Create(ctx context.Context, reservation *entity.Reservation) error {
+	if m.CreateFunc != nil {
+		return m.CreateFunc(ctx, reservation)
+	}
+	return nil
+}
+
+func (m *MockReservationRepository) Update(ctx context.Context, reservation *entity.Reservation) error {
+	if m.UpdateFunc != nil {
+		return m.UpdateFunc(ctx, reservation)
+	}
+	return nil
+}
+
+func (m *MockReservationRepository) FindByStudioAndDateRange(ctx context.Context, studioID string, startDate, endDate time.Time) ([]*entity.Reservation, error) {
+	return []*entity.Reservation{}, nil
+}
+
+func (m *MockReservationRepository) FindByStudioAndStatus(ctx context.Context, studioID string, status entity.ReservationStatus) ([]*entity.Reservation, error) {
+	if m.FindByStudioAndStatusFunc != nil {
+		return m.FindByStudioAndStatusFunc(ctx, studioID, status)
+	}
+	return []*entity.Reservation{}, nil
+}
+
+func (m *MockReservationRepository) FindByUserID(ctx context.Context, userID string) ([]*entity.Reservation, error) {
+	return []*entity.Reservation{}, nil
+}
+
+func (m *MockReservationRepository) FindByLinkedReservationID(ctx context.Context, linkedReservationID string) ([]*entity.Reservation, error) {
+	return []*entity.Reservation{}, nil
+}
+
+func (m *MockReservationRepository) FindExpiredTentative(ctx context.Context, studioID string, expiryDate time.Time) ([]*entity.Reservation, error) {
+	return []*entity.Reservation{}, nil
+}
+
+func (m *MockReservationRepository) FindUpcomingConfirmed(ctx context.Context, studioID string, date time.Time) ([]*entity.Reservation, error) {
+	return []*entity.Reservation{}, nil
+}
+
+func (m *MockReservationRepository) FindPastConfirmed(ctx context.Context, studioID string, beforeDate time.Time) ([]*entity.Reservation, error) {
+	return []*entity.Reservation{}, nil
+}
+
+func (m *MockReservationRepository) Delete(ctx context.Context, reservationID string) error {
+	return nil
+}
+
+// MockUserRepository はユーザーリポジトリのモック
+type MockUserRepository struct {
+	FindByIDFunc func(ctx context.Context, userID string) (*entity.User, error)
+}
+
+func (m *MockUserRepository) FindByID(ctx context.Context, userID string) (*entity.User, error) {
+	if m.FindByIDFunc != nil {
+		return m.FindByIDFunc(ctx, userID)
+	}
+	return &entity.User{
+		UserID: userID,
+		Name:   "Test User",
+		Email:  "test@example.com",
+		Role:   entity.UserRoleCustomer,
+	}, nil
+}
+
+func (m *MockUserRepository) FindByEmail(ctx context.Context, email string) (*entity.User, error) {
+	return nil, nil
+}
+
+func (m *MockUserRepository) Create(ctx context.Context, user *entity.User) error {
+	return nil
+}
+
+func (m *MockUserRepository) Update(ctx context.Context, user *entity.User) error {
+	return nil
+}
+
+func (m *MockUserRepository) Delete(ctx context.Context, userID string) error {
+	return nil
+}
+
+// MockPlanRepository はプランリポジトリのモック
+type MockPlanRepository struct {
+	FindByIDFunc func(ctx context.Context, studioID, planID string) (*entity.Plan, error)
+}
+
+func (m *MockPlanRepository) FindByID(ctx context.Context, studioID, planID string) (*entity.Plan, error) {
+	if m.FindByIDFunc != nil {
+		return m.FindByIDFunc(ctx, studioID, planID)
+	}
+	return &entity.Plan{
+		PlanID:   planID,
+		StudioID: studioID,
+		PlanName: "Test Plan",
+		Price:    10000,
+		TaxRate:  0.10,
+		IsActive: true,
+	}, nil
+}
+
+func (m *MockPlanRepository) FindByStudio(ctx context.Context, studioID string) ([]*entity.Plan, error) {
+	return []*entity.Plan{}, nil
+}
+
+func (m *MockPlanRepository) FindActiveByStudio(ctx context.Context, studioID string) ([]*entity.Plan, error) {
+	return []*entity.Plan{}, nil
+}
+
+func (m *MockPlanRepository) Create(ctx context.Context, plan *entity.Plan) error {
+	return nil
+}
+
+func (m *MockPlanRepository) Update(ctx context.Context, plan *entity.Plan) error {
+	return nil
+}
+
+func (m *MockPlanRepository) Delete(ctx context.Context, studioID, planID string) error {
+	return nil
+}
+
+// MockBlockedSlotRepository はブロック枠リポジトリのモック
+type MockBlockedSlotRepository struct {
+	FindByStudioAndDateRangeFunc func(ctx context.Context, studioID string, startDate, endDate time.Time) ([]*entity.BlockedSlot, error)
+	FindByStudioAndDateFunc      func(ctx context.Context, studioID string, date time.Time) ([]*entity.BlockedSlot, error)
+}
+
+func (m *MockBlockedSlotRepository) FindByStudioAndDateRange(ctx context.Context, studioID string, startDate, endDate time.Time) ([]*entity.BlockedSlot, error) {
+	if m.FindByStudioAndDateRangeFunc != nil {
+		return m.FindByStudioAndDateRangeFunc(ctx, studioID, startDate, endDate)
+	}
+	return []*entity.BlockedSlot{}, nil
+}
+
+func (m *MockBlockedSlotRepository) FindByStudioAndDate(ctx context.Context, studioID string, date time.Time) ([]*entity.BlockedSlot, error) {
+	if m.FindByStudioAndDateFunc != nil {
+		return m.FindByStudioAndDateFunc(ctx, studioID, date)
+	}
+	return []*entity.BlockedSlot{}, nil
+}
+
+func (m *MockBlockedSlotRepository) FindByID(ctx context.Context, studioID, blockedSlotID string) (*entity.BlockedSlot, error) {
+	return nil, nil
+}
+
+func (m *MockBlockedSlotRepository) Create(ctx context.Context, blockedSlot *entity.BlockedSlot) error {
+	return nil
+}
+
+func (m *MockBlockedSlotRepository) Delete(ctx context.Context, studioID, blockedSlotID string) error {
+	return nil
+}
+
+func (m *MockBlockedSlotRepository) Update(ctx context.Context, blockedSlot *entity.BlockedSlot) error {
+	return nil
+}
+
+// MockStudioRepository はスタジオリポジトリのモック
+type MockStudioRepository struct {
+	FindByIDFunc func(ctx context.Context, studioID string) (*entity.Studio, error)
+}
+
+func (m *MockStudioRepository) FindByID(ctx context.Context, studioID string) (*entity.Studio, error) {
+	if m.FindByIDFunc != nil {
+		return m.FindByIDFunc(ctx, studioID)
+	}
+	return &entity.Studio{
+		StudioID:            studioID,
+		StudioName:          "Test Studio",
+		TentativeExpiryDays: 7,
+		IsActive:            true,
+	}, nil
+}
+
+func (m *MockStudioRepository) Create(ctx context.Context, studio *entity.Studio) error {
+	return nil
+}
+
+func (m *MockStudioRepository) Update(ctx context.Context, studio *entity.Studio) error {
+	return nil
+}
+
+func (m *MockStudioRepository) Delete(ctx context.Context, studioID string) error {
+	return nil
+}
+
+// TestCreateReservation_Success は予約作成が成功するケースをテスト
+func TestCreateReservation_Success(t *testing.T) {
+	// テストケース: 正常系（予約作成成功）
+
+	// 1. モックリポジトリを準備
+	reservationRepo := &MockReservationRepository{
+		FindConflictingFunc: func(ctx context.Context, studioID string, date time.Time, startTime, endTime string) ([]*entity.Reservation, error) {
+			// 重複する予約がないケース
+			return []*entity.Reservation{}, nil
+		},
+	}
+	userRepo := &MockUserRepository{}
+	planRepo := &MockPlanRepository{}
+	blockedSlotRepo := &MockBlockedSlotRepository{}
+	studioRepo := &MockStudioRepository{}
+
+	// 2. ユースケースを作成
+	usecase := NewReservationUsecase(reservationRepo, userRepo, planRepo, blockedSlotRepo, studioRepo)
+
+	// 3. 予約作成リクエストを準備
+	input := CreateReservationInput{
+		StudioID:        "studio_001",
+		UserID:          "user_001",
+		ReservationType: entity.ReservationTypeRegular,
+		PlanID:          "plan_001",
+		Date:      time.Now().AddDate(0, 0, 7), // 7日後
+		StartTime: "10:00",
+		EndTime:   "12:00",
+	}
+
+	// 4. 予約を作成
+	reservation, err := usecase.CreateReservation(context.Background(), input)
+
+	// 5. 検証
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if reservation == nil {
+		t.Fatal("Expected reservation, got nil")
+	}
+	if reservation.StudioID != input.StudioID {
+		t.Errorf("StudioID = %v, want %v", reservation.StudioID, input.StudioID)
+	}
+	if reservation.UserID != input.UserID {
+		t.Errorf("UserID = %v, want %v", reservation.UserID, input.UserID)
+	}
+	if reservation.Status != entity.ReservationStatusPending {
+		t.Errorf("Status = %v, want %v", reservation.Status, entity.ReservationStatusPending)
+	}
+}
+
+// TestCreateReservation_Conflict は予約重複時にエラーを返すかテスト
+func TestCreateReservation_Conflict(t *testing.T) {
+	// テストケース: 同一時間帯に既存予約がある場合、エラーを返すか
+
+	// 1. モックリポジトリを準備（重複する予約があるケース）
+	reservationRepo := &MockReservationRepository{
+		FindConflictingFunc: func(ctx context.Context, studioID string, date time.Time, startTime, endTime string) ([]*entity.Reservation, error) {
+			// 重複する予約が存在
+			return []*entity.Reservation{
+				{
+					ReservationID: "rsv_existing",
+					StudioID:      studioID,
+					Status:        entity.ReservationStatusConfirmed,
+				},
+			}, nil
+		},
+	}
+	userRepo := &MockUserRepository{}
+	planRepo := &MockPlanRepository{}
+	blockedSlotRepo := &MockBlockedSlotRepository{}
+	studioRepo := &MockStudioRepository{}
+
+	// 2. ユースケースを作成
+	usecase := NewReservationUsecase(reservationRepo, userRepo, planRepo, blockedSlotRepo, studioRepo)
+
+	// 3. 予約作成リクエストを準備
+	input := CreateReservationInput{
+		StudioID:        "studio_001",
+		UserID:          "user_001",
+		ReservationType: entity.ReservationTypeRegular,
+		PlanID:    "plan_001",
+		Date:      time.Now().AddDate(0, 0, 7),
+		StartTime: "10:00",
+		EndTime:   "12:00",
+	}
+
+	// 4. 予約を作成
+	reservation, err := usecase.CreateReservation(context.Background(), input)
+
+	// 5. 検証
+	if err != apierror.ErrReservationConflict {
+		t.Errorf("Expected ErrReservationConflict, got %v", err)
+	}
+	if reservation != nil {
+		t.Error("Expected nil reservation on conflict")
+	}
+}
+
+// TestApproveReservation_Success は予約承認が成功するケースをテスト
+func TestApproveReservation_Success(t *testing.T) {
+	// テストケース: pending状態の予約を承認できるか
+
+	// 1. モックリポジトリを準備
+	reservationRepo := &MockReservationRepository{
+		FindByIDFunc: func(ctx context.Context, reservationID string) (*entity.Reservation, error) {
+			// pending状態の予約を返す
+			return &entity.Reservation{
+				ReservationID:   reservationID,
+				StudioID:        "studio_001",
+				UserID:          "user_001",
+				ReservationType: entity.ReservationTypeRegular,
+				Status:          entity.ReservationStatusPending,
+				Date:            time.Now().AddDate(0, 0, 7),
+				StartTime:       "10:00",
+				EndTime:         "12:00",
+			}, nil
+		},
+	}
+	userRepo := &MockUserRepository{}
+	planRepo := &MockPlanRepository{}
+	blockedSlotRepo := &MockBlockedSlotRepository{}
+	studioRepo := &MockStudioRepository{}
+
+	// 2. ユースケースを作成
+	usecase := NewReservationUsecase(reservationRepo, userRepo, planRepo, blockedSlotRepo, studioRepo)
+
+	// 3. 予約を承認
+	reservation, err := usecase.ApproveReservation(context.Background(), "rsv_001")
+
+	// 4. 検証
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if reservation == nil {
+		t.Fatal("Expected reservation, got nil")
+	}
+	// 本予約の場合はconfirmed、仮予約の場合はtentativeになる
+	if reservation.Status != entity.ReservationStatusConfirmed && reservation.Status != entity.ReservationStatusTentative {
+		t.Errorf("Status = %v, want confirmed or tentative", reservation.Status)
+	}
+}
+
+// TestRejectReservation_Success は予約拒否が成功するケースをテスト
+func TestRejectReservation_Success(t *testing.T) {
+	// テストケース: pending状態の予約を拒否できるか
+
+	// 1. モックリポジトリを準備
+	reservationRepo := &MockReservationRepository{
+		FindByIDFunc: func(ctx context.Context, reservationID string) (*entity.Reservation, error) {
+			// pending状態の予約を返す
+			return &entity.Reservation{
+				ReservationID:   reservationID,
+				StudioID:        "studio_001",
+				UserID:          "user_001",
+				ReservationType: entity.ReservationTypeRegular,
+				Status:          entity.ReservationStatusPending,
+			}, nil
+		},
+	}
+	userRepo := &MockUserRepository{}
+	planRepo := &MockPlanRepository{}
+	blockedSlotRepo := &MockBlockedSlotRepository{}
+	studioRepo := &MockStudioRepository{}
+
+	// 2. ユースケースを作成
+	usecase := NewReservationUsecase(reservationRepo, userRepo, planRepo, blockedSlotRepo, studioRepo)
+
+	// 3. 予約を拒否
+	reservation, err := usecase.RejectReservation(context.Background(), "rsv_001")
+
+	// 4. 検証
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if reservation == nil {
+		t.Fatal("Expected reservation, got nil")
+	}
+	if reservation.Status != entity.ReservationStatusCancelled {
+		t.Errorf("Status = %v, want cancelled", reservation.Status)
+	}
+}
+
+// TestPromoteReservation_Success は仮予約→本予約の昇格が成功するケースをテスト
+func TestPromoteReservation_Success(t *testing.T) {
+	// テストケース: tentative状態の予約をpendingに昇格できるか
+
+	// 1. モックリポジトリを準備
+	reservationRepo := &MockReservationRepository{
+		FindByIDFunc: func(ctx context.Context, reservationID string) (*entity.Reservation, error) {
+			// tentative状態の予約を返す
+			return &entity.Reservation{
+				ReservationID:   reservationID,
+				StudioID:        "studio_001",
+				UserID:          "user_001",
+				ReservationType: entity.ReservationTypeTentative,
+				Status:          entity.ReservationStatusTentative,
+				Date:            time.Now().AddDate(0, 0, 7),
+			}, nil
+		},
+	}
+	userRepo := &MockUserRepository{}
+	planRepo := &MockPlanRepository{}
+	blockedSlotRepo := &MockBlockedSlotRepository{}
+	studioRepo := &MockStudioRepository{}
+
+	// 2. ユースケースを作成
+	usecase := NewReservationUsecase(reservationRepo, userRepo, planRepo, blockedSlotRepo, studioRepo)
+
+	// 3. 予約を昇格
+	reservation, err := usecase.PromoteReservation(context.Background(), "rsv_001")
+
+	// 4. 検証
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if reservation == nil {
+		t.Fatal("Expected reservation, got nil")
+	}
+	if reservation.Status != entity.ReservationStatusPending {
+		t.Errorf("Status = %v, want pending", reservation.Status)
+	}
+}

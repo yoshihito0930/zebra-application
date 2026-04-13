@@ -94,7 +94,7 @@ func (u *ReservationUsecase) CreateReservation(ctx context.Context, input Create
 		return nil, fmt.Errorf("failed to find blocked slots: %w", err)
 	}
 	for _, slot := range blockedSlots {
-		if slot.IsConflicting(input.StartTime, input.EndTime) {
+		if slot.OverlapsWith(input.StartTime, input.EndTime) {
 			return nil, apierror.ErrBlockedSlotConflict
 		}
 	}
@@ -256,7 +256,7 @@ func (u *ReservationUsecase) UpdateReservation(ctx context.Context, input Update
 			return nil, fmt.Errorf("failed to find blocked slots: %w", err)
 		}
 		for _, slot := range blockedSlots {
-			if slot.IsConflicting(newStartTime, newEndTime) {
+			if slot.OverlapsWith(newStartTime, newEndTime) {
 				return nil, apierror.ErrBlockedSlotConflict
 			}
 		}

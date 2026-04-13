@@ -67,9 +67,10 @@ func (u *PlanUsecase) CreatePlan(ctx context.Context, input CreatePlanInput) (*e
 
 	// 2. プランエンティティを作成
 	now := time.Now()
-	displayOrder := 0
+	var displayOrder *int
 	if input.DisplayOrder != nil {
-		displayOrder = *input.DisplayOrder
+		order := *input.DisplayOrder
+		displayOrder = &order
 	}
 
 	plan := &entity.Plan{
@@ -131,7 +132,8 @@ func (u *PlanUsecase) UpdatePlan(ctx context.Context, input UpdatePlanInput) (*e
 		plan.IsActive = *input.IsActive
 	}
 	if input.DisplayOrder != nil {
-		plan.DisplayOrder = *input.DisplayOrder
+		order := *input.DisplayOrder
+		plan.DisplayOrder = &order
 	}
 	plan.UpdatedAt = time.Now()
 

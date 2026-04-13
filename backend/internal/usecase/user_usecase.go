@@ -63,8 +63,8 @@ func (u *UserUsecase) Signup(ctx context.Context, input SignupInput) (*entity.Us
 		PhoneNumber: input.PhoneNumber,
 		CompanyName: input.CompanyName,
 		Address:     input.Address,
-		Role:        entity.RoleCustomer, // デフォルトはcustomer
-		StudioID:    nil,                 // customerはスタジオに所属しない
+		Role:        entity.UserRoleCustomer, // デフォルトはcustomer
+		StudioID:    nil,                      // customerはスタジオに所属しない
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
@@ -173,7 +173,7 @@ func (u *UserUsecase) CreateStaff(ctx context.Context, input CreateStaffInput) (
 		PhoneNumber: input.PhoneNumber,
 		CompanyName: nil,
 		Address:     "",
-		Role:        entity.RoleStaff, // ロールはstaff
+		Role:        entity.UserRoleStaff, // ロールはstaff
 		StudioID:    &input.StudioID,  // スタジオIDを設定
 		CreatedAt:   now,
 		UpdatedAt:   now,
