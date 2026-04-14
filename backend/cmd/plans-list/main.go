@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/yoshihito0930/zebra-application/internal/repository"
+	dynamodbRepo "github.com/yoshihito0930/zebra-application/internal/repository/dynamodb"
 	"github.com/yoshihito0930/zebra-application/internal/usecase"
 	"github.com/yoshihito0930/zebra-application/pkg/apierror"
 	"github.com/yoshihito0930/zebra-application/pkg/response"
@@ -31,10 +31,11 @@ func init() {
 	dynamoClient := dynamodb.NewFromConfig(cfg)
 
 	// リポジトリを初期化
-	planRepo := repository.NewPlanRepository(dynamoClient)
+	planRepo := dynamodbRepo.NewPlanRepository(dynamoClient)
+	studioRepo := dynamodbRepo.NewStudioRepository(dynamoClient)
 
 	// ユースケースを初期化
-	planUsecase = usecase.NewPlanUsecase(planRepo)
+	planUsecase = usecase.NewPlanUsecase(planRepo, studioRepo)
 }
 
 // PlanResponse はプランレスポンスの構造体
@@ -69,14 +70,19 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	// レスポンスを作成
 	planResponses := make([]PlanResponse, len(plans))
 	for i, p := range plans {
-		planResponses[i] = PlanResponse{
-			PlanID:       p.PlanID,
-			PlanName:     p.PlanName,
-			Description:  p.Description,
-			Price:        p.Price,
-			TaxRate:      p.TaxRate,
-			DisplayOrder: p.DisplayOrder,
+		pr := PlanResponse{
+			PlanID:   p.PlanID,
+			PlanName: p.PlanName,
+			Price:    p.Price,
+			TaxRate:  p.TaxRate,
 		}
+		if p.Description != nil {
+			pr.Description = *p.Description
+		}
+		if p.DisplayOrder != nil {
+			pr.DisplayOrder = *p.DisplayOrder
+		}
+		planResponses[i] = pr
 	}
 
 	resp := PlansListResponse{

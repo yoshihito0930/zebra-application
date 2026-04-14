@@ -1,0 +1,32 @@
+# Cognitoモジュールの出力定義
+
+output "user_pool_id" {
+  description = "Cognito User Pool ID"
+  value       = aws_cognito_user_pool.main.id
+}
+
+output "user_pool_arn" {
+  description = "Cognito User Pool ARN"
+  value       = aws_cognito_user_pool.main.arn
+}
+
+output "user_pool_endpoint" {
+  description = "Cognito User Pool エンドポイント"
+  value       = aws_cognito_user_pool.main.endpoint
+}
+
+output "user_pool_client_id" {
+  description = "Cognito User Pool Client ID"
+  value       = aws_cognito_user_pool_client.main.id
+}
+
+output "user_pool_client_secret" {
+  description = "Cognito User Pool Client Secret"
+  value       = aws_cognito_user_pool_client.main.client_secret
+  sensitive   = true
+}
+
+output "user_pool_domain" {
+  description = "Cognito User Pool ドメイン"
+  value       = aws_cognito_user_pool_domain.main.domain
+}

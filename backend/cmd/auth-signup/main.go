@@ -9,13 +9,11 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/yoshihito0930/zebra-application/internal/middleware"
-	"github.com/yoshihito0930/zebra-application/internal/repository"
+	dynamodbRepo "github.com/yoshihito0930/zebra-application/internal/repository/dynamodb"
 	"github.com/yoshihito0930/zebra-application/internal/usecase"
 	"github.com/yoshihito0930/zebra-application/internal/validator"
 	"github.com/yoshihito0930/zebra-application/pkg/apierror"
 	"github.com/yoshihito0930/zebra-application/pkg/response"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // グローバル変数（コールドスタート対策）
@@ -35,10 +33,11 @@ func init() {
 	dynamoClient := dynamodb.NewFromConfig(cfg)
 
 	// リポジトリを初期化
-	userRepo := repository.NewUserRepository(dynamoClient)
+	userRepo := dynamodbRepo.NewUserRepository(dynamoClient)
+	studioRepo := dynamodbRepo.NewStudioRepository(dynamoClient)
 
 	// ユースケースを初期化
-	userUsecase = usecase.NewUserUsecase(userRepo)
+	userUsecase = usecase.NewUserUsecase(userRepo, studioRepo)
 }
 
 // SignUpRequest はサインアップリクエストの構造体
@@ -102,27 +101,23 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return response.ErrorWithCORS(validationResult.ToAPIError()), nil
 	}
 
-	// パスワードをハッシュ化
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	if err != nil {
-		log.Printf("Failed to hash password: %v", err)
-		return response.ErrorWithCORS(apierror.ErrInternalServer), nil
+	// ユーザー作成の入力データを作成
+	var companyName *string
+	if req.CompanyName != "" {
+		companyName = &req.CompanyName
 	}
 
-	// ユーザー作成の入力データを作成
-	input := usecase.CreateUserInput{
-		Name:           req.Name,
-		Email:          req.Email,
-		HashedPassword: string(hashedPassword),
-		PhoneNumber:    req.PhoneNumber,
-		CompanyName:    req.CompanyName,
-		Address:        req.Address,
-		Role:           "customer", // デフォルトは顧客
-		StudioID:       "",         // 顧客はスタジオに所属しない
+	input := usecase.SignupInput{
+		Name:        req.Name,
+		Email:       req.Email,
+		Password:    req.Password, // Cognitoでハッシュ化される
+		PhoneNumber: req.PhoneNumber,
+		CompanyName: companyName,
+		Address:     req.Address,
 	}
 
 	// ユーザーを作成
-	user, err := userUsecase.CreateUser(ctx, input)
+	user, err := userUsecase.Signup(ctx, input)
 	if err != nil {
 		// メールアドレス重複エラーのハンドリング
 		if err == apierror.ErrEmailAlreadyExists {
@@ -138,7 +133,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		UserID:    user.UserID,
 		Name:      user.Name,
 		Email:     user.Email,
-		Role:      user.Role,
+		Role:      string(user.Role),
 		CreatedAt: user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 

@@ -40,6 +40,13 @@ var (
 		Message:    "入力内容に誤りがあります",
 		StatusCode: http.StatusBadRequest,
 	}
+
+	// ErrBadRequest は不正なリクエストの場合のエラー
+	ErrBadRequest = &APIError{
+		Code:       "BAD_REQUEST",
+		Message:    "リクエストが不正です",
+		StatusCode: http.StatusBadRequest,
+	}
 )
 
 // 401 Unauthorized - 認証エラー
@@ -69,6 +76,13 @@ var (
 	ErrAuthLoginFailed = &APIError{
 		Code:       "AUTH_LOGIN_FAILED",
 		Message:    "メールアドレスまたはパスワードが正しくありません",
+		StatusCode: http.StatusUnauthorized,
+	}
+
+	// ErrUnauthorized は認証が必要な場合のエラー
+	ErrUnauthorized = &APIError{
+		Code:       "UNAUTHORIZED",
+		Message:    "認証が必要です",
 		StatusCode: http.StatusUnauthorized,
 	}
 )

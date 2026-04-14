@@ -8,8 +8,9 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/yoshihito0930/zebra-application/internal/domain/entity"
 	"github.com/yoshihito0930/zebra-application/internal/middleware"
-	"github.com/yoshihito0930/zebra-application/internal/repository"
+	dynamodbRepo "github.com/yoshihito0930/zebra-application/internal/repository/dynamodb"
 	"github.com/yoshihito0930/zebra-application/internal/usecase"
 	"github.com/yoshihito0930/zebra-application/pkg/apierror"
 	"github.com/yoshihito0930/zebra-application/pkg/response"
@@ -26,11 +27,11 @@ func init() {
 	}
 
 	dynamoClient := dynamodb.NewFromConfig(cfg)
-	reservationRepo := repository.NewReservationRepository(dynamoClient)
-	userRepo := repository.NewUserRepository(dynamoClient)
-	planRepo := repository.NewPlanRepository(dynamoClient)
-	blockedSlotRepo := repository.NewBlockedSlotRepository(dynamoClient)
-	studioRepo := repository.NewStudioRepository(dynamoClient)
+	reservationRepo := dynamodbRepo.NewReservationRepository(dynamoClient)
+	userRepo := dynamodbRepo.NewUserRepository(dynamoClient)
+	planRepo := dynamodbRepo.NewPlanRepository(dynamoClient)
+	blockedSlotRepo := dynamodbRepo.NewBlockedSlotRepository(dynamoClient)
+	studioRepo := dynamodbRepo.NewStudioRepository(dynamoClient)
 
 	reservationUsecase = usecase.NewReservationUsecase(
 		reservationRepo,
@@ -74,11 +75,11 @@ func cancelReservationHandler(ctx context.Context, request events.APIGatewayProx
 	}
 
 	// キャンセル実行者を判定
-	var cancelledBy string
+	var cancelledBy entity.CancelledBy
 	if role == string(middleware.RoleAdmin) {
-		cancelledBy = "owner" // 管理者がキャンセル
+		cancelledBy = entity.CancelledByOwner // 管理者がキャンセル
 	} else {
-		cancelledBy = "customer" // 顧客がキャンセル
+		cancelledBy = entity.CancelledByCustomer // 顧客がキャンセル
 	}
 
 	// 予約をキャンセル
@@ -95,11 +96,18 @@ func cancelReservationHandler(ctx context.Context, request events.APIGatewayProx
 		}
 	}
 
+	// レスポンスを作成
 	resp := CancelReservationResponse{
 		ReservationID: reservation.ReservationID,
 		Status:        string(reservation.Status),
-		CancelledBy:   reservation.CancelledBy,
-		CancelledAt:   reservation.CancelledAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+
+	// CancelledByとCancelledAtは必ず設定されているはず
+	if reservation.CancelledBy != nil {
+		resp.CancelledBy = string(*reservation.CancelledBy)
+	}
+	if reservation.CancelledAt != nil {
+		resp.CancelledAt = reservation.CancelledAt.Format("2006-01-02T15:04:05Z07:00")
 	}
 
 	return response.OKWithCORS(resp), nil

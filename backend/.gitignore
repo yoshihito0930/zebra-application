@@ -1,0 +1,48 @@
+# Goのビルド成果物
+# Lambda関数のバイナリファイル
+auth-login
+auth-signup
+batch-second-keep-promote
+batch-tentative-expiry
+batch-tentative-reminder
+blocked-slots-create
+blocked-slots-delete
+blocked-slots-list
+calendar-get
+plans-list
+reservation-approve
+reservation-cancel
+reservation-create
+reservation-get
+reservation-list
+reservation-list-me
+reservation-promote
+reservation-reject
+reservation-update
+users-me-get
+
+# その他のGoビルド成果物
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go workspace file
+go.work
+
+# 依存関係ディレクトリ
+vendor/
+
+# IDEファイル
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS生成ファイル
+.DS_Store
+Thumbs.db

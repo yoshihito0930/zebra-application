@@ -105,6 +105,9 @@ type Reservation struct {
 	// LinkedReservationID は第2キープ時の第1候補予約ID（オプショナル）
 	LinkedReservationID *string `json:"linked_reservation_id,omitempty" dynamodbav:"linked_reservation_id,omitempty"`
 
+	// ExpiryDate は仮予約の有効期限日（YYYY-MM-DD、仮予約のみ）
+	ExpiryDate *time.Time `json:"expiry_date,omitempty" dynamodbav:"expiry_date,omitempty"`
+
 	// CreatedAt は作成日時（UTC、ISO8601形式）
 	CreatedAt time.Time `json:"created_at" dynamodbav:"created_at"`
 

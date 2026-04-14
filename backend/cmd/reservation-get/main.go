@@ -9,14 +9,18 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/yoshihito0930/zebra-application/internal/middleware"
-	"github.com/yoshihito0930/zebra-application/internal/repository"
+	dynamodbRepo "github.com/yoshihito0930/zebra-application/internal/repository/dynamodb"
 	"github.com/yoshihito0930/zebra-application/internal/usecase"
 	"github.com/yoshihito0930/zebra-application/pkg/apierror"
 	"github.com/yoshihito0930/zebra-application/pkg/response"
+	"github.com/yoshihito0930/zebra-application/internal/helper"
+	"github.com/yoshihito0930/zebra-application/internal/repository"
 )
 
 var (
 	reservationUsecase *usecase.ReservationUsecase
+	planRepo           repository.PlanRepository
+	optionRepo         repository.OptionRepository
 )
 
 func init() {
@@ -26,11 +30,12 @@ func init() {
 	}
 
 	dynamoClient := dynamodb.NewFromConfig(cfg)
-	reservationRepo := repository.NewReservationRepository(dynamoClient)
-	userRepo := repository.NewUserRepository(dynamoClient)
-	planRepo := repository.NewPlanRepository(dynamoClient)
-	blockedSlotRepo := repository.NewBlockedSlotRepository(dynamoClient)
-	studioRepo := repository.NewStudioRepository(dynamoClient)
+	reservationRepo := dynamodbRepo.NewReservationRepository(dynamoClient)
+	userRepo := dynamodbRepo.NewUserRepository(dynamoClient)
+	planRepo = dynamodbRepo.NewPlanRepository(dynamoClient)
+	optionRepo = dynamodbRepo.NewOptionRepository(dynamoClient)
+	blockedSlotRepo := dynamodbRepo.NewBlockedSlotRepository(dynamoClient)
+	studioRepo := dynamodbRepo.NewStudioRepository(dynamoClient)
 
 	reservationUsecase = usecase.NewReservationUsecase(
 		reservationRepo,
@@ -41,42 +46,16 @@ func init() {
 	)
 }
 
-type OptionSnapshot struct {
-	OptionID   string  `json:"option_id"`
-	OptionName string  `json:"option_name"`
-	Price      int     `json:"price"`
-	TaxRate    float64 `json:"tax_rate"`
-}
-
+// ReservationDetailResponse は予約詳細レスポンス（helper.ReservationResponseに追加フィールドを含む）
 type ReservationDetailResponse struct {
-	ReservationID       string           `json:"reservation_id"`
-	StudioID            string           `json:"studio_id"`
-	UserID              string           `json:"user_id"`
-	ReservationType     string           `json:"reservation_type"`
-	Status              string           `json:"status"`
-	PlanID              string           `json:"plan_id"`
-	PlanName            string           `json:"plan_name"`
-	PlanPrice           int              `json:"plan_price"`
-	PlanTaxRate         float64          `json:"plan_tax_rate"`
-	Date                string           `json:"date"`
-	StartTime           string           `json:"start_time"`
-	EndTime             string           `json:"end_time"`
-	Options             []OptionSnapshot `json:"options"`
-	ShootingType        []string         `json:"shooting_type"`
-	ShootingDetails     string           `json:"shooting_details"`
-	PhotographerName    string           `json:"photographer_name"`
-	NumberOfPeople      int              `json:"number_of_people"`
-	NeedsProtection     bool             `json:"needs_protection"`
-	EquipmentInsurance  bool             `json:"equipment_insurance"`
-	Note                string           `json:"note"`
-	CancelledBy         string           `json:"cancelled_by"`
-	CancelledAt         string           `json:"cancelled_at"`
-	PromotedFrom        string           `json:"promoted_from"`
-	PromotedAt          string           `json:"promoted_at"`
-	LinkedReservationID string           `json:"linked_reservation_id"`
-	ExpiryDate          string           `json:"expiry_date"`
-	CreatedAt           string           `json:"created_at"`
-	UpdatedAt           string           `json:"updated_at"`
+	helper.ReservationResponse
+	CancelledBy         string `json:"cancelled_by,omitempty"`
+	CancelledAt         string `json:"cancelled_at,omitempty"`
+	PromotedFrom        string `json:"promoted_from,omitempty"`
+	PromotedAt          string `json:"promoted_at,omitempty"`
+	LinkedReservationID string `json:"linked_reservation_id,omitempty"`
+	ExpiryDate          string `json:"expiry_date,omitempty"`
+	UpdatedAt           string `json:"updated_at"`
 }
 
 func getReservationHandler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
@@ -99,57 +78,32 @@ func getReservationHandler(ctx context.Context, request events.APIGatewayProxyRe
 		return response.ErrorWithCORS(apierror.ErrForbiddenResource), nil
 	}
 
-	// レスポンスを作成
-	options := make([]OptionSnapshot, len(reservation.Options))
-	for i, opt := range reservation.Options {
-		options[i] = OptionSnapshot{
-			OptionID:   opt.OptionID,
-			OptionName: opt.OptionName,
-			Price:      opt.Price,
-			TaxRate:    opt.TaxRate,
-		}
-	}
+	// helperを使って基本レスポンスを構築
+	baseResp := helper.BuildReservationResponse(ctx, reservation, planRepo, optionRepo)
 
-	shootingTypes := make([]string, len(reservation.ShootingType))
-	for i, st := range reservation.ShootingType {
-		shootingTypes[i] = string(st)
-	}
-
+	// 詳細レスポンスを作成（追加フィールドを含む）
 	resp := ReservationDetailResponse{
-		ReservationID:       reservation.ReservationID,
-		StudioID:            reservation.StudioID,
-		UserID:              reservation.UserID,
-		ReservationType:     string(reservation.ReservationType),
-		Status:              string(reservation.Status),
-		PlanID:              reservation.PlanID,
-		PlanName:            reservation.PlanName,
-		PlanPrice:           reservation.PlanPrice,
-		PlanTaxRate:         reservation.PlanTaxRate,
-		Date:                reservation.Date.Format("2006-01-02"),
-		StartTime:           reservation.StartTime,
-		EndTime:             reservation.EndTime,
-		Options:             options,
-		ShootingType:        shootingTypes,
-		ShootingDetails:     reservation.ShootingDetails,
-		PhotographerName:    reservation.PhotographerName,
-		NumberOfPeople:      reservation.NumberOfPeople,
-		NeedsProtection:     reservation.NeedsProtection,
-		EquipmentInsurance:  reservation.EquipmentInsurance,
-		Note:                reservation.Note,
-		CancelledBy:         reservation.CancelledBy,
-		PromotedFrom:        reservation.PromotedFrom,
-		LinkedReservationID: reservation.LinkedReservationID,
-		CreatedAt:           reservation.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		ReservationResponse: baseResp,
 		UpdatedAt:           reservation.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 
-	if !reservation.CancelledAt.IsZero() {
+	// オプショナルフィールドの設定
+	if reservation.CancelledBy != nil {
+		resp.CancelledBy = string(*reservation.CancelledBy)
+	}
+	if reservation.CancelledAt != nil && !reservation.CancelledAt.IsZero() {
 		resp.CancelledAt = reservation.CancelledAt.Format("2006-01-02T15:04:05Z07:00")
 	}
-	if !reservation.PromotedAt.IsZero() {
+	if reservation.PromotedFrom != nil {
+		resp.PromotedFrom = string(*reservation.PromotedFrom)
+	}
+	if reservation.PromotedAt != nil && !reservation.PromotedAt.IsZero() {
 		resp.PromotedAt = reservation.PromotedAt.Format("2006-01-02T15:04:05Z07:00")
 	}
-	if !reservation.ExpiryDate.IsZero() {
+	if reservation.LinkedReservationID != nil {
+		resp.LinkedReservationID = *reservation.LinkedReservationID
+	}
+	if reservation.ExpiryDate != nil && !reservation.ExpiryDate.IsZero() {
 		resp.ExpiryDate = reservation.ExpiryDate.Format("2006-01-02")
 	}
 

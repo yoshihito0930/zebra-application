@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"log"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/yoshihito0930/zebra-application/internal/repository"
+	dynamodbRepo "github.com/yoshihito0930/zebra-application/internal/repository/dynamodb"
 	"github.com/yoshihito0930/zebra-application/internal/usecase"
 	"github.com/yoshihito0930/zebra-application/internal/validator"
 	"github.com/yoshihito0930/zebra-application/pkg/apierror"
@@ -32,11 +33,12 @@ func init() {
 	dynamoClient := dynamodb.NewFromConfig(cfg)
 
 	// リポジトリを初期化
-	reservationRepo := repository.NewReservationRepository(dynamoClient)
-	blockedSlotRepo := repository.NewBlockedSlotRepository(dynamoClient)
+	reservationRepo := dynamodbRepo.NewReservationRepository(dynamoClient)
+	blockedSlotRepo := dynamodbRepo.NewBlockedSlotRepository(dynamoClient)
+	studioRepo := dynamodbRepo.NewStudioRepository(dynamoClient)
 
 	// ユースケースを初期化
-	calendarUsecase = usecase.NewCalendarUsecase(reservationRepo, blockedSlotRepo)
+	calendarUsecase = usecase.NewCalendarUsecase(reservationRepo, blockedSlotRepo, studioRepo)
 }
 
 // ReservationSummary は予約サマリーの構造体
@@ -90,8 +92,15 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return response.ErrorWithCORS(validationResult.ToAPIError()), nil
 	}
 
+	// 月をtime.Timeに変換
+	monthDate, err := time.Parse("2006-01", month)
+	if err != nil {
+		validationResult.AddError("month", "月の形式が正しくありません")
+		return response.ErrorWithCORS(validationResult.ToAPIError()), nil
+	}
+
 	// カレンダー情報を取得
-	calendar, err := calendarUsecase.GetCalendar(ctx, studioID, month)
+	calendar, err := calendarUsecase.GetCalendar(ctx, studioID, monthDate)
 	if err != nil {
 		log.Printf("Failed to get calendar: %v", err)
 		return response.ErrorWithCORS(apierror.ErrInternalServer), nil
@@ -112,14 +121,19 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 
 	blockedSlots := make([]BlockedSlotSummary, len(calendar.BlockedSlots))
 	for i, b := range calendar.BlockedSlots {
-		blockedSlots[i] = BlockedSlotSummary{
+		bs := BlockedSlotSummary{
 			BlockedSlotID: b.BlockedSlotID,
 			Date:          b.Date.Format("2006-01-02"),
 			IsAllDay:      b.IsAllDay,
-			StartTime:     b.StartTime,
-			EndTime:       b.EndTime,
 			Reason:        b.Reason,
 		}
+		if b.StartTime != nil {
+			bs.StartTime = *b.StartTime
+		}
+		if b.EndTime != nil {
+			bs.EndTime = *b.EndTime
+		}
+		blockedSlots[i] = bs
 	}
 
 	resp := CalendarResponse{

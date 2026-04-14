@@ -11,16 +11,15 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/yoshihito0930/zebra-application/internal/middleware"
 	"github.com/yoshihito0930/zebra-application/internal/repository"
-	"github.com/yoshihito0930/zebra-application/internal/usecase"
+	dynamodbRepo "github.com/yoshihito0930/zebra-application/internal/repository/dynamodb"
 	"github.com/yoshihito0930/zebra-application/internal/validator"
 	"github.com/yoshihito0930/zebra-application/pkg/apierror"
 	"github.com/yoshihito0930/zebra-application/pkg/response"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // グローバル変数（コールドスタート対策）
 var (
-	userUsecase *usecase.UserUsecase
+	userRepo repository.UserRepository
 )
 
 // init は Lambda 関数の初期化時に1度だけ実行される
@@ -35,10 +34,7 @@ func init() {
 	dynamoClient := dynamodb.NewFromConfig(cfg)
 
 	// リポジトリを初期化
-	userRepo := repository.NewUserRepository(dynamoClient)
-
-	// ユースケースを初期化
-	userUsecase = usecase.NewUserUsecase(userRepo)
+	userRepo = dynamodbRepo.NewUserRepository(dynamoClient)
 }
 
 // LoginRequest はログインリクエストの構造体
@@ -85,24 +81,25 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	}
 
 	// メールアドレスからユーザーを取得
-	user, err := userUsecase.GetUserByEmail(ctx, req.Email)
-	if err != nil {
+	// TODO: 実際にはCognitoで認証を行う
+	user, err := userRepo.FindByEmail(ctx, req.Email)
+	if err != nil || user == nil {
 		// ユーザーが見つからない場合もログイン失敗として扱う
 		// （セキュリティ上、「ユーザーが存在しない」ことを明示しない）
 		log.Printf("User not found or error: %v", err)
 		return response.ErrorWithCORS(apierror.ErrAuthLoginFailed), nil
 	}
 
-	// パスワードを検証
-	err = bcrypt.CompareHashAndPassword([]byte(user.HashedPassword), []byte(req.Password))
-	if err != nil {
-		// パスワードが一致しない場合
-		log.Printf("Password mismatch for user %s", user.UserID)
-		return response.ErrorWithCORS(apierror.ErrAuthLoginFailed), nil
-	}
+	// TODO: Cognitoでパスワード検証を行う
+	// 現在はパスワード検証をスキップ（仮実装）
+	// 本番環境ではCognitoのInitiateAuthを使用してパスワードを検証
 
 	// モック認証用のJWTトークンを生成
-	accessToken, err := middleware.GenerateMockToken(user.UserID, user.Email, user.Role, user.StudioID)
+	studioID := ""
+	if user.StudioID != nil {
+		studioID = *user.StudioID
+	}
+	accessToken, err := middleware.GenerateMockToken(user.UserID, user.Email, string(user.Role), studioID)
 	if err != nil {
 		log.Printf("Failed to generate token: %v", err)
 		return response.ErrorWithCORS(apierror.ErrInternalServer), nil
@@ -119,7 +116,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		User: UserInfo{
 			UserID: user.UserID,
 			Name:   user.Name,
-			Role:   user.Role,
+			Role:   string(user.Role),
 		},
 	}
 

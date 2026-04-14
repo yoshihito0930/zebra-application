@@ -11,15 +11,17 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/yoshihito0930/zebra-application/internal/domain/entity"
 	"github.com/yoshihito0930/zebra-application/internal/middleware"
-	"github.com/yoshihito0930/zebra-application/internal/repository"
+	dynamodbRepo "github.com/yoshihito0930/zebra-application/internal/repository/dynamodb"
 	"github.com/yoshihito0930/zebra-application/internal/usecase"
 	"github.com/yoshihito0930/zebra-application/internal/validator"
 	"github.com/yoshihito0930/zebra-application/pkg/apierror"
 	"github.com/yoshihito0930/zebra-application/pkg/response"
+	"github.com/yoshihito0930/zebra-application/internal/repository"
 )
 
 var (
 	reservationUsecase *usecase.ReservationUsecase
+	planRepo           repository.PlanRepository
 )
 
 func init() {
@@ -29,11 +31,11 @@ func init() {
 	}
 
 	dynamoClient := dynamodb.NewFromConfig(cfg)
-	reservationRepo := repository.NewReservationRepository(dynamoClient)
-	userRepo := repository.NewUserRepository(dynamoClient)
-	planRepo := repository.NewPlanRepository(dynamoClient)
-	blockedSlotRepo := repository.NewBlockedSlotRepository(dynamoClient)
-	studioRepo := repository.NewStudioRepository(dynamoClient)
+	reservationRepo := dynamodbRepo.NewReservationRepository(dynamoClient)
+	userRepo := dynamodbRepo.NewUserRepository(dynamoClient)
+	planRepo = dynamodbRepo.NewPlanRepository(dynamoClient)
+	blockedSlotRepo := dynamodbRepo.NewBlockedSlotRepository(dynamoClient)
+	studioRepo := dynamodbRepo.NewStudioRepository(dynamoClient)
 
 	reservationUsecase = usecase.NewReservationUsecase(
 		reservationRepo,
@@ -99,34 +101,42 @@ func listReservationsHandler(ctx context.Context, request events.APIGatewayProxy
 	startDate, _ := time.Parse("2006-01-02", startDateStr)
 	endDate, _ := time.Parse("2006-01-02", endDateStr)
 
-	// 予約一覧を取得
-	var reservations []*entity.Reservation
-	var err error
-
-	if statusFilter != "" {
-		reservations, err = reservationUsecase.ListReservationsByStudioDateRangeAndStatus(
-			ctx, studioID, startDate, endDate, entity.ReservationStatus(statusFilter),
-		)
-	} else {
-		reservations, err = reservationUsecase.ListReservationsByStudioAndDateRange(
-			ctx, studioID, startDate, endDate,
-		)
+	// ListReservationsInputを作成
+	input := usecase.ListReservationsInput{
+		StudioID:  studioID,
+		StartDate: startDate,
+		EndDate:   endDate,
 	}
 
+	// ステータスフィルタがある場合
+	if statusFilter != "" {
+		status := entity.ReservationStatus(statusFilter)
+		input.Status = &status
+	}
+
+	// 予約一覧を取得
+	reservations, err := reservationUsecase.ListReservations(ctx, input)
 	if err != nil {
 		log.Printf("Failed to list reservations: %v", err)
 		return response.ErrorWithCORS(apierror.ErrInternalServer), nil
 	}
 
-	// レスポンスを作成（管理用なので簡略化）
+	// レスポンスを作成（管理用なので簡略化、Plan名は取得する）
 	summaries := make([]ReservationSummary, len(reservations))
 	for i, r := range reservations {
+		// Plan名を取得
+		planName := ""
+		plan, err := planRepo.FindByID(ctx, r.StudioID, r.PlanID)
+		if err == nil && plan != nil {
+			planName = plan.PlanName
+		}
+
 		summaries[i] = ReservationSummary{
 			ReservationID:    r.ReservationID,
 			UserID:           r.UserID,
 			ReservationType:  string(r.ReservationType),
 			Status:           string(r.Status),
-			PlanName:         r.PlanName,
+			PlanName:         planName,
 			Date:             r.Date.Format("2006-01-02"),
 			StartTime:        r.StartTime,
 			EndTime:          r.EndTime,

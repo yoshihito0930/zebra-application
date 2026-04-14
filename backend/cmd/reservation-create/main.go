@@ -12,16 +12,20 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/yoshihito0930/zebra-application/internal/domain/entity"
 	"github.com/yoshihito0930/zebra-application/internal/middleware"
-	"github.com/yoshihito0930/zebra-application/internal/repository"
+	dynamodbRepo "github.com/yoshihito0930/zebra-application/internal/repository/dynamodb"
 	"github.com/yoshihito0930/zebra-application/internal/usecase"
 	"github.com/yoshihito0930/zebra-application/internal/validator"
 	"github.com/yoshihito0930/zebra-application/pkg/apierror"
 	"github.com/yoshihito0930/zebra-application/pkg/response"
+	"github.com/yoshihito0930/zebra-application/internal/helper"
+	"github.com/yoshihito0930/zebra-application/internal/repository"
 )
 
 // グローバル変数（コールドスタート対策）
 var (
 	reservationUsecase *usecase.ReservationUsecase
+	planRepo           repository.PlanRepository
+	optionRepo         repository.OptionRepository
 )
 
 // init は Lambda 関数の初期化時に1度だけ実行される
@@ -36,11 +40,12 @@ func init() {
 	dynamoClient := dynamodb.NewFromConfig(cfg)
 
 	// リポジトリを初期化
-	reservationRepo := repository.NewReservationRepository(dynamoClient)
-	userRepo := repository.NewUserRepository(dynamoClient)
-	planRepo := repository.NewPlanRepository(dynamoClient)
-	blockedSlotRepo := repository.NewBlockedSlotRepository(dynamoClient)
-	studioRepo := repository.NewStudioRepository(dynamoClient)
+	reservationRepo := dynamodbRepo.NewReservationRepository(dynamoClient)
+	userRepo := dynamodbRepo.NewUserRepository(dynamoClient)
+	planRepo = dynamodbRepo.NewPlanRepository(dynamoClient)
+	optionRepo = dynamodbRepo.NewOptionRepository(dynamoClient)
+	blockedSlotRepo := dynamodbRepo.NewBlockedSlotRepository(dynamoClient)
+	studioRepo := dynamodbRepo.NewStudioRepository(dynamoClient)
 
 	// ユースケースを初期化
 	reservationUsecase = usecase.NewReservationUsecase(
@@ -70,37 +75,6 @@ type CreateReservationRequest struct {
 	Note              string   `json:"note"`
 }
 
-// OptionSnapshot はオプションスナップショットの構造体
-type OptionSnapshot struct {
-	OptionID   string  `json:"option_id"`
-	OptionName string  `json:"option_name"`
-	Price      int     `json:"price"`
-	TaxRate    float64 `json:"tax_rate"`
-}
-
-// CreateReservationResponse は予約作成レスポンスの構造体
-type CreateReservationResponse struct {
-	ReservationID      string           `json:"reservation_id"`
-	StudioID           string           `json:"studio_id"`
-	ReservationType    string           `json:"reservation_type"`
-	Status             string           `json:"status"`
-	PlanID             string           `json:"plan_id"`
-	PlanName           string           `json:"plan_name"`
-	PlanPrice          int              `json:"plan_price"`
-	PlanTaxRate        float64          `json:"plan_tax_rate"`
-	Date               string           `json:"date"`
-	StartTime          string           `json:"start_time"`
-	EndTime            string           `json:"end_time"`
-	Options            []OptionSnapshot `json:"options"`
-	ShootingType       []string         `json:"shooting_type"`
-	ShootingDetails    string           `json:"shooting_details"`
-	PhotographerName   string           `json:"photographer_name"`
-	NumberOfPeople     int              `json:"number_of_people"`
-	NeedsProtection    bool             `json:"needs_protection"`
-	EquipmentInsurance bool             `json:"equipment_insurance"`
-	Note               string           `json:"note"`
-	CreatedAt          string           `json:"created_at"`
-}
 
 func createReservationHandler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// リクエストボディをパース
@@ -167,10 +141,10 @@ func createReservationHandler(ctx context.Context, request events.APIGatewayProx
 	// 日付をパース
 	date, _ := time.Parse("2006-01-02", req.Date)
 
-	// 撮影タイプを変換
-	shootingTypes := make([]entity.ShootingType, len(req.ShootingType))
-	for i, st := range req.ShootingType {
-		shootingTypes[i] = entity.ShootingType(st)
+	// Noteをポインタに変換
+	var note *string
+	if req.Note != "" {
+		note = &req.Note
 	}
 
 	// ユースケースの入力データを作成
@@ -182,14 +156,14 @@ func createReservationHandler(ctx context.Context, request events.APIGatewayProx
 		Date:               date,
 		StartTime:          req.StartTime,
 		EndTime:            req.EndTime,
-		OptionIDs:          req.Options,
-		ShootingType:       shootingTypes,
+		Options:            req.Options,
+		ShootingType:       req.ShootingType,
 		ShootingDetails:    req.ShootingDetails,
 		PhotographerName:   req.PhotographerName,
 		NumberOfPeople:     req.NumberOfPeople,
 		NeedsProtection:    req.NeedsProtection,
 		EquipmentInsurance: req.EquipmentInsurance,
-		Note:               req.Note,
+		Note:               note,
 	}
 
 	// 予約を作成
@@ -213,46 +187,8 @@ func createReservationHandler(ctx context.Context, request events.APIGatewayProx
 		}
 	}
 
-	// オプションスナップショットを変換
-	options := make([]OptionSnapshot, len(reservation.Options))
-	for i, opt := range reservation.Options {
-		options[i] = OptionSnapshot{
-			OptionID:   opt.OptionID,
-			OptionName: opt.OptionName,
-			Price:      opt.Price,
-			TaxRate:    opt.TaxRate,
-		}
-	}
-
-	// 撮影タイプを変換
-	shootingTypeStrs := make([]string, len(reservation.ShootingType))
-	for i, st := range reservation.ShootingType {
-		shootingTypeStrs[i] = string(st)
-	}
-
-	// レスポンスを作成
-	resp := CreateReservationResponse{
-		ReservationID:      reservation.ReservationID,
-		StudioID:           reservation.StudioID,
-		ReservationType:    string(reservation.ReservationType),
-		Status:             string(reservation.Status),
-		PlanID:             reservation.PlanID,
-		PlanName:           reservation.PlanName,
-		PlanPrice:          reservation.PlanPrice,
-		PlanTaxRate:        reservation.PlanTaxRate,
-		Date:               reservation.Date.Format("2006-01-02"),
-		StartTime:          reservation.StartTime,
-		EndTime:            reservation.EndTime,
-		Options:            options,
-		ShootingType:       shootingTypeStrs,
-		ShootingDetails:    reservation.ShootingDetails,
-		PhotographerName:   reservation.PhotographerName,
-		NumberOfPeople:     reservation.NumberOfPeople,
-		NeedsProtection:    reservation.NeedsProtection,
-		EquipmentInsurance: reservation.EquipmentInsurance,
-		Note:               reservation.Note,
-		CreatedAt:          reservation.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-	}
+	// helperを使ってレスポンスを構築（Plan/Optionの詳細を取得）
+	resp := helper.BuildReservationResponse(ctx, reservation, planRepo, optionRepo)
 
 	return response.CreatedWithCORS(resp), nil
 }

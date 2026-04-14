@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/yoshihito0930/zebra-application/internal/domain/entity"
 	"github.com/yoshihito0930/zebra-application/internal/repository"
+	dynamodbRepo "github.com/yoshihito0930/zebra-application/internal/repository/dynamodb"
 )
 
 var (
@@ -27,8 +28,8 @@ func init() {
 	}
 
 	dynamoClient := dynamodb.NewFromConfig(cfg)
-	reservationRepo = repository.NewReservationRepository(dynamoClient)
-	notificationRepo = repository.NewNotificationRepository(dynamoClient)
+	reservationRepo = dynamodbRepo.NewReservationRepository(dynamoClient)
+	notificationRepo = dynamodbRepo.NewNotificationRepository(dynamoClient)
 }
 
 // handler は第2キープ繰り上げバッチのハンドラー
@@ -101,7 +102,7 @@ func handler(ctx context.Context, event events.CloudWatchEvent) error {
 
 				// 仮予約の期限を設定（利用日の7日前）
 				expiryDate := waitlistedRes.Date.AddDate(0, 0, -7)
-				waitlistedRes.ExpiryDate = expiryDate
+				waitlistedRes.ExpiryDate = &expiryDate
 
 				err := reservationRepo.Update(ctx, waitlistedRes)
 				if err != nil {

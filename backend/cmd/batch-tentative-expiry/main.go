@@ -11,11 +11,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/yoshihito0930/zebra-application/internal/domain/entity"
 	"github.com/yoshihito0930/zebra-application/internal/repository"
+	dynamodbRepo "github.com/yoshihito0930/zebra-application/internal/repository/dynamodb"
 	"github.com/yoshihito0930/zebra-application/internal/usecase"
 )
 
 var (
 	reservationUsecase *usecase.ReservationUsecase
+	reservationRepo    repository.ReservationRepository
 )
 
 func init() {
@@ -25,11 +27,11 @@ func init() {
 	}
 
 	dynamoClient := dynamodb.NewFromConfig(cfg)
-	reservationRepo := repository.NewReservationRepository(dynamoClient)
-	userRepo := repository.NewUserRepository(dynamoClient)
-	planRepo := repository.NewPlanRepository(dynamoClient)
-	blockedSlotRepo := repository.NewBlockedSlotRepository(dynamoClient)
-	studioRepo := repository.NewStudioRepository(dynamoClient)
+	reservationRepo = dynamodbRepo.NewReservationRepository(dynamoClient)
+	userRepo := dynamodbRepo.NewUserRepository(dynamoClient)
+	planRepo := dynamodbRepo.NewPlanRepository(dynamoClient)
+	blockedSlotRepo := dynamodbRepo.NewBlockedSlotRepository(dynamoClient)
+	studioRepo := dynamodbRepo.NewStudioRepository(dynamoClient)
 
 	reservationUsecase = usecase.NewReservationUsecase(
 		reservationRepo,
@@ -67,7 +69,14 @@ func handler(ctx context.Context, event events.CloudWatchEvent) error {
 
 	for _, studioID := range studioIDs {
 		// 仮予約を取得（ステータスフィルタ: tentative）
-		reservations, err := reservationUsecase.ListReservationsByStatus(ctx, studioID, entity.StatusTentative)
+		status := entity.ReservationStatusTentative
+		input := usecase.ListReservationsInput{
+			StudioID:  studioID,
+			StartDate: time.Time{}, // 日付範囲指定なし
+			EndDate:   time.Time{},
+			Status:    &status,
+		}
+		reservations, err := reservationUsecase.ListReservations(ctx, input)
 		if err != nil {
 			log.Printf("Failed to list tentative reservations for studio %s: %v", studioID, err)
 			continue
@@ -78,11 +87,13 @@ func handler(ctx context.Context, event events.CloudWatchEvent) error {
 		// 期限切れの仮予約を処理
 		for _, r := range reservations {
 			// expiry_dateが今日以前かチェック
-			if !r.ExpiryDate.IsZero() && r.ExpiryDate.Before(today) {
+			if r.ExpiryDate != nil && !r.ExpiryDate.IsZero() && r.ExpiryDate.Before(today) {
 				log.Printf("Expiring reservation %s (expiry_date: %s)", r.ReservationID, r.ExpiryDate.Format("2006-01-02"))
 
-				// 期限切れに更新
-				err := reservationUsecase.ExpireReservation(ctx, r.ReservationID)
+				// 期限切れに更新（ステータスをexpiredに変更）
+				r.Status = entity.ReservationStatusExpired
+				r.UpdatedAt = time.Now()
+				err := reservationRepo.Update(ctx, r)
 				if err != nil {
 					log.Printf("Failed to expire reservation %s: %v", r.ReservationID, err)
 					continue

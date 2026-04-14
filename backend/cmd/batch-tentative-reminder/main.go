@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/yoshihito0930/zebra-application/internal/domain/entity"
 	"github.com/yoshihito0930/zebra-application/internal/repository"
+	dynamodbRepo "github.com/yoshihito0930/zebra-application/internal/repository/dynamodb"
 )
 
 var (
@@ -27,8 +28,8 @@ func init() {
 	}
 
 	dynamoClient := dynamodb.NewFromConfig(cfg)
-	reservationRepo = repository.NewReservationRepository(dynamoClient)
-	notificationRepo = repository.NewNotificationRepository(dynamoClient)
+	reservationRepo = dynamodbRepo.NewReservationRepository(dynamoClient)
+	notificationRepo = dynamodbRepo.NewNotificationRepository(dynamoClient)
 }
 
 // handler は仮予約期限通知バッチのハンドラー
@@ -59,7 +60,7 @@ func handler(ctx context.Context, event events.CloudWatchEvent) error {
 
 	for _, studioID := range studioIDs {
 		// 仮予約を取得（ステータスフィルタ: tentative）
-		reservations, err := reservationRepo.FindByStudioAndStatus(ctx, studioID, entity.StatusTentative)
+		reservations, err := reservationRepo.FindByStudioAndStatus(ctx, studioID, entity.ReservationStatusTentative)
 		if err != nil {
 			log.Printf("Failed to list tentative reservations for studio %s: %v", studioID, err)
 			continue
@@ -70,7 +71,7 @@ func handler(ctx context.Context, event events.CloudWatchEvent) error {
 		// 期限が3日後の仮予約を抽出して通知作成
 		for _, r := range reservations {
 			// expiry_dateが3日後かチェック
-			if !r.ExpiryDate.IsZero() && isSameDay(r.ExpiryDate, threeDaysLater) {
+			if r.ExpiryDate != nil && !r.ExpiryDate.IsZero() && isSameDay(*r.ExpiryDate, threeDaysLater) {
 				log.Printf("Creating reminder for reservation %s (expiry_date: %s)", r.ReservationID, r.ExpiryDate.Format("2006-01-02"))
 
 				// 通知を作成
