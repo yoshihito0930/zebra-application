@@ -1,0 +1,207 @@
+import { ReactNode } from 'react';
+import {
+  Box,
+  Flex,
+  Heading,
+  Button,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  Avatar,
+  Text,
+  VStack,
+  HStack,
+  IconButton,
+  Drawer,
+  DrawerBody,
+  DrawerHeader,
+  DrawerOverlay,
+  DrawerContent,
+  DrawerCloseButton,
+  useDisclosure,
+} from '@chakra-ui/react';
+import {
+  Calendar,
+  LogOut,
+  User,
+  MessageCircle,
+  Settings,
+  LayoutDashboard,
+  Ban,
+  DollarSign,
+  Menu as MenuIcon,
+} from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuthStore } from '../../stores/authStore';
+
+interface AdminLayoutProps {
+  children: ReactNode;
+}
+
+interface NavItemProps {
+  icon: ReactNode;
+  label: string;
+  path: string;
+  isActive: boolean;
+  onClick: () => void;
+}
+
+function NavItem({ icon, label, isActive, onClick }: NavItemProps) {
+  return (
+    <Button
+      variant="ghost"
+      justifyContent="flex-start"
+      leftIcon={icon as any}
+      w="full"
+      bg={isActive ? 'brand.50' : 'transparent'}
+      color={isActive ? 'brand.600' : 'gray.700'}
+      _hover={{
+        bg: isActive ? 'brand.50' : 'gray.100',
+      }}
+      onClick={onClick}
+    >
+      {label}
+    </Button>
+  );
+}
+
+export default function AdminLayout({ children }: AdminLayoutProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user, clearAuth } = useAuthStore();
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  const handleLogout = () => {
+    clearAuth();
+    navigate('/login');
+  };
+
+  const navItems = [
+    { icon: <LayoutDashboard size={18} />, label: 'ダッシュボード', path: '/admin/dashboard' },
+    { icon: <Calendar size={18} />, label: '予約管理', path: '/admin/reservations' },
+    { icon: <Ban size={18} />, label: 'ブロック枠', path: '/admin/blocked-slots' },
+    { icon: <DollarSign size={18} />, label: 'プラン管理', path: '/admin/plans' },
+    { icon: <Settings size={18} />, label: 'オプション管理', path: '/admin/options' },
+    { icon: <MessageCircle size={18} />, label: '問い合わせ', path: '/admin/inquiries' },
+  ];
+
+  const SidebarContent = () => (
+    <VStack spacing={2} align="stretch">
+      {navItems.map((item) => (
+        <NavItem
+          key={item.path}
+          icon={item.icon}
+          label={item.label}
+          path={item.path}
+          isActive={location.pathname === item.path}
+          onClick={() => {
+            navigate(item.path);
+            onClose();
+          }}
+        />
+      ))}
+    </VStack>
+  );
+
+  return (
+    <Flex minH="100vh" bg="gray.50">
+      {/* サイドバー（デスクトップ） */}
+      <Box
+        w="250px"
+        bg="white"
+        borderRight="1px"
+        borderColor="gray.200"
+        p={6}
+        display={{ base: 'none', md: 'block' }}
+      >
+        {/* ロゴ */}
+        <HStack spacing={3} mb={8} cursor="pointer" onClick={() => navigate('/admin/dashboard')}>
+          <Box w="40px" h="40px" bg="brand.300" borderRadius="md" display="flex" alignItems="center" justifyContent="center">
+            <Text fontSize="xl" fontWeight="bold" color="white">
+              Z
+            </Text>
+          </Box>
+          <Heading size="sm" color="brand.600">
+            管理画面
+          </Heading>
+        </HStack>
+
+        {/* ナビゲーション */}
+        <SidebarContent />
+      </Box>
+
+      {/* モバイル用サイドバー（ドロワー） */}
+      <Drawer isOpen={isOpen} placement="left" onClose={onClose}>
+        <DrawerOverlay />
+        <DrawerContent>
+          <DrawerCloseButton />
+          <DrawerHeader>
+            <HStack spacing={3}>
+              <Box w="40px" h="40px" bg="brand.300" borderRadius="md" display="flex" alignItems="center" justifyContent="center">
+                <Text fontSize="xl" fontWeight="bold" color="white">
+                  Z
+                </Text>
+              </Box>
+              <Heading size="sm" color="brand.600">
+                管理画面
+              </Heading>
+            </HStack>
+          </DrawerHeader>
+          <DrawerBody>
+            <SidebarContent />
+          </DrawerBody>
+        </DrawerContent>
+      </Drawer>
+
+      {/* メインコンテンツエリア */}
+      <Flex flex={1} direction="column">
+        {/* ヘッダー */}
+        <Box bg="white" borderBottom="1px" borderColor="gray.200" shadow="sm">
+          <Flex h="64px" px={6} align="center" justify="space-between">
+            {/* モバイルメニューボタン */}
+            <IconButton
+              aria-label="メニューを開く"
+              icon={<MenuIcon />}
+              variant="ghost"
+              display={{ base: 'flex', md: 'none' }}
+              onClick={onOpen}
+            />
+
+            <Box flex={1} />
+
+            {/* ユーザーメニュー */}
+            <Menu>
+              <MenuButton>
+                <HStack spacing={2} cursor="pointer">
+                  <Avatar size="sm" name={user?.name} bg="accent.400" />
+                  <Box display={{ base: 'none', sm: 'block' }}>
+                    <Text fontSize="sm" fontWeight="medium">
+                      {user?.name || '管理者'}
+                    </Text>
+                    <Text fontSize="xs" color="gray.500">
+                      {user?.role === 'admin' ? '管理者' : 'スタッフ'}
+                    </Text>
+                  </Box>
+                </HStack>
+              </MenuButton>
+              <MenuList>
+                <MenuItem icon={<User size={18} />} onClick={() => navigate('/admin/profile')}>
+                  プロフィール
+                </MenuItem>
+                <MenuItem icon={<LogOut size={18} />} onClick={handleLogout}>
+                  ログアウト
+                </MenuItem>
+              </MenuList>
+            </Menu>
+          </Flex>
+        </Box>
+
+        {/* メインコンテンツ */}
+        <Box as="main" flex={1} p={6} overflowY="auto">
+          {children}
+        </Box>
+      </Flex>
+    </Flex>
+  );
+}

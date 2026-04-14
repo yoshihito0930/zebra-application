@@ -29,10 +29,13 @@
 1. 要件定義・データモデル設計
 2. アーキテクチャ設計（AWS構成、DynamoDB設計）
 3. データベース設計（アクセスパターン駆動設計）
+4. バックエンド基盤開発（Go + Lambda、DynamoDB、一部APIエンドポイント）
+5. フロントエンド基盤セットアップ（React + Vite + TypeScript、Chakra UI、型定義）
 
-**現在のフェーズ**: バックエンド開発（これから着手）
+**現在のフェーズ**: フロントエンド開発（進行中）
+- ゲストユーザー機能フェーズ1実装中（閲覧のみ、認証不要）
 
-**次のフェーズ**: フロントエンド開発、オブザーバビリティ実装
+**次のフェーズ**: バックエンド完全実装、ゲストユーザーフェーズ2・3、E2Eテスト、オブザーバビリティ実装、デプロイ
 
 ## 技術スタック
 
@@ -44,9 +47,20 @@
 - **メール送信**: Amazon SES
 - **バッチ処理**: EventBridge + Lambda
 
-### フロントエンド（後のフェーズで開発）
-- **フレームワーク**: React + Vite
-- **共有コンポーネント**: monorepo内パッケージ
+### フロントエンド
+- **フレームワーク**: React 19 + Vite 5
+- **言語**: TypeScript 6
+- **UIライブラリ**: Chakra UI 2（カスタムテーマ）
+- **状態管理**:
+  - グローバル: Zustand
+  - サーバー状態: TanStack Query (React Query)
+- **ルーティング**: React Router DOM 7
+- **フォームバリデーション**: React Hook Form + Zod
+- **日付操作**: date-fns
+- **カレンダー**: React Big Calendar（または独自実装）
+- **アイコン**: Lucide React
+- **アニメーション**: Framer Motion
+- **認証**: amazon-cognito-identity-js
 
 ### インフラ
 - **IaC**: Terraform
@@ -292,6 +306,8 @@ Authorization: Bearer <access_token>
 | データモデル定義 | [docs/data-model.md](docs/data-model.md) | エンティティ定義、アクセスパターン一覧 |
 | API設計 | [docs/api-design.md](docs/api-design.md) | エンドポイント、リクエスト/レスポンス、バリデーション、エラー定義 |
 | **運用設計** | **[docs/operations.md](docs/operations.md)** | **環境変数、ログ運用、監視、デプロイ、障害対応** |
+| **デザイン設計** | **[docs/design.md](docs/design.md)** | **カラーシステム、タイポグラフィ、UIコンポーネント仕様、ワイヤーフレーム** |
+| **ゲストユーザー実装計画** | **[docs/guest-user-implementation.md](docs/guest-user-implementation.md)** | **ゲスト機能の段階的実装計画、バックエンド変更範囲** |
 
 ## Claude Code利用時の注意点
 
@@ -301,6 +317,7 @@ Authorization: Bearer <access_token>
 - **DynamoDBアクセスを実装する場合**: [docs/database-design.md](docs/database-design.md) と [docs/data-model.md](docs/data-model.md) でテーブル構造、GSI、アクセスパターンを確認
 - **ビジネスロジックを実装する場合**: [docs/requirements.md](docs/requirements.md) でユースケース、状態遷移、予約ルールを確認
 - **環境変数やログ運用について**: [docs/operations.md](docs/operations.md) でLOG_LEVELの設定方法、ログの使い分け、監視方法を確認
+- **フロントエンドUIを実装する場合**: [docs/design.md](docs/design.md) でカラーパレット、コンポーネント仕様、レイアウトを確認
 
 ### プロジェクト固有の用語
 
@@ -310,6 +327,7 @@ Authorization: Bearer <access_token>
 - **第2キープ**: 既に予約がある時間帯を仮押さえする予約。第1候補がキャンセルされると繰り上げ
 - **仮予約**: 利用日の7日前まで有効な予約。期限を過ぎると `expired` になる
 - **ブロック枠**: 予約不可な時間帯（休業日、プライベート利用など）
+- **ゲストユーザー**: 会員登録なしで閲覧・予約が可能なユーザー（段階的実装中）
 
 ### 質問があった場合
 
@@ -317,4 +335,57 @@ Authorization: Bearer <access_token>
 
 ---
 
-**最終更新日**: 2026-03-29
+## フロントエンド開発ガイドライン
+
+### ディレクトリ構造
+
+```
+frontend/
+├── src/
+│   ├── components/         # 共通コンポーネント
+│   │   ├── common/         # ボタン、カード、モーダルなど
+│   │   ├── layouts/        # レイアウトコンポーネント
+│   │   ├── auth/           # 認証関連コンポーネント
+│   │   ├── calendar/       # カレンダー関連
+│   │   ├── reservation/    # 予約関連
+│   │   └── admin/          # 管理者向けコンポーネント
+│   ├── pages/              # 画面コンポーネント
+│   │   ├── auth/           # 認証画面
+│   │   ├── customer/       # 顧客向け画面
+│   │   └── admin/          # 管理者向け画面
+│   ├── hooks/              # カスタムフック
+│   ├── services/           # API通信
+│   ├── stores/             # Zustand状態管理
+│   ├── theme/              # Chakra UIテーマ
+│   ├── types/              # TypeScript型定義
+│   └── utils/              # ユーティリティ関数
+```
+
+### コンポーネント設計原則
+
+1. **単一責任**: 1コンポーネント1責任
+2. **再利用性**: 汎用的なコンポーネントは`components/common/`に配置
+3. **Props型定義**: すべてのPropsにTypeScript型を定義
+4. **アクセシビリティ**: ARIA属性を適切に設定（Chakra UIが自動対応）
+5. **エラーハンドリング**: ErrorBoundaryでラップ
+
+### 状態管理方針
+
+- **グローバル状態（Zustand）**: 認証情報、ユーザー情報、スタジオ情報
+- **ローカル状態（useState）**: フォーム入力、UI状態（モーダル開閉など）
+- **サーバー状態（React Query）**: API取得データ、キャッシュ管理
+
+### デザインシステム
+
+- すべてのカラー、スペーシング、フォントは[docs/design.md](docs/design.md)に従う
+- 予約ステータス別配色を厳守（confirmed=緑、tentative=オレンジ等）
+- レスポンシブブレイクポイント: sm(640px), md(768px), lg(1024px), xl(1280px)
+
+### モックデータ開発
+
+バックエンドAPI完成前は、`src/services/`内でモックデータを使用して開発を進める。
+API完成後、モックからAPI呼び出しに切り替え。
+
+---
+
+**最終更新日**: 2026-04-14
