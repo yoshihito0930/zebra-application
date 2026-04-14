@@ -13,7 +13,7 @@ import {
   Text,
   HStack,
 } from '@chakra-ui/react';
-import { Calendar, LogOut, User, MessageCircle } from 'lucide-react';
+import { Calendar, LogOut, User, MessageCircle, List } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -61,6 +61,14 @@ export default function CustomerLayout({ children }: CustomerLayoutProps) {
               {/* ログイン状態に応じた表示 */}
               {isAuthenticated ? (
                 <>
+                  <Button
+                    variant="ghost"
+                    leftIcon={<List size={18} />}
+                    onClick={() => navigate('/customer/reservations')}
+                  >
+                    予約一覧
+                  </Button>
+
                   <Button
                     variant="ghost"
                     leftIcon={<MessageCircle size={18} />}

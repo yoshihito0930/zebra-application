@@ -1,11 +1,99 @@
-import { Box, Container, Heading, Text, VStack, Button, Alert, AlertIcon, HStack } from '@chakra-ui/react';
-import { Calendar, LogIn, UserPlus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import {
+  Box,
+  Container,
+  Heading,
+  Text,
+  VStack,
+  Button,
+  Alert,
+  AlertIcon,
+  HStack,
+  useToast,
+  useDisclosure,
+} from '@chakra-ui/react';
+import { Plus, LogIn, UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
+import ReservationCalendar from '../../components/calendar/ReservationCalendar';
+import CreateReservationModal from '../../components/reservation/CreateReservationModal';
+import { mockGetCalendar } from '../../services/reservationService';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import ErrorMessage from '../../components/common/ErrorMessage';
+import type { CalendarResponse } from '../../types';
+
+const STUDIO_ID = 'studio_001'; // TODO: 後で動的に取得
 
 export default function CalendarPage() {
   const navigate = useNavigate();
+  const toast = useToast();
   const { isAuthenticated } = useAuthStore();
+  const [calendarData, setCalendarData] = useState<CalendarResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
+
+  // カレンダーデータ取得
+  const fetchCalendarData = async (year: number, month: number) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await mockGetCalendar(STUDIO_ID, year, month);
+      setCalendarData(data);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'カレンダーの取得に失敗しました';
+      setError(errorMessage);
+      toast({
+        title: 'エラー',
+        description: errorMessage,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 初期読み込み
+  useEffect(() => {
+    fetchCalendarData(currentYear, currentMonth);
+  }, []);
+
+  // 月変更時
+  const handleMonthChange = (year: number, month: number) => {
+    setCurrentYear(year);
+    setCurrentMonth(month);
+    fetchCalendarData(year, month);
+  };
+
+  // 予約作成モーダル
+  const { isOpen: isModalOpen, onOpen: onModalOpen, onClose: onModalClose } = useDisclosure();
+  const [selectedDate, setSelectedDate] = useState<string>('');
+
+  // 日付クリック
+  const handleDateClick = (date: string) => {
+    if (!isAuthenticated) {
+      toast({
+        title: 'ログインが必要です',
+        description: '予約を作成するにはログインしてください',
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    setSelectedDate(date);
+    onModalOpen();
+  };
+
+  // 予約作成成功時
+  const handleReservationSuccess = () => {
+    // カレンダーを再読み込み
+    fetchCalendarData(currentYear, currentMonth);
+  };
 
   return (
     <Container maxW="container.xl" py={8}>
@@ -51,27 +139,31 @@ export default function CalendarPage() {
           </Alert>
         )}
 
-        <Box bg="white" p={8} borderRadius="lg" shadow="md" minH="400px">
-          <VStack spacing={4}>
-            <Calendar size={48} color="#82C2A9" />
-            <Text color="gray.500" fontSize="sm">
-              ※ カレンダーコンポーネントは後で実装します
-            </Text>
-            {isAuthenticated ? (
-              <Button colorScheme="brand" size="lg">
-                新規予約を作成
-              </Button>
-            ) : (
-              <Button
-                colorScheme="brand"
-                size="lg"
-                onClick={() => navigate('/login')}
-              >
-                ログインして予約を作成
-              </Button>
-            )}
-          </VStack>
-        </Box>
+        {/* カレンダー表示 */}
+        {isLoading && <LoadingSpinner />}
+
+        {error && !isLoading && <ErrorMessage message={error} />}
+
+        {!isLoading && !error && calendarData && (
+          <Box bg="white" p={6} borderRadius="lg" shadow="md">
+            <ReservationCalendar
+              studioId={STUDIO_ID}
+              reservations={calendarData.reservations}
+              blockedSlots={calendarData.blocked_slots}
+              onDateClick={handleDateClick}
+              onMonthChange={handleMonthChange}
+            />
+          </Box>
+        )}
+
+        {/* 予約作成モーダル */}
+        <CreateReservationModal
+          isOpen={isModalOpen}
+          onClose={onModalClose}
+          studioId={STUDIO_ID}
+          initialDate={selectedDate}
+          onSuccess={handleReservationSuccess}
+        />
       </VStack>
     </Container>
   );

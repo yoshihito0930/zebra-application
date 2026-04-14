@@ -1,0 +1,253 @@
+import apiClient, { apiRequest } from './api';
+import type {
+  Reservation,
+  CreateReservationRequest,
+  CalendarResponse,
+  CalendarReservation,
+} from '../types';
+
+// 予約カレンダー取得
+export const getCalendar = async (
+  studioId: string,
+  year: number,
+  month: number
+): Promise<CalendarResponse> => {
+  return apiRequest<CalendarResponse>({
+    method: 'GET',
+    url: `/studios/${studioId}/calendar`,
+    params: { year, month },
+  });
+};
+
+// 予約作成
+export const createReservation = async (
+  data: CreateReservationRequest
+): Promise<Reservation> => {
+  return apiRequest<Reservation>({
+    method: 'POST',
+    url: '/reservations',
+    data,
+  });
+};
+
+// 自分の予約一覧取得
+export const getMyReservations = async (): Promise<Reservation[]> => {
+  return apiRequest<Reservation[]>({
+    method: 'GET',
+    url: '/reservations/me',
+  });
+};
+
+// 予約詳細取得
+export const getReservation = async (id: string): Promise<Reservation> => {
+  return apiRequest<Reservation>({
+    method: 'GET',
+    url: `/reservations/${id}`,
+  });
+};
+
+// 予約キャンセル
+export const cancelReservation = async (id: string): Promise<Reservation> => {
+  return apiRequest<Reservation>({
+    method: 'PATCH',
+    url: `/reservations/${id}/cancel`,
+  });
+};
+
+// モックデータ（開発用）
+const mockReservations: Reservation[] = [
+  {
+    reservation_id: 'rsv_001',
+    studio_id: 'studio_001',
+    user_id: 'user_001',
+    reservation_type: 'regular',
+    status: 'confirmed',
+    plan_id: 'plan_001',
+    plan_name: 'スチール撮影プラン',
+    plan_price: 15000,
+    plan_tax_rate: 0.1,
+    date: '2026-04-20',
+    start_time: '10:00',
+    end_time: '13:00',
+    options: [
+      {
+        option_id: 'opt_001',
+        option_name: '6人以上のワークショップでご利用',
+        price: 2000,
+        tax_rate: 0.1,
+      },
+    ],
+    shooting_type: ['stills'],
+    shooting_details: '商品撮影',
+    photographer_name: '佐藤次郎',
+    number_of_people: 5,
+    needs_protection: false,
+    equipment_insurance: true,
+    note: '大型機材持ち込み予定',
+    created_at: '2026-04-10T10:00:00Z',
+  },
+  {
+    reservation_id: 'rsv_002',
+    studio_id: 'studio_001',
+    user_id: 'user_001',
+    reservation_type: 'tentative',
+    status: 'tentative',
+    plan_id: 'plan_002',
+    plan_name: '動画撮影プラン',
+    plan_price: 20000,
+    plan_tax_rate: 0.1,
+    date: '2026-04-25',
+    start_time: '14:00',
+    end_time: '18:00',
+    options: [],
+    shooting_type: ['video'],
+    shooting_details: 'インタビュー動画',
+    photographer_name: '鈴木一郎',
+    number_of_people: 3,
+    needs_protection: false,
+    equipment_insurance: true,
+    expiry_date: '2026-04-18',
+    created_at: '2026-04-11T14:00:00Z',
+  },
+  {
+    reservation_id: 'rsv_003',
+    studio_id: 'studio_001',
+    user_id: 'user_002',
+    reservation_type: 'regular',
+    status: 'confirmed',
+    plan_id: 'plan_001',
+    plan_name: 'スチール撮影プラン',
+    plan_price: 15000,
+    plan_tax_rate: 0.1,
+    date: '2026-04-22',
+    start_time: '10:00',
+    end_time: '14:00',
+    options: [],
+    shooting_type: ['stills'],
+    shooting_details: 'ポートレート撮影',
+    photographer_name: '田中花子',
+    number_of_people: 2,
+    needs_protection: false,
+    equipment_insurance: true,
+    created_at: '2026-04-12T09:00:00Z',
+  },
+];
+
+// モック: カレンダー取得
+export const mockGetCalendar = async (
+  studioId: string,
+  year: number,
+  month: number
+): Promise<CalendarResponse> => {
+  await new Promise((resolve) => setTimeout(resolve, 800)); // 800ms遅延
+
+  // 該当月の予約をフィルタ
+  const reservations = mockReservations
+    .filter((r) => {
+      const reservationDate = new Date(r.date);
+      return (
+        r.studio_id === studioId &&
+        reservationDate.getFullYear() === year &&
+        reservationDate.getMonth() + 1 === month
+      );
+    })
+    .map((r): CalendarReservation => ({
+      reservation_id: r.reservation_id,
+      reservation_type: r.reservation_type,
+      status: r.status,
+      date: r.date,
+      start_time: r.start_time,
+      end_time: r.end_time,
+    }));
+
+  return {
+    reservations,
+    blocked_slots: [],
+  };
+};
+
+// モック: 自分の予約一覧取得
+export const mockGetMyReservations = async (): Promise<Reservation[]> => {
+  await new Promise((resolve) => setTimeout(resolve, 600)); // 600ms遅延
+
+  // 現在のユーザーIDを取得（authStoreから）
+  const user = JSON.parse(localStorage.getItem('auth-storage') || '{}').state?.user;
+  const userId = user?.user_id;
+
+  return mockReservations.filter((r) => r.user_id === userId);
+};
+
+// モック: 予約作成
+export const mockCreateReservation = async (
+  data: CreateReservationRequest
+): Promise<Reservation> => {
+  await new Promise((resolve) => setTimeout(resolve, 1000)); // 1秒遅延
+
+  // 現在のユーザーIDを取得
+  const user = JSON.parse(localStorage.getItem('auth-storage') || '{}').state?.user;
+  const userId = user?.user_id || 'user_guest';
+
+  // プラン情報を取得（モックデータから）
+  const { mockPlans } = await import('./planService');
+  const plan = mockPlans.find((p) => p.plan_id === data.plan_id);
+
+  if (!plan) {
+    throw new Error('プランが見つかりません');
+  }
+
+  // オプション情報を取得
+  const { mockOptions } = await import('./planService');
+  const selectedOptions = mockOptions
+    .filter((o) => data.options?.includes(o.option_id))
+    .map((o) => ({
+      option_id: o.option_id,
+      option_name: o.option_name,
+      price: o.price,
+      tax_rate: o.tax_rate,
+    }));
+
+  const newReservation: Reservation = {
+    reservation_id: `rsv_${Date.now()}`,
+    studio_id: data.studio_id,
+    user_id: userId,
+    reservation_type: data.reservation_type,
+    status: 'pending',
+    plan_id: data.plan_id,
+    plan_name: plan.plan_name,
+    plan_price: plan.price,
+    plan_tax_rate: plan.tax_rate,
+    date: data.date,
+    start_time: data.start_time,
+    end_time: data.end_time,
+    options: selectedOptions,
+    shooting_type: data.shooting_type,
+    shooting_details: data.shooting_details,
+    photographer_name: data.photographer_name,
+    number_of_people: data.number_of_people,
+    needs_protection: data.needs_protection,
+    equipment_insurance: data.equipment_insurance,
+    note: data.note,
+    created_at: new Date().toISOString(),
+  };
+
+  // モックデータに追加（実際のアプリではバックエンドに保存）
+  mockReservations.push(newReservation);
+
+  return newReservation;
+};
+
+// モック: 予約キャンセル
+export const mockCancelReservation = async (id: string): Promise<Reservation> => {
+  await new Promise((resolve) => setTimeout(resolve, 800)); // 800ms遅延
+
+  const reservation = mockReservations.find((r) => r.reservation_id === id);
+  if (!reservation) {
+    throw new Error('予約が見つかりません');
+  }
+
+  reservation.status = 'cancelled';
+  reservation.cancelled_at = new Date().toISOString();
+  reservation.cancelled_by = 'customer';
+
+  return reservation;
+};

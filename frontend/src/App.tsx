@@ -5,6 +5,8 @@ import { Box } from '@chakra-ui/react';
 import LoginPage from './pages/auth/LoginPage';
 import SignupPage from './pages/auth/SignupPage';
 import CustomerCalendarPage from './pages/customer/CalendarPage';
+import ReservationsPage from './pages/customer/ReservationsPage';
+import ReservationDetailPage from './pages/customer/ReservationDetailPage';
 import AdminDashboardPage from './pages/admin/DashboardPage';
 
 // 認証ガード
@@ -30,6 +32,26 @@ function App() {
               <CustomerLayout>
                 <CustomerCalendarPage />
               </CustomerLayout>
+            }
+          />
+          <Route
+            path="/customer/reservations"
+            element={
+              <ProtectedRoute>
+                <CustomerLayout>
+                  <ReservationsPage />
+                </CustomerLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customer/reservations/:id"
+            element={
+              <ProtectedRoute>
+                <CustomerLayout>
+                  <ReservationDetailPage />
+                </CustomerLayout>
+              </ProtectedRoute>
             }
           />
           <Route
