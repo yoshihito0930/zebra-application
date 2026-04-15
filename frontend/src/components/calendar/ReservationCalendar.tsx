@@ -8,11 +8,9 @@ import {
   Text,
   VStack,
   useColorModeValue,
-  Tooltip,
 } from '@chakra-ui/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { CalendarReservation } from '../../types';
-import StatusBadge from '../common/StatusBadge';
 
 interface ReservationCalendarProps {
   studioId: string;
@@ -269,23 +267,85 @@ export default function ReservationCalendar({
                   {dateReservations.length > 0 && (
                     <VStack align="stretch" spacing={1} flex={1} overflowY="auto">
                       {dateReservations.slice(0, 3).map((reservation) => (
-                        <Tooltip
+                        <Box
                           key={reservation.reservation_id}
-                          label={`${reservation.start_time} - ${reservation.end_time}`}
-                          placement="top"
-                          hasArrow
+                          bg={
+                            reservation.status === 'confirmed'
+                              ? 'green.100'
+                              : reservation.status === 'tentative'
+                              ? 'orange.100'
+                              : reservation.status === 'pending'
+                              ? 'yellow.100'
+                              : reservation.status === 'scheduled'
+                              ? 'blue.100'
+                              : 'gray.100'
+                          }
+                          _dark={{
+                            bg:
+                              reservation.status === 'confirmed'
+                                ? 'green.800'
+                                : reservation.status === 'tentative'
+                                ? 'orange.800'
+                                : reservation.status === 'pending'
+                                ? 'yellow.800'
+                                : reservation.status === 'scheduled'
+                                ? 'blue.800'
+                                : 'gray.800',
+                          }}
+                          borderLeftWidth="4px"
+                          borderLeftColor={
+                            reservation.status === 'confirmed'
+                              ? 'green.500'
+                              : reservation.status === 'tentative'
+                              ? 'orange.500'
+                              : reservation.status === 'pending'
+                              ? 'yellow.500'
+                              : reservation.status === 'scheduled'
+                              ? 'blue.500'
+                              : 'gray.500'
+                          }
+                          px={2}
+                          py={1}
+                          borderRadius="sm"
+                          cursor="pointer"
+                          _hover={{
+                            opacity: 0.8,
+                          }}
                         >
-                          <Box>
-                            <StatusBadge
-                              status={reservation.status}
-                              size="xs"
-                              showIcon={false}
-                            />
-                          </Box>
-                        </Tooltip>
+                          <Text
+                            fontSize="xs"
+                            fontWeight="semibold"
+                            noOfLines={1}
+                            color={
+                              reservation.status === 'confirmed'
+                                ? 'green.800'
+                                : reservation.status === 'tentative'
+                                ? 'orange.800'
+                                : reservation.status === 'pending'
+                                ? 'yellow.800'
+                                : reservation.status === 'scheduled'
+                                ? 'blue.800'
+                                : 'gray.800'
+                            }
+                            _dark={{
+                              color:
+                                reservation.status === 'confirmed'
+                                  ? 'green.100'
+                                  : reservation.status === 'tentative'
+                                  ? 'orange.100'
+                                  : reservation.status === 'pending'
+                                  ? 'yellow.100'
+                                  : reservation.status === 'scheduled'
+                                  ? 'blue.100'
+                                  : 'gray.100',
+                            }}
+                          >
+                            {reservation.start_time}〜{reservation.end_time}
+                          </Text>
+                        </Box>
                       ))}
                       {dateReservations.length > 3 && (
-                        <Text fontSize="xs" color="gray.500">
+                        <Text fontSize="xs" color="gray.500" textAlign="center" fontWeight="medium">
                           +{dateReservations.length - 3}件
                         </Text>
                       )}
@@ -299,29 +359,84 @@ export default function ReservationCalendar({
       </Box>
 
       {/* 凡例 */}
-      <HStack spacing={6} fontSize="sm" flexWrap="wrap">
-        <HStack spacing={2}>
-          <StatusBadge status="confirmed" size="xs" showIcon={false} />
-          <Text>確定予約</Text>
+      <Box bg="white" p={4} borderRadius="md" borderWidth="1px" borderColor={borderColor}>
+        <Text fontSize="sm" fontWeight="semibold" mb={3}>
+          予約ステータス
+        </Text>
+        <HStack spacing={6} fontSize="sm" flexWrap="wrap">
+          <HStack spacing={2}>
+            <Box
+              bg="green.100"
+              _dark={{ bg: 'green.800' }}
+              borderLeftWidth="4px"
+              borderLeftColor="green.500"
+              px={3}
+              py={1}
+              borderRadius="sm"
+              minW="80px"
+            >
+              <Text fontSize="xs" fontWeight="semibold" color="green.800" _dark={{ color: 'green.100' }}>
+                確定予約
+              </Text>
+            </Box>
+          </HStack>
+          <HStack spacing={2}>
+            <Box
+              bg="orange.100"
+              _dark={{ bg: 'orange.800' }}
+              borderLeftWidth="4px"
+              borderLeftColor="orange.500"
+              px={3}
+              py={1}
+              borderRadius="sm"
+              minW="80px"
+            >
+              <Text fontSize="xs" fontWeight="semibold" color="orange.800" _dark={{ color: 'orange.100' }}>
+                仮予約
+              </Text>
+            </Box>
+          </HStack>
+          <HStack spacing={2}>
+            <Box
+              bg="yellow.100"
+              _dark={{ bg: 'yellow.800' }}
+              borderLeftWidth="4px"
+              borderLeftColor="yellow.500"
+              px={3}
+              py={1}
+              borderRadius="sm"
+              minW="80px"
+            >
+              <Text fontSize="xs" fontWeight="semibold" color="yellow.800" _dark={{ color: 'yellow.100' }}>
+                承認待ち
+              </Text>
+            </Box>
+          </HStack>
+          <HStack spacing={2}>
+            <Box
+              bg="blue.100"
+              _dark={{ bg: 'blue.800' }}
+              borderLeftWidth="4px"
+              borderLeftColor="blue.500"
+              px={3}
+              py={1}
+              borderRadius="sm"
+              minW="80px"
+            >
+              <Text fontSize="xs" fontWeight="semibold" color="blue.800" _dark={{ color: 'blue.100' }}>
+                ロケハン
+              </Text>
+            </Box>
+          </HStack>
+          <HStack spacing={2}>
+            <Box bg="gray.300" _dark={{ bg: 'gray.600' }} px={3} py={1} borderRadius="sm" minW="80px">
+              <Text fontSize="xs" fontWeight="semibold" color="gray.700" _dark={{ color: 'gray.100' }}>
+                休業日
+              </Text>
+            </Box>
+          </HStack>
         </HStack>
-        <HStack spacing={2}>
-          <StatusBadge status="tentative" size="xs" showIcon={false} />
-          <Text>仮予約</Text>
-        </HStack>
-        <HStack spacing={2}>
-          <StatusBadge status="pending" size="xs" showIcon={false} />
-          <Text>承認待ち</Text>
-        </HStack>
-        <HStack spacing={2}>
-          <StatusBadge status="scheduled" size="xs" showIcon={false} />
-          <Text>ロケハン</Text>
-        </HStack>
-        <HStack spacing={2}>
-          <Box bg="gray.300" _dark={{ bg: 'gray.600' }} px={2} py={1} borderRadius="sm">
-            <Text fontSize="xs">休業日</Text>
-          </Box>
-        </HStack>
-      </HStack>
+      </Box>
     </VStack>
   );
 }

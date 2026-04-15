@@ -3,7 +3,8 @@ import type { ReservationStatus } from '../../types';
 
 interface StatusBadgeProps {
   status: ReservationStatus;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
+  showIcon?: boolean; // 将来的にアイコン表示に対応するためのプロパティ
 }
 
 const statusConfig: Record<ReservationStatus, { label: string; variant: string }> = {
@@ -20,8 +21,21 @@ const statusConfig: Record<ReservationStatus, { label: string; variant: string }
 export default function StatusBadge({ status, size = 'md' }: StatusBadgeProps) {
   const config = statusConfig[status];
 
+  const getFontSize = () => {
+    switch (size) {
+      case 'xs':
+        return '9px';
+      case 'sm':
+        return '10px';
+      case 'lg':
+        return '14px';
+      default:
+        return '12px';
+    }
+  };
+
   return (
-    <Badge variant={config.variant} fontSize={size === 'sm' ? '10px' : size === 'lg' ? '14px' : '12px'}>
+    <Badge variant={config.variant} fontSize={getFontSize()}>
       {config.label}
     </Badge>
   );
