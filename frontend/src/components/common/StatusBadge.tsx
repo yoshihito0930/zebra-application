@@ -8,7 +8,7 @@ interface StatusBadgeProps {
 }
 
 const statusConfig: Record<ReservationStatus, { label: string; variant: string }> = {
-  confirmed: { label: '確定', variant: 'confirmed' },
+  confirmed: { label: '本予約', variant: 'confirmed' },
   tentative: { label: '仮予約', variant: 'tentative' },
   pending: { label: '承認待ち', variant: 'pending' },
   waitlisted: { label: '第2キープ', variant: 'waitlisted' },
