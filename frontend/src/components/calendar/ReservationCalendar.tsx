@@ -385,7 +385,7 @@ export default function ReservationCalendar({
               minW="80px"
             >
               <Text fontSize="xs" fontWeight="semibold" color="green.800" _dark={{ color: 'green.100' }}>
-                確定予約
+                本予約
               </Text>
             </Box>
           </HStack>
