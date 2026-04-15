@@ -8,6 +8,8 @@ import CustomerCalendarPage from './pages/customer/CalendarPage';
 import ReservationsPage from './pages/customer/ReservationsPage';
 import ReservationDetailPage from './pages/customer/ReservationDetailPage';
 import AdminDashboardPage from './pages/admin/DashboardPage';
+import GuestReservationVerifyPage from './pages/guest/GuestReservationVerifyPage';
+import GuestReservationDetailPage from './pages/guest/GuestReservationDetailPage';
 
 // 認証ガード
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -88,6 +90,10 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* ゲスト予約確認（認証不要） */}
+          <Route path="/reservations/guest/verify" element={<GuestReservationVerifyPage />} />
+          <Route path="/reservations/guest/:token" element={<GuestReservationDetailPage />} />
 
           {/* デフォルトルート */}
           <Route path="/" element={<Navigate to="/customer/calendar" replace />} />

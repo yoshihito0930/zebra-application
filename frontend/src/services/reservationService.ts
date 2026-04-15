@@ -177,6 +177,11 @@ export const mockGetMyReservations = async (): Promise<Reservation[]> => {
   return mockReservations.filter((r) => r.user_id === userId);
 };
 
+// トークン生成ユーティリティ（モック用）
+const generateGuestToken = (): string => {
+  return `guest_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+};
+
 // モック: 予約作成
 export const mockCreateReservation = async (
   data: CreateReservationRequest
@@ -185,7 +190,7 @@ export const mockCreateReservation = async (
 
   // 現在のユーザーIDを取得
   const user = JSON.parse(localStorage.getItem('auth-storage') || '{}').state?.user;
-  const userId = user?.user_id || 'user_guest';
+  const userId = data.is_guest ? 'guest' : (user?.user_id || 'user_guest');
 
   // プラン情報を取得（モックデータから）
   const { mockPlans } = await import('./planService');
@@ -205,6 +210,9 @@ export const mockCreateReservation = async (
       price: o.price,
       tax_rate: o.tax_rate,
     }));
+
+  // ゲスト予約の場合、トークンを生成
+  const guestToken = data.is_guest ? generateGuestToken() : undefined;
 
   const newReservation: Reservation = {
     reservation_id: `rsv_${Date.now()}`,
@@ -228,10 +236,24 @@ export const mockCreateReservation = async (
     equipment_insurance: data.equipment_insurance,
     note: data.note,
     created_at: new Date().toISOString(),
+    // ゲスト予約フィールド
+    is_guest: data.is_guest,
+    guest_name: data.guest_name,
+    guest_email: data.guest_email,
+    guest_phone: data.guest_phone,
+    guest_company: data.guest_company,
+    guest_token: guestToken,
   };
 
   // モックデータに追加（実際のアプリではバックエンドに保存）
   mockReservations.push(newReservation);
+
+  // ゲスト予約の場合、LocalStorageにも保存（トークンベースで取得できるように）
+  if (data.is_guest && guestToken) {
+    const guestReservations = JSON.parse(localStorage.getItem('guest-reservations') || '{}');
+    guestReservations[guestToken] = newReservation;
+    localStorage.setItem('guest-reservations', JSON.stringify(guestReservations));
+  }
 
   return newReservation;
 };
@@ -248,6 +270,51 @@ export const mockCancelReservation = async (id: string): Promise<Reservation> =>
   reservation.status = 'cancelled';
   reservation.cancelled_at = new Date().toISOString();
   reservation.cancelled_by = 'customer';
+
+  return reservation;
+};
+
+// モック: ゲスト予約取得（トークンベース）
+export const mockGetGuestReservation = async (token: string): Promise<Reservation> => {
+  await new Promise((resolve) => setTimeout(resolve, 600)); // 600ms遅延
+
+  // LocalStorageから取得
+  const guestReservations = JSON.parse(localStorage.getItem('guest-reservations') || '{}');
+  const reservation = guestReservations[token];
+
+  if (!reservation) {
+    throw new Error('予約が見つかりません。トークンが無効か、期限切れの可能性があります。');
+  }
+
+  return reservation;
+};
+
+// モック: ゲスト予約キャンセル（トークンベース）
+export const mockCancelGuestReservation = async (token: string): Promise<Reservation> => {
+  await new Promise((resolve) => setTimeout(resolve, 800)); // 800ms遅延
+
+  // LocalStorageから取得
+  const guestReservations = JSON.parse(localStorage.getItem('guest-reservations') || '{}');
+  const reservation = guestReservations[token];
+
+  if (!reservation) {
+    throw new Error('予約が見つかりません。トークンが無効か、期限切れの可能性があります。');
+  }
+
+  // キャンセル処理
+  reservation.status = 'cancelled';
+  reservation.cancelled_at = new Date().toISOString();
+  reservation.cancelled_by = 'customer';
+
+  // LocalStorageを更新
+  guestReservations[token] = reservation;
+  localStorage.setItem('guest-reservations', JSON.stringify(guestReservations));
+
+  // mockReservationsも更新
+  const index = mockReservations.findIndex((r) => r.reservation_id === reservation.reservation_id);
+  if (index !== -1) {
+    mockReservations[index] = reservation;
+  }
 
   return reservation;
 };

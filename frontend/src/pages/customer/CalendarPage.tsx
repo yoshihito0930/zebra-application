@@ -72,19 +72,8 @@ export default function CalendarPage() {
   const { isOpen: isModalOpen, onOpen: onModalOpen, onClose: onModalClose } = useDisclosure();
   const [selectedDate, setSelectedDate] = useState<string>('');
 
-  // 日付クリック
+  // 日付クリック（ゲストも予約可能）
   const handleDateClick = (date: string) => {
-    if (!isAuthenticated) {
-      toast({
-        title: 'ログインが必要です',
-        description: '予約を作成するにはログインしてください',
-        status: 'warning',
-        duration: 5000,
-        isClosable: true,
-      });
-      return;
-    }
-
     setSelectedDate(date);
     onModalOpen();
   };
@@ -112,9 +101,10 @@ export default function CalendarPage() {
           <Alert status="info" borderRadius="md">
             <AlertIcon />
             <VStack align="flex-start" spacing={2} flex={1}>
-              <Text fontWeight="semibold">予約を作成するにはログインが必要です</Text>
+              <Text fontWeight="semibold">ゲストとしても予約可能です</Text>
               <Text fontSize="sm">
-                カレンダーは閲覧可能です。予約を作成する場合は、ログインまたは新規登録してください。
+                会員登録なしでも予約を作成できます。日付をクリックして「ゲストとして予約」タブから予約してください。
+                会員登録すると、予約履歴の確認や簡単予約が可能になります。
               </Text>
               <HStack spacing={3} mt={2}>
                 <Button

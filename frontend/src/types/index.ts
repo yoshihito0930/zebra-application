@@ -103,6 +103,13 @@ export interface Reservation {
   expiry_date?: string;
   created_at: string;
   updated_at?: string;
+  // ゲスト予約用フィールド
+  is_guest?: boolean;
+  guest_name?: string;
+  guest_email?: string;
+  guest_phone?: string;
+  guest_company?: string;
+  guest_token?: string;
 }
 
 // 予約作成リクエスト
@@ -121,6 +128,12 @@ export interface CreateReservationRequest {
   needs_protection: boolean;
   equipment_insurance: boolean;
   note?: string;
+  // ゲスト予約用フィールド
+  is_guest?: boolean;
+  guest_name?: string;
+  guest_email?: string;
+  guest_phone?: string;
+  guest_company?: string;
 }
 
 // 予約更新リクエスト
