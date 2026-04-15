@@ -16,6 +16,8 @@ interface ReservationCalendarProps {
   studioId: string;
   reservations: CalendarReservation[];
   blockedSlots?: Array<{ date: string; start_time?: string; end_time?: string }>;
+  currentYear: number;
+  currentMonth: number;
   onDateClick?: (date: string) => void;
   onMonthChange?: (year: number, month: number) => void;
 }
@@ -24,12 +26,12 @@ export default function ReservationCalendar({
   studioId,
   reservations,
   blockedSlots = [],
+  currentYear,
+  currentMonth,
   onDateClick,
   onMonthChange,
 }: ReservationCalendarProps) {
   const today = new Date();
-  const [currentYear, setCurrentYear] = useState(today.getFullYear());
-  const [currentMonth, setCurrentMonth] = useState(today.getMonth() + 1); // 1-12
 
   const bgHover = useColorModeValue('gray.50', 'gray.700');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
@@ -94,32 +96,39 @@ export default function ReservationCalendar({
 
   // 月を変更
   const handlePreviousMonth = () => {
+    let newYear = currentYear;
+    let newMonth = currentMonth;
+
     if (currentMonth === 1) {
-      setCurrentMonth(12);
-      setCurrentYear(currentYear - 1);
-      onMonthChange?.(currentYear - 1, 12);
+      newMonth = 12;
+      newYear = currentYear - 1;
     } else {
-      setCurrentMonth(currentMonth - 1);
-      onMonthChange?.(currentYear, currentMonth - 1);
+      newMonth = currentMonth - 1;
     }
+
+    onMonthChange?.(newYear, newMonth);
   };
 
   const handleNextMonth = () => {
+    let newYear = currentYear;
+    let newMonth = currentMonth;
+
     if (currentMonth === 12) {
-      setCurrentMonth(1);
-      setCurrentYear(currentYear + 1);
-      onMonthChange?.(currentYear + 1, 1);
+      newMonth = 1;
+      newYear = currentYear + 1;
     } else {
-      setCurrentMonth(currentMonth + 1);
-      onMonthChange?.(currentYear, currentMonth + 1);
+      newMonth = currentMonth + 1;
     }
+
+    onMonthChange?.(newYear, newMonth);
   };
 
   const handleToday = () => {
     const now = new Date();
-    setCurrentYear(now.getFullYear());
-    setCurrentMonth(now.getMonth() + 1);
-    onMonthChange?.(now.getFullYear(), now.getMonth() + 1);
+    const newYear = now.getFullYear();
+    const newMonth = now.getMonth() + 1;
+
+    onMonthChange?.(newYear, newMonth);
   };
 
   const calendarDays = generateCalendarDays();

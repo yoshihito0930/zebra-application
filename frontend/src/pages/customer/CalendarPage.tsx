@@ -150,6 +150,8 @@ export default function CalendarPage() {
               studioId={STUDIO_ID}
               reservations={calendarData.reservations}
               blockedSlots={calendarData.blocked_slots}
+              currentYear={currentYear}
+              currentMonth={currentMonth}
               onDateClick={handleDateClick}
               onMonthChange={handleMonthChange}
             />
