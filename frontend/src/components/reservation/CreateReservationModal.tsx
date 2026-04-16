@@ -82,6 +82,7 @@ interface CreateReservationModalProps {
   onClose: () => void;
   studioId: string;
   initialDate?: string;
+  initialStartTime?: string;
   onSuccess?: () => void;
   reservations?: Array<{
     date: string;
@@ -96,6 +97,7 @@ export default function CreateReservationModal({
   onClose,
   studioId,
   initialDate,
+  initialStartTime,
   onSuccess,
   reservations = [],
 }: CreateReservationModalProps) {
@@ -162,8 +164,12 @@ export default function CreateReservationModal({
       if (initialDate) {
         setValue('date', initialDate);
       }
+      // 初期開始時刻設定
+      if (initialStartTime) {
+        setValue('start_time', initialStartTime);
+      }
     }
-  }, [isOpen, isAuthenticated, initialDate, setValue]);
+  }, [isOpen, isAuthenticated, initialDate, initialStartTime, setValue]);
 
   // 選択中のプラン・オプション・予約種別・日付
   const selectedPlanId = watch('plan_id');

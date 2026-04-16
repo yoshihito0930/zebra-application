@@ -12,11 +12,12 @@ import {
   useToast,
   useDisclosure,
 } from '@chakra-ui/react';
-import { Plus, LogIn, UserPlus } from 'lucide-react';
+import { LogIn, UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import ReservationCalendar from '../../components/calendar/ReservationCalendar';
 import CreateReservationModal from '../../components/reservation/CreateReservationModal';
+import DayDetailModal from '../../components/calendar/DayDetailModal';
 import { useCalendar } from '../../hooks/useCalendar';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
@@ -44,13 +45,24 @@ export default function CalendarPage() {
     // React Queryが自動的に新しいデータを取得
   };
 
+  // 日付詳細モーダル
+  const { isOpen: isDayDetailOpen, onOpen: onDayDetailOpen, onClose: onDayDetailClose } = useDisclosure();
+
   // 予約作成モーダル
   const { isOpen: isModalOpen, onOpen: onModalOpen, onClose: onModalClose } = useDisclosure();
   const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedStartTime, setSelectedStartTime] = useState<string>('');
 
-  // 日付クリック（ゲストも予約可能）
+  // 日付クリック → 詳細モーダルを表示
   const handleDateClick = (date: string) => {
     setSelectedDate(date);
+    onDayDetailOpen();
+  };
+
+  // 詳細モーダルから予約作成
+  const handleCreateReservationFromDetail = (date: string, startTime?: string) => {
+    setSelectedDate(date);
+    setSelectedStartTime(startTime || '');
     onModalOpen();
   };
 
@@ -129,12 +141,24 @@ export default function CalendarPage() {
           </Box>
         )}
 
+        {/* 日付詳細モーダル */}
+        {calendarData && (
+          <DayDetailModal
+            isOpen={isDayDetailOpen}
+            onClose={onDayDetailClose}
+            date={selectedDate}
+            reservations={calendarData.reservations.filter((r) => r.date === selectedDate)}
+            onCreateReservation={handleCreateReservationFromDetail}
+          />
+        )}
+
         {/* 予約作成モーダル */}
         <CreateReservationModal
           isOpen={isModalOpen}
           onClose={onModalClose}
           studioId={STUDIO_ID}
           initialDate={selectedDate}
+          initialStartTime={selectedStartTime}
           onSuccess={handleReservationSuccess}
           reservations={calendarData?.reservations || []}
         />

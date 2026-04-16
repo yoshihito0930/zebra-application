@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Box,
   Button,
@@ -23,7 +22,6 @@ interface ReservationCalendarProps {
 }
 
 export default function ReservationCalendar({
-  studioId,
   reservations,
   blockedSlots = [],
   currentYear,
@@ -275,7 +273,7 @@ export default function ReservationCalendar({
                   {/* 予約表示 */}
                   {dateReservations.length > 0 && (
                     <VStack align="stretch" spacing={1} flex={1} overflowY="auto">
-                      {dateReservations.slice(0, 3).map((reservation) => (
+                      {dateReservations.slice(0, 2).map((reservation) => (
                         <Box
                           key={reservation.reservation_id}
                           bg={
@@ -363,9 +361,9 @@ export default function ReservationCalendar({
                           </Text>
                         </Box>
                       ))}
-                      {dateReservations.length > 3 && (
+                      {dateReservations.length > 2 && (
                         <Text fontSize="xs" color="gray.500" textAlign="center" fontWeight="medium">
-                          +{dateReservations.length - 3}件
+                          +{dateReservations.length - 2}件
                         </Text>
                       )}
                     </VStack>
