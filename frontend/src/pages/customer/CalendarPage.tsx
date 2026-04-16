@@ -136,6 +136,7 @@ export default function CalendarPage() {
           studioId={STUDIO_ID}
           initialDate={selectedDate}
           onSuccess={handleReservationSuccess}
+          reservations={calendarData?.reservations || []}
         />
       </VStack>
     </Container>

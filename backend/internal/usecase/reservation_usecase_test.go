@@ -441,3 +441,191 @@ func TestPromoteReservation_Success(t *testing.T) {
 		t.Errorf("Status = %v, want pending", reservation.Status)
 	}
 }
+
+// TestCreateReservation_BufferTimeConflict は前後1時間制約のテスト
+func TestCreateReservation_BufferTimeConflict(t *testing.T) {
+	testDate := time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name            string
+		reservationType entity.ReservationType
+		startTime       string
+		endTime         string
+		existingReservations []*entity.Reservation
+		wantError       bool
+		errorType       *apierror.APIError
+	}{
+		{
+			name:            "本予約: 既存予約の1時間前 → エラー",
+			reservationType: entity.ReservationTypeRegular,
+			startTime:       "09:00",
+			endTime:         "10:00",
+			existingReservations: []*entity.Reservation{
+				{
+					ReservationID: "rsv_existing",
+					StudioID:      "studio_001",
+					Status:        entity.ReservationStatusConfirmed,
+					Date:          testDate,
+					StartTime:     "11:00",
+					EndTime:       "13:00",
+				},
+			},
+			wantError: true,
+			errorType: apierror.ErrBufferTimeConflict,
+		},
+		{
+			name:            "本予約: 既存予約の1時間後 → エラー",
+			reservationType: entity.ReservationTypeRegular,
+			startTime:       "14:00",
+			endTime:         "15:00",
+			existingReservations: []*entity.Reservation{
+				{
+					ReservationID: "rsv_existing",
+					StudioID:      "studio_001",
+					Status:        entity.ReservationStatusConfirmed,
+					Date:          testDate,
+					StartTime:     "11:00",
+					EndTime:       "13:00",
+				},
+			},
+			wantError: true,
+			errorType: apierror.ErrBufferTimeConflict,
+		},
+		{
+			name:            "本予約: 既存予約から2時間前 → OK",
+			reservationType: entity.ReservationTypeRegular,
+			startTime:       "08:00",
+			endTime:         "09:00",
+			existingReservations: []*entity.Reservation{
+				{
+					ReservationID: "rsv_existing",
+					StudioID:      "studio_001",
+					Status:        entity.ReservationStatusConfirmed,
+					Date:          testDate,
+					StartTime:     "11:00",
+					EndTime:       "13:00",
+				},
+			},
+			wantError: false,
+		},
+		{
+			name:            "第2キープ: 既存予約の1時間前 → OK（制約なし）",
+			reservationType: entity.ReservationTypeSecondKeep,
+			startTime:       "09:00",
+			endTime:         "10:00",
+			existingReservations: []*entity.Reservation{
+				{
+					ReservationID: "rsv_existing",
+					StudioID:      "studio_001",
+					Status:        entity.ReservationStatusConfirmed,
+					Date:          testDate,
+					StartTime:     "11:00",
+					EndTime:       "13:00",
+				},
+			},
+			wantError: false,
+		},
+		{
+			name:            "ロケハン: 既存予約の1時間前 → OK（制約なし）",
+			reservationType: entity.ReservationTypeLocationScout,
+			startTime:       "09:00",
+			endTime:         "10:00",
+			existingReservations: []*entity.Reservation{
+				{
+					ReservationID: "rsv_existing",
+					StudioID:      "studio_001",
+					Status:        entity.ReservationStatusConfirmed,
+					Date:          testDate,
+					StartTime:     "11:00",
+					EndTime:       "13:00",
+				},
+			},
+			wantError: false,
+		},
+		{
+			name:            "仮予約: 既存仮予約の1時間前 → エラー",
+			reservationType: entity.ReservationTypeTentative,
+			startTime:       "09:00",
+			endTime:         "10:00",
+			existingReservations: []*entity.Reservation{
+				{
+					ReservationID: "rsv_existing",
+					StudioID:      "studio_001",
+					Status:        entity.ReservationStatusTentative,
+					Date:          testDate,
+					StartTime:     "11:00",
+					EndTime:       "13:00",
+				},
+			},
+			wantError: true,
+			errorType: apierror.ErrBufferTimeConflict,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// モックリポジトリを準備
+			reservationRepo := &MockReservationRepository{
+				FindByStudioAndDateRangeFunc: func(ctx context.Context, studioID string, startDate, endDate time.Time) ([]*entity.Reservation, error) {
+					return tt.existingReservations, nil
+				},
+				FindConflictingFunc: func(ctx context.Context, studioID string, date time.Time, startTime, endTime string) ([]*entity.Reservation, error) {
+					// 第2キープの場合は既存予約を返す、それ以外は空
+					if tt.reservationType == entity.ReservationTypeSecondKeep {
+						return tt.existingReservations, nil
+					}
+					return []*entity.Reservation{}, nil
+				},
+			}
+			userRepo := &MockUserRepository{}
+			planRepo := &MockPlanRepository{}
+			blockedSlotRepo := &MockBlockedSlotRepository{}
+			studioRepo := &MockStudioRepository{
+				FindByIDFunc: func(ctx context.Context, studioID string) (*entity.Studio, error) {
+					return &entity.Studio{
+						StudioID:        studioID,
+						StudioName:      "Test Studio",
+						RegularHolidays: []string{},
+					}, nil
+				},
+			}
+
+			usecase := NewReservationUsecase(reservationRepo, userRepo, planRepo, blockedSlotRepo, studioRepo)
+
+			// 予約作成を試行
+			userID := "user_001"
+			input := CreateReservationInput{
+				StudioID:           "studio_001",
+				UserID:             &userID,
+				ReservationType:    tt.reservationType,
+				PlanID:             "plan_001",
+				Date:               testDate,
+				StartTime:          tt.startTime,
+				EndTime:            tt.endTime,
+				Options:            []string{},
+				ShootingType:       []string{"stills"},
+				ShootingDetails:    "Test shooting",
+				PhotographerName:   "Test Photographer",
+				NumberOfPeople:     1,
+				NeedsProtection:    false,
+				EquipmentInsurance: true,
+			}
+
+			_, err := usecase.CreateReservation(context.Background(), input)
+
+			// 検証
+			if tt.wantError {
+				if err == nil {
+					t.Fatalf("Expected error, got nil")
+				}
+				if tt.errorType != nil && err != tt.errorType {
+					t.Errorf("Expected error %v, got %v", tt.errorType, err)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("Expected no error, got %v", err)
+				}
+			}
+		})
+	}
+}

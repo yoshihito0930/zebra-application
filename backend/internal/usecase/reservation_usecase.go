@@ -58,6 +58,79 @@ type CreateReservationInput struct {
 	Note               *string
 }
 
+// checkBufferTimeConflict は既存予約の前後1時間以内に重複がないかチェックする
+// 本予約・仮予約の場合のみチェックを実施（第2キープ・ロケハンは除外）
+func (u *ReservationUsecase) checkBufferTimeConflict(ctx context.Context, studioID string, date time.Time, startTime, endTime string, reservationType entity.ReservationType) error {
+	// 第2キープとロケハンは前後1時間の制約を受けない
+	if reservationType == entity.ReservationTypeSecondKeep || reservationType == entity.ReservationTypeLocationScout {
+		return nil
+	}
+
+	// 開始時刻と終了時刻をパース
+	startHour, startMin, err := parseTime(startTime)
+	if err != nil {
+		return fmt.Errorf("failed to parse start time: %w", err)
+	}
+	endHour, endMin, err := parseTime(endTime)
+	if err != nil {
+		return fmt.Errorf("failed to parse end time: %w", err)
+	}
+
+	// 前後1時間のバッファ時間を計算
+	bufferStartTime := formatTime(startHour-1, startMin)
+	bufferEndTime := formatTime(endHour+1, endMin)
+
+	// 同日の予約を全て取得
+	reservations, err := u.reservationRepo.FindByStudioAndDateRange(ctx, studioID, date, date)
+	if err != nil {
+		return fmt.Errorf("failed to find reservations for buffer time check: %w", err)
+	}
+
+	// confirmed/tentativeの予約に対して前後1時間チェック
+	for _, reservation := range reservations {
+		if reservation.Status != entity.ReservationStatusConfirmed &&
+			reservation.Status != entity.ReservationStatusTentative {
+			continue
+		}
+
+		// 既存予約の時間帯が前後1時間のバッファ範囲と重複しているかチェック
+		if isTimeOverlapping(bufferStartTime, bufferEndTime, reservation.StartTime, reservation.EndTime) {
+			return apierror.ErrBufferTimeConflict
+		}
+	}
+
+	return nil
+}
+
+// parseTime は時刻文字列（HH:MM形式）をパースする
+func parseTime(timeStr string) (int, int, error) {
+	var hour, min int
+	_, err := fmt.Sscanf(timeStr, "%d:%d", &hour, &min)
+	if err != nil {
+		return 0, 0, err
+	}
+	return hour, min, nil
+}
+
+// formatTime は時刻を文字列（HH:MM形式）にフォーマットする
+func formatTime(hour, min int) string {
+	// 時間が負の場合は0時として扱う
+	if hour < 0 {
+		hour = 0
+	}
+	// 時間が24時以上の場合は23:59として扱う
+	if hour >= 24 {
+		hour = 23
+		min = 59
+	}
+	return fmt.Sprintf("%02d:%02d", hour, min)
+}
+
+// isTimeOverlapping は2つの時間帯が重複しているかチェックする
+func isTimeOverlapping(start1, end1, start2, end2 string) bool {
+	return start1 < end2 && start2 < end1
+}
+
 // CreateReservation は予約を作成する
 // アクセスパターン: AP-07（予約作成）, AP-17（管理者側予約作成）
 //
@@ -67,6 +140,7 @@ type CreateReservationInput struct {
 // 3. ブロック枠チェック（指定日時にブロック枠が存在しないこと）
 // 4. 第2キープの前提チェック（reservation_type=second_keepの場合、同一時間帯にconfirmed/tentativeの予約が存在すること）
 // 5. 定休日チェック（指定日がスタジオの定休日でないこと）
+// 6. 前後1時間チェック（本予約・仮予約の場合、既存予約の前後1時間以内に作成不可）
 func (u *ReservationUsecase) CreateReservation(ctx context.Context, input CreateReservationInput) (*entity.Reservation, error) {
 	// 1. プランの存在確認と有効性チェック
 	plan, err := u.planRepo.FindByID(ctx, input.StudioID, input.PlanID)
@@ -120,7 +194,12 @@ func (u *ReservationUsecase) CreateReservation(ctx context.Context, input Create
 		}
 	}
 
-	// 6. 予約エンティティを作成
+	// 6. 前後1時間チェック（本予約・仮予約の場合のみ）
+	if err := u.checkBufferTimeConflict(ctx, input.StudioID, input.Date, input.StartTime, input.EndTime, input.ReservationType); err != nil {
+		return nil, err
+	}
+
+	// 7. 予約エンティティを作成
 	now := time.Now()
 	reservation := &entity.Reservation{
 		ReservationID:      uuid.New().String(),
@@ -150,7 +229,7 @@ func (u *ReservationUsecase) CreateReservation(ctx context.Context, input Create
 		reservation.LinkedReservationID = &linkedID
 	}
 
-	// 7. リポジトリに保存
+	// 8. リポジトリに保存
 	if err := u.reservationRepo.Create(ctx, reservation); err != nil {
 		return nil, fmt.Errorf("failed to create reservation: %w", err)
 	}
@@ -270,6 +349,11 @@ func (u *ReservationUsecase) UpdateReservation(ctx context.Context, input Update
 			if conflicting.ReservationID != reservation.ReservationID {
 				return nil, apierror.ErrReservationConflict
 			}
+		}
+
+		// 前後1時間チェック（本予約・仮予約の場合のみ）
+		if err := u.checkBufferTimeConflict(ctx, reservation.StudioID, newDate, newStartTime, newEndTime, reservation.ReservationType); err != nil {
+			return nil, err
 		}
 	}
 
@@ -514,10 +598,15 @@ func (u *ReservationUsecase) CreateGuestReservation(ctx context.Context, input C
 		}
 	}
 
-	// 6. ゲストトークンを生成
+	// 6. 前後1時間チェック（本予約・仮予約の場合のみ）
+	if err := u.checkBufferTimeConflict(ctx, input.StudioID, input.Date, input.StartTime, input.EndTime, input.ReservationType); err != nil {
+		return nil, "", err
+	}
+
+	// 7. ゲストトークンを生成
 	guestToken := uuid.New().String()
 
-	// 7. 予約エンティティを作成
+	// 8. 予約エンティティを作成
 	now := time.Now()
 	reservation := &entity.Reservation{
 		ReservationID:      uuid.New().String(),
@@ -553,7 +642,7 @@ func (u *ReservationUsecase) CreateGuestReservation(ctx context.Context, input C
 		reservation.LinkedReservationID = &linkedID
 	}
 
-	// 8. リポジトリに保存
+	// 9. リポジトリに保存
 	if err := u.reservationRepo.Create(ctx, reservation); err != nil {
 		return nil, "", fmt.Errorf("failed to create guest reservation: %w", err)
 	}

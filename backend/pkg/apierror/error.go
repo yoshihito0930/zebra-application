@@ -215,6 +215,13 @@ var (
 		Message:    "指定されたオプションは現在利用できません",
 		StatusCode: http.StatusConflict,
 	}
+
+	// ErrBufferTimeConflict は既存予約の前後1時間以内に本予約・仮予約を作成しようとした場合のエラー
+	ErrBufferTimeConflict = &APIError{
+		Code:       "BUFFER_TIME_CONFLICT",
+		Message:    "指定の時間帯は既存予約の前後1時間以内です。第2キープまたはロケハンをご利用ください",
+		StatusCode: http.StatusConflict,
+	}
 )
 
 // 500 Internal Server Error - サーバー内部エラー

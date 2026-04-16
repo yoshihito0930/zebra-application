@@ -83,6 +83,12 @@ interface CreateReservationModalProps {
   studioId: string;
   initialDate?: string;
   onSuccess?: () => void;
+  reservations?: Array<{
+    date: string;
+    start_time: string;
+    end_time: string;
+    status: string;
+  }>;
 }
 
 export default function CreateReservationModal({
@@ -91,6 +97,7 @@ export default function CreateReservationModal({
   studioId,
   initialDate,
   onSuccess,
+  reservations = [],
 }: CreateReservationModalProps) {
   const toast = useToast();
   const { isAuthenticated } = useAuthStore();
@@ -158,9 +165,11 @@ export default function CreateReservationModal({
     }
   }, [isOpen, isAuthenticated, initialDate, setValue]);
 
-  // 選択中のプラン・オプション
+  // 選択中のプラン・オプション・予約種別・日付
   const selectedPlanId = watch('plan_id');
   const selectedOptionIds = watch('options') || [];
+  const selectedReservationType = watch('reservation_type');
+  const selectedDate = watch('date');
 
   // 料金計算
   const calculateTotalPrice = () => {
@@ -182,6 +191,47 @@ export default function CreateReservationModal({
   };
 
   const priceInfo = calculateTotalPrice();
+
+  // 前後1時間の制約をチェックする関数
+  const getBlockedTimeRanges = (date: string, reservationType: string) => {
+    // 第2キープとロケハンは前後1時間の制約を受けない
+    if (reservationType === 'second_keep' || reservationType === 'location_scout') {
+      return [];
+    }
+
+    // 選択された日付の予約を取得
+    const dateReservations = reservations.filter(
+      (r) => r.date === date && (r.status === 'confirmed' || r.status === 'tentative')
+    );
+
+    const blockedRanges: Array<{ start: number; end: number }> = [];
+
+    for (const reservation of dateReservations) {
+      const startHour = parseInt(reservation.start_time.split(':')[0]);
+      const endHour = parseInt(reservation.end_time.split(':')[0]);
+
+      // 前1時間と後1時間をブロック
+      blockedRanges.push({
+        start: Math.max(0, startHour - 1),  // 0時より前にはならない
+        end: Math.min(24, endHour + 1),     // 24時より後にはならない
+      });
+    }
+
+    return blockedRanges;
+  };
+
+  // 時刻が無効かどうかをチェック
+  const isTimeDisabled = (time: string, blockedRanges: Array<{ start: number; end: number }>) => {
+    const hour = parseInt(time.split(':')[0]);
+
+    return blockedRanges.some((range) => {
+      // 時刻がブロック範囲内にあるかチェック
+      return hour >= range.start && hour < range.end;
+    });
+  };
+
+  // 現在の予約種別と日付に基づいてブロックされた時間帯を取得
+  const blockedTimeRanges = getBlockedTimeRanges(selectedDate || '', selectedReservationType);
 
   // タブ変更時の処理
   const handleTabChange = (index: number) => {
@@ -355,7 +405,7 @@ export default function CreateReservationModal({
                   <FormControl isInvalid={!!errors.date} flex={1}>
                     <FormLabel>日付</FormLabel>
                     <Input type="date" {...register('date')} />
-                    <FormErrorMessage>{errors.date?.message}</FormErrorMessage>
+                    <FormErrorMessage>{errors.date?.message as string}</FormErrorMessage>
                   </FormControl>
 
                   <FormControl isInvalid={!!errors.start_time} flex={1}>
@@ -366,14 +416,19 @@ export default function CreateReservationModal({
                       render={({ field }) => (
                         <Select placeholder="選択" {...field}>
                           {timeOptions.map((time) => (
-                            <option key={time} value={time}>
+                            <option
+                              key={time}
+                              value={time}
+                              disabled={isTimeDisabled(time, blockedTimeRanges)}
+                            >
                               {time}
+                              {isTimeDisabled(time, blockedTimeRanges) && ' (予約不可)'}
                             </option>
                           ))}
                         </Select>
                       )}
                     />
-                    <FormErrorMessage>{errors.start_time?.message}</FormErrorMessage>
+                    <FormErrorMessage>{errors.start_time?.message as string}</FormErrorMessage>
                   </FormControl>
 
                   <FormControl isInvalid={!!errors.end_time} flex={1}>
@@ -384,14 +439,19 @@ export default function CreateReservationModal({
                       render={({ field }) => (
                         <Select placeholder="選択" {...field}>
                           {timeOptions.map((time) => (
-                            <option key={time} value={time}>
+                            <option
+                              key={time}
+                              value={time}
+                              disabled={isTimeDisabled(time, blockedTimeRanges)}
+                            >
                               {time}
+                              {isTimeDisabled(time, blockedTimeRanges) && ' (予約不可)'}
                             </option>
                           ))}
                         </Select>
                       )}
                     />
-                    <FormErrorMessage>{errors.end_time?.message}</FormErrorMessage>
+                    <FormErrorMessage>{errors.end_time?.message as string}</FormErrorMessage>
                   </FormControl>
                 </HStack>
 
@@ -412,7 +472,7 @@ export default function CreateReservationModal({
                       </CheckboxGroup>
                     )}
                   />
-                  <FormErrorMessage>{errors.shooting_type?.message}</FormErrorMessage>
+                  <FormErrorMessage>{errors.shooting_type?.message as string}</FormErrorMessage>
                 </FormControl>
 
                 {/* 撮影詳細 */}
@@ -428,7 +488,7 @@ export default function CreateReservationModal({
                       />
                     )}
                   />
-                  <FormErrorMessage>{errors.shooting_details?.message}</FormErrorMessage>
+                  <FormErrorMessage>{errors.shooting_details?.message as string}</FormErrorMessage>
                 </FormControl>
 
                 {/* カメラマン名 */}
@@ -441,7 +501,7 @@ export default function CreateReservationModal({
                       <Input {...field} placeholder="山田太郎" />
                     )}
                   />
-                  <FormErrorMessage>{errors.photographer_name?.message}</FormErrorMessage>
+                  <FormErrorMessage>{errors.photographer_name?.message as string}</FormErrorMessage>
                 </FormControl>
 
                 {/* 参加人数 */}
@@ -453,7 +513,7 @@ export default function CreateReservationModal({
                     max={100}
                     {...register('number_of_people', { valueAsNumber: true })}
                   />
-                  <FormErrorMessage>{errors.number_of_people?.message}</FormErrorMessage>
+                  <FormErrorMessage>{errors.number_of_people?.message as string}</FormErrorMessage>
                 </FormControl>
 
                 {/* 保険・保護 */}
@@ -485,10 +545,21 @@ export default function CreateReservationModal({
                     placeholder="その他ご要望があれば記入してください"
                     {...register('note')}
                   />
-                  <FormErrorMessage>{errors.note?.message}</FormErrorMessage>
+                  <FormErrorMessage>{errors.note?.message as string}</FormErrorMessage>
                 </FormControl>
 
                 <Divider />
+
+                {/* 前後1時間制約の説明 */}
+                {(selectedReservationType === 'regular' || selectedReservationType === 'tentative') && (
+                  <Alert status="warning" borderRadius="md">
+                    <AlertIcon />
+                    <Text fontSize="sm">
+                      既存予約（本予約・仮予約）の前後1時間は、本予約・仮予約を作成できません。
+                      第2キープまたはロケハンをご利用ください。
+                    </Text>
+                  </Alert>
+                )}
 
                 {/* 料金表示 */}
                 <Box bg="gray.50" p={4} borderRadius="md">
@@ -655,8 +726,13 @@ export default function CreateReservationModal({
                             render={({ field }) => (
                               <Select placeholder="選択" {...field}>
                                 {timeOptions.map((time) => (
-                                  <option key={time} value={time}>
+                                  <option
+                                    key={time}
+                                    value={time}
+                                    disabled={isTimeDisabled(time, blockedTimeRanges)}
+                                  >
                                     {time}
+                                    {isTimeDisabled(time, blockedTimeRanges) && ' (予約不可)'}
                                   </option>
                                 ))}
                               </Select>
@@ -673,8 +749,13 @@ export default function CreateReservationModal({
                             render={({ field }) => (
                               <Select placeholder="選択" {...field}>
                                 {timeOptions.map((time) => (
-                                  <option key={time} value={time}>
+                                  <option
+                                    key={time}
+                                    value={time}
+                                    disabled={isTimeDisabled(time, blockedTimeRanges)}
+                                  >
                                     {time}
+                                    {isTimeDisabled(time, blockedTimeRanges) && ' (予約不可)'}
                                   </option>
                                 ))}
                               </Select>
@@ -778,6 +859,17 @@ export default function CreateReservationModal({
                       </FormControl>
 
                       <Divider />
+
+                      {/* 前後1時間制約の説明 */}
+                      {(selectedReservationType === 'regular' || selectedReservationType === 'tentative') && (
+                        <Alert status="warning" borderRadius="md">
+                          <AlertIcon />
+                          <Text fontSize="sm">
+                            既存予約（本予約・仮予約）の前後1時間は、本予約・仮予約を作成できません。
+                            第2キープまたはロケハンをご利用ください。
+                          </Text>
+                        </Alert>
+                      )}
 
                       {/* 料金表示 */}
                       <Box bg="gray.50" p={4} borderRadius="md">
