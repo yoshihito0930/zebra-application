@@ -25,6 +25,7 @@ export const reservationKeys = {
   details: () => [...reservationKeys.all, 'detail'] as const,
   detail: (id: string) => [...reservationKeys.details(), id] as const,
   myReservations: () => [...reservationKeys.all, 'my'] as const,
+  todayReservations: (studioId: string) => [...reservationKeys.all, 'today', studioId] as const,
 };
 
 /**
@@ -189,6 +190,28 @@ export const useRejectReservation = () => {
         reservationKeys.detail(updatedReservation.reservation_id),
         updatedReservation
       );
+    },
+  });
+};
+
+/**
+ * 今日の予約一覧を取得するフック（管理者・スタッフ用）
+ */
+export const useTodayReservations = (studioId: string) => {
+  return useQuery({
+    queryKey: reservationKeys.todayReservations(studioId),
+    queryFn: async () => {
+      if (USE_MOCK) {
+        // 今日の日付を取得 (YYYY-MM-DD形式)
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+
+        // 全予約を取得してフィルタリング
+        const allReservations = await mockGetAllReservations(studioId);
+        return allReservations.filter((r) => r.date === todayStr);
+      }
+      // 実APIの場合の実装（未実装）
+      throw new Error('実APIは未実装です');
     },
   });
 };
