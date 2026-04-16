@@ -10,7 +10,6 @@ import {
   Td,
   Select,
   HStack,
-  Button,
   useDisclosure,
   Spinner,
   Alert,
@@ -18,46 +17,29 @@ import {
   Text,
   IconButton,
 } from '@chakra-ui/react';
-import { useState, useEffect } from 'react';
-import { Eye, CheckCircle, XCircle } from 'lucide-react';
+import { useState } from 'react';
+import { Eye, CheckCircle } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { mockGetAllReservations } from '../../services/reservationService';
+import { useAllReservations } from '../../hooks/useReservations';
 import type { Reservation } from '../../types';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { ReservationApprovalDialog } from '../../components/admin/ReservationApprovalDialog';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
+const STUDIO_ID = 'studio_001'; // TODO: 後で動的に取得
+
 export const ReservationsPage = () => {
   const [searchParams] = useSearchParams();
   const initialStatus = searchParams.get('status') || 'all';
 
-  const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [filteredReservations, setFilteredReservations] = useState<Reservation[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus);
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const navigate = useNavigate();
 
-  const fetchReservations = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await mockGetAllReservations('studio_001', statusFilter);
-      setReservations(data);
-      setFilteredReservations(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '予約の取得に失敗しました');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchReservations();
-  }, [statusFilter]);
+  // React Queryで全予約取得
+  const { data: filteredReservations = [], isLoading, error } = useAllReservations(STUDIO_ID, statusFilter);
 
   const handleApprovalClick = (reservation: Reservation) => {
     setSelectedReservation(reservation);
@@ -65,7 +47,8 @@ export const ReservationsPage = () => {
   };
 
   const handleApprovalSuccess = () => {
-    fetchReservations();
+    // React Queryが自動的に再取得
+    onClose();
   };
 
   const handleViewDetail = (id: string) => {

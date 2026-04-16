@@ -36,12 +36,12 @@ import {
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { mockGetPlans, mockGetOptions } from '../../services/planService';
-import { mockCreateReservation } from '../../services/reservationService';
+import { usePlans, useOptions } from '../../hooks/usePlans';
+import { useCreateReservation } from '../../hooks/useReservations';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
 import { useAuthStore } from '../../stores/authStore';
-import type { Plan, Option, CreateReservationRequest } from '../../types';
+import type { CreateReservationRequest } from '../../types';
 
 // 会員予約バリデーションスキーマ
 const memberReservationSchema = z.object({
@@ -94,13 +94,24 @@ export default function CreateReservationModal({
 }: CreateReservationModalProps) {
   const toast = useToast();
   const { isAuthenticated } = useAuthStore();
-  const [plans, setPlans] = useState<Plan[]>([]);
-  const [options, setOptions] = useState<Option[]>([]);
-  const [isLoadingData, setIsLoadingData] = useState(false);
-  const [dataError, setDataError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [tabIndex, setTabIndex] = useState(0); // 0: 会員, 1: ゲスト
   const [guestToken, setGuestToken] = useState<string | null>(null);
+
+  // React Queryでプラン・オプション取得
+  const { data: plans = [], isLoading: isLoadingPlans, error: plansError } = usePlans(studioId);
+  const { data: options = [], isLoading: isLoadingOptions, error: optionsError } = useOptions(studioId);
+
+  // デバッグ用ログ
+  useEffect(() => {
+    console.log('Plans loaded:', plans);
+    console.log('Options loaded:', options);
+  }, [plans, options]);
+
+  // React Queryで予約作成
+  const createMutation = useCreateReservation();
+
+  const isLoadingData = isLoadingPlans || isLoadingOptions;
+  const dataError = plansError || optionsError;
 
   const {
     register,
@@ -111,11 +122,17 @@ export default function CreateReservationModal({
     reset,
     formState: { errors },
   } = useForm<any>({
+    shouldUnregister: false, // フィールドがDOMから削除されても値を保持
     defaultValues: {
       studio_id: studioId,
       reservation_type: 'regular',
+      plan_id: '',
       date: initialDate || '',
+      start_time: '',
+      end_time: '',
       shooting_type: [],
+      shooting_details: '',
+      photographer_name: '',
       number_of_people: 1,
       needs_protection: false,
       equipment_insurance: true,
@@ -129,30 +146,17 @@ export default function CreateReservationModal({
     },
   });
 
-  // プラン・オプション取得
+  // モーダルが開かれたときの初期化
   useEffect(() => {
     if (isOpen) {
-      fetchPlansAndOptions();
+      // タブを会員タブにリセット（ログインしている場合）
+      setTabIndex(isAuthenticated ? 0 : 0);
+      // 初期日付設定
+      if (initialDate) {
+        setValue('date', initialDate);
+      }
     }
-  }, [isOpen, studioId]);
-
-  const fetchPlansAndOptions = async () => {
-    setIsLoadingData(true);
-    setDataError(null);
-    try {
-      const [plansData, optionsData] = await Promise.all([
-        mockGetPlans(studioId),
-        mockGetOptions(studioId),
-      ]);
-      setPlans(plansData);
-      setOptions(optionsData);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'データの取得に失敗しました';
-      setDataError(errorMessage);
-    } finally {
-      setIsLoadingData(false);
-    }
-  };
+  }, [isOpen, isAuthenticated, initialDate, setValue]);
 
   // 選択中のプラン・オプション
   const selectedPlanId = watch('plan_id');
@@ -187,65 +191,69 @@ export default function CreateReservationModal({
 
   // フォーム送信
   const onSubmit = async (data: any) => {
-    setIsSubmitting(true);
-    try {
-      // バリデーション
-      const isGuest = tabIndex === 1;
-      const schema = isGuest ? guestReservationSchema : memberReservationSchema;
+    // デバッグ: 送信データを確認
+    console.log('Form submit data:', data);
+    console.log('Tab index:', tabIndex);
 
-      const validatedData = schema.parse({
-        ...data,
-        is_guest: isGuest,
-      });
+    // バリデーション
+    const isGuest = tabIndex === 1;
+    const schema = isGuest ? guestReservationSchema : memberReservationSchema;
 
-      const reservationData: CreateReservationRequest = {
-        ...validatedData,
-        options: validatedData.options || [],
-      };
+    const validatedData = schema.parse({
+      ...data,
+      is_guest: isGuest,
+    });
 
-      const result = await mockCreateReservation(reservationData);
+    const reservationData: CreateReservationRequest = {
+      ...validatedData,
+      options: validatedData.options || [],
+    };
 
-      // ゲスト予約の場合、トークンを保存
-      if (isGuest && result.guest_token) {
-        setGuestToken(result.guest_token);
+    createMutation.mutate(reservationData, {
+      onSuccess: (result) => {
+        // ゲスト予約の場合、トークンを保存
+        if (isGuest && result.guest_token) {
+          setGuestToken(result.guest_token);
 
+          toast({
+            title: '予約を作成しました',
+            description: '予約確認用のリンクをメールで送信しました。メールをご確認ください。',
+            status: 'success',
+            duration: 8000,
+            isClosable: true,
+          });
+        } else {
+          toast({
+            title: '予約を作成しました',
+            description: '予約の承認をお待ちください',
+            status: 'success',
+            duration: 5000,
+            isClosable: true,
+          });
+        }
+
+        reset();
+        onClose();
+        onSuccess?.();
+      },
+      onError: (err) => {
+        const errorMessage = err instanceof Error ? err.message : '予約の作成に失敗しました';
         toast({
-          title: '予約を作成しました',
-          description: '予約確認用のリンクをメールで送信しました。メールをご確認ください。',
-          status: 'success',
-          duration: 8000,
-          isClosable: true,
-        });
-      } else {
-        toast({
-          title: '予約を作成しました',
-          description: '予約の承認をお待ちください',
-          status: 'success',
+          title: 'エラー',
+          description: errorMessage,
+          status: 'error',
           duration: 5000,
           isClosable: true,
         });
-      }
-
-      reset();
-      onClose();
-      onSuccess?.();
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '予約の作成に失敗しました';
-      toast({
-        title: 'エラー',
-        description: errorMessage,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+      },
+    });
   };
 
   // モーダルを閉じる
   const handleClose = () => {
     reset();
+    setTabIndex(0); // タブをリセット
+    setGuestToken(null); // ゲストトークンをリセット
     onClose();
   };
 
@@ -258,25 +266,26 @@ export default function CreateReservationModal({
   return (
     <Modal isOpen={isOpen} onClose={handleClose} size="3xl" scrollBehavior="inside">
       <ModalOverlay />
-      <ModalContent>
+      <ModalContent as="form" id="create-reservation-form" onSubmit={handleSubmit(onSubmit)}>
         <ModalHeader>新規予約作成</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
-          {isLoadingData && <LoadingSpinner />}
+            {isLoadingData && <LoadingSpinner />}
 
-          {dataError && !isLoadingData && <ErrorMessage message={dataError} />}
+            {dataError && !isLoadingData && (
+              <ErrorMessage message={dataError instanceof Error ? dataError.message : 'データの取得に失敗しました'} />
+            )}
 
-          {!isLoadingData && !dataError && (
-            <Tabs index={tabIndex} onChange={handleTabChange} variant="enclosed" colorScheme="brand">
-              <TabList>
-                {isAuthenticated && <Tab>会員として予約</Tab>}
-                <Tab>ゲストとして予約</Tab>
-              </TabList>
+            {!isLoadingData && !dataError && (
+              <Tabs index={tabIndex} onChange={handleTabChange} variant="enclosed" colorScheme="brand">
+                <TabList>
+                  {isAuthenticated && <Tab>会員として予約</Tab>}
+                  <Tab>ゲストとして予約</Tab>
+                </TabList>
 
-              <TabPanels>
-                {isAuthenticated && (
-                  <TabPanel px={0}>
-                    <form id="create-reservation-form" onSubmit={handleSubmit(onSubmit)}>
+                <TabPanels>
+                  {isAuthenticated && (
+                    <TabPanel px={0}>
                       <VStack spacing={6} align="stretch">
                 {/* 予約種別 */}
                 <FormControl isInvalid={!!errors.reservation_type}>
@@ -301,13 +310,19 @@ export default function CreateReservationModal({
                 {/* プラン選択 */}
                 <FormControl isInvalid={!!errors.plan_id}>
                   <FormLabel>プラン</FormLabel>
-                  <Select placeholder="プランを選択" {...register('plan_id')}>
-                    {plans.map((plan) => (
-                      <option key={plan.plan_id} value={plan.plan_id}>
-                        {plan.plan_name} - ¥{plan.price.toLocaleString()}
-                      </option>
-                    ))}
-                  </Select>
+                  <Controller
+                    name="plan_id"
+                    control={control}
+                    render={({ field }) => (
+                      <Select placeholder="プランを選択" {...field}>
+                        {plans.map((plan) => (
+                          <option key={plan.plan_id} value={plan.plan_id}>
+                            {plan.plan_name} - ¥{plan.price.toLocaleString()}
+                          </option>
+                        ))}
+                      </Select>
+                    )}
+                  />
                   <FormErrorMessage>{errors.plan_id?.message}</FormErrorMessage>
                 </FormControl>
 
@@ -345,25 +360,37 @@ export default function CreateReservationModal({
 
                   <FormControl isInvalid={!!errors.start_time} flex={1}>
                     <FormLabel>開始時刻</FormLabel>
-                    <Select placeholder="選択" {...register('start_time')}>
-                      {timeOptions.map((time) => (
-                        <option key={time} value={time}>
-                          {time}
-                        </option>
-                      ))}
-                    </Select>
+                    <Controller
+                      name="start_time"
+                      control={control}
+                      render={({ field }) => (
+                        <Select placeholder="選択" {...field}>
+                          {timeOptions.map((time) => (
+                            <option key={time} value={time}>
+                              {time}
+                            </option>
+                          ))}
+                        </Select>
+                      )}
+                    />
                     <FormErrorMessage>{errors.start_time?.message}</FormErrorMessage>
                   </FormControl>
 
                   <FormControl isInvalid={!!errors.end_time} flex={1}>
                     <FormLabel>終了時刻</FormLabel>
-                    <Select placeholder="選択" {...register('end_time')}>
-                      {timeOptions.map((time) => (
-                        <option key={time} value={time}>
-                          {time}
-                        </option>
-                      ))}
-                    </Select>
+                    <Controller
+                      name="end_time"
+                      control={control}
+                      render={({ field }) => (
+                        <Select placeholder="選択" {...field}>
+                          {timeOptions.map((time) => (
+                            <option key={time} value={time}>
+                              {time}
+                            </option>
+                          ))}
+                        </Select>
+                      )}
+                    />
                     <FormErrorMessage>{errors.end_time?.message}</FormErrorMessage>
                   </FormControl>
                 </HStack>
@@ -391,9 +418,15 @@ export default function CreateReservationModal({
                 {/* 撮影詳細 */}
                 <FormControl isInvalid={!!errors.shooting_details}>
                   <FormLabel>撮影詳細</FormLabel>
-                  <Textarea
-                    placeholder="撮影内容を詳しく記入してください"
-                    {...register('shooting_details')}
+                  <Controller
+                    name="shooting_details"
+                    control={control}
+                    render={({ field }) => (
+                      <Textarea
+                        {...field}
+                        placeholder="撮影内容を詳しく記入してください"
+                      />
+                    )}
                   />
                   <FormErrorMessage>{errors.shooting_details?.message}</FormErrorMessage>
                 </FormControl>
@@ -401,7 +434,13 @@ export default function CreateReservationModal({
                 {/* カメラマン名 */}
                 <FormControl isInvalid={!!errors.photographer_name}>
                   <FormLabel>カメラマン名</FormLabel>
-                  <Input placeholder="山田太郎" {...register('photographer_name')} />
+                  <Controller
+                    name="photographer_name"
+                    control={control}
+                    render={({ field }) => (
+                      <Input {...field} placeholder="山田太郎" />
+                    )}
+                  />
                   <FormErrorMessage>{errors.photographer_name?.message}</FormErrorMessage>
                 </FormControl>
 
@@ -481,13 +520,11 @@ export default function CreateReservationModal({
                           </Text>
                         </Alert>
                       </VStack>
-                    </form>
-                  </TabPanel>
-                )}
+                    </TabPanel>
+                  )}
 
-                {/* ゲスト予約タブ */}
-                <TabPanel px={0}>
-                  <form id="create-reservation-form-guest" onSubmit={handleSubmit(onSubmit)}>
+                  {/* ゲスト予約タブ */}
+                  <TabPanel px={0}>
                     <VStack spacing={6} align="stretch">
                       <Alert status="info" borderRadius="md">
                         <AlertIcon />
@@ -562,13 +599,19 @@ export default function CreateReservationModal({
                       {/* プラン選択 */}
                       <FormControl isInvalid={!!errors.plan_id}>
                         <FormLabel>プラン</FormLabel>
-                        <Select placeholder="プランを選択" {...register('plan_id')}>
-                          {plans.map((plan) => (
-                            <option key={plan.plan_id} value={plan.plan_id}>
-                              {plan.plan_name} - ¥{plan.price.toLocaleString()}
-                            </option>
-                          ))}
-                        </Select>
+                        <Controller
+                          name="plan_id"
+                          control={control}
+                          render={({ field }) => (
+                            <Select placeholder="プランを選択" {...field}>
+                              {plans.map((plan) => (
+                                <option key={plan.plan_id} value={plan.plan_id}>
+                                  {plan.plan_name} - ¥{plan.price.toLocaleString()}
+                                </option>
+                              ))}
+                            </Select>
+                          )}
+                        />
                         <FormErrorMessage>{errors.plan_id?.message as string}</FormErrorMessage>
                       </FormControl>
 
@@ -606,25 +649,37 @@ export default function CreateReservationModal({
 
                         <FormControl isInvalid={!!errors.start_time} flex={1}>
                           <FormLabel>開始時刻</FormLabel>
-                          <Select placeholder="選択" {...register('start_time')}>
-                            {timeOptions.map((time) => (
-                              <option key={time} value={time}>
-                                {time}
-                              </option>
-                            ))}
-                          </Select>
+                          <Controller
+                            name="start_time"
+                            control={control}
+                            render={({ field }) => (
+                              <Select placeholder="選択" {...field}>
+                                {timeOptions.map((time) => (
+                                  <option key={time} value={time}>
+                                    {time}
+                                  </option>
+                                ))}
+                              </Select>
+                            )}
+                          />
                           <FormErrorMessage>{errors.start_time?.message as string}</FormErrorMessage>
                         </FormControl>
 
                         <FormControl isInvalid={!!errors.end_time} flex={1}>
                           <FormLabel>終了時刻</FormLabel>
-                          <Select placeholder="選択" {...register('end_time')}>
-                            {timeOptions.map((time) => (
-                              <option key={time} value={time}>
-                                {time}
-                              </option>
-                            ))}
-                          </Select>
+                          <Controller
+                            name="end_time"
+                            control={control}
+                            render={({ field }) => (
+                              <Select placeholder="選択" {...field}>
+                                {timeOptions.map((time) => (
+                                  <option key={time} value={time}>
+                                    {time}
+                                  </option>
+                                ))}
+                              </Select>
+                            )}
+                          />
                           <FormErrorMessage>{errors.end_time?.message as string}</FormErrorMessage>
                         </FormControl>
                       </HStack>
@@ -652,9 +707,15 @@ export default function CreateReservationModal({
                       {/* 撮影詳細 */}
                       <FormControl isInvalid={!!errors.shooting_details}>
                         <FormLabel>撮影詳細</FormLabel>
-                        <Textarea
-                          placeholder="撮影内容を詳しく記入してください"
-                          {...register('shooting_details')}
+                        <Controller
+                          name="shooting_details"
+                          control={control}
+                          render={({ field }) => (
+                            <Textarea
+                              {...field}
+                              placeholder="撮影内容を詳しく記入してください"
+                            />
+                          )}
                         />
                         <FormErrorMessage>{errors.shooting_details?.message as string}</FormErrorMessage>
                       </FormControl>
@@ -662,7 +723,13 @@ export default function CreateReservationModal({
                       {/* カメラマン名 */}
                       <FormControl isInvalid={!!errors.photographer_name}>
                         <FormLabel>カメラマン名</FormLabel>
-                        <Input placeholder="山田太郎" {...register('photographer_name')} />
+                        <Controller
+                          name="photographer_name"
+                          control={control}
+                          render={({ field }) => (
+                            <Input {...field} placeholder="山田太郎" />
+                          )}
+                        />
                         <FormErrorMessage>{errors.photographer_name?.message as string}</FormErrorMessage>
                       </FormControl>
 
@@ -742,22 +809,20 @@ export default function CreateReservationModal({
                         </Text>
                       </Alert>
                     </VStack>
-                  </form>
-                </TabPanel>
-              </TabPanels>
-            </Tabs>
-          )}
-        </ModalBody>
+                  </TabPanel>
+                </TabPanels>
+              </Tabs>
+            )}
+          </ModalBody>
 
         <ModalFooter>
-          <Button variant="ghost" mr={3} onClick={handleClose} isDisabled={isSubmitting}>
+          <Button variant="ghost" mr={3} onClick={handleClose} isDisabled={createMutation.isPending}>
             キャンセル
           </Button>
           <Button
             colorScheme="brand"
             type="submit"
-            form={tabIndex === 1 || !isAuthenticated ? 'create-reservation-form-guest' : 'create-reservation-form'}
-            isLoading={isSubmitting}
+            isLoading={createMutation.isPending}
             loadingText="作成中..."
           >
             予約を作成

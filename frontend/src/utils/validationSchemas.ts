@@ -48,3 +48,43 @@ export const signupSchema = z.object({
 });
 
 export type SignupFormData = z.infer<typeof signupSchema>;
+
+// プロフィール更新フォームスキーマ
+export const updateProfileSchema = z.object({
+  name: z
+    .string()
+    .min(1, '名前を入力してください')
+    .max(100, '名前は100文字以内で入力してください'),
+  phone_number: z
+    .string()
+    .min(1, '電話番号を入力してください')
+    .regex(/^0\d{1,4}-?\d{1,4}-?\d{4}$/, '有効な電話番号を入力してください'),
+  company_name: z.string().max(200, '会社名は200文字以内で入力してください').optional(),
+  address: z
+    .string()
+    .max(200, '住所は200文字以内で入力してください')
+    .optional(),
+});
+
+export type UpdateProfileFormData = z.infer<typeof updateProfileSchema>;
+
+// パスワード変更フォームスキーマ
+export const changePasswordSchema = z.object({
+  current_password: z
+    .string()
+    .min(1, '現在のパスワードを入力してください'),
+  new_password: z
+    .string()
+    .min(8, '新しいパスワードは8文字以上で入力してください')
+    .max(100, '新しいパスワードは100文字以内で入力してください')
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+      'パスワードは大文字、小文字、数字を含む必要があります'
+    ),
+  confirm_password: z.string().min(1, 'パスワード（確認）を入力してください'),
+}).refine((data) => data.new_password === data.confirm_password, {
+  message: 'パスワードが一致しません',
+  path: ['confirm_password'],
+});
+
+export type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;

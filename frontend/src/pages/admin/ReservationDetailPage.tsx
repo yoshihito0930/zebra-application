@@ -1,4 +1,3 @@
-import { useState, useEffect, useRef } from 'react';
 import {
   Container,
   Heading,
@@ -18,56 +17,26 @@ import {
 } from '@chakra-ui/react';
 import { ArrowLeft, CheckCircle, XCircle, Calendar as CalendarIcon, User, Mail, Phone, Building } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getReservation } from '../../services/reservationService';
+import { useReservation } from '../../hooks/useReservations';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import StatusBadge from '../../components/common/StatusBadge';
-import type { Reservation } from '../../types';
 import { ReservationApprovalDialog } from '../../components/admin/ReservationApprovalDialog';
 
 export const ReservationDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const toast = useToast();
-  const [reservation, setReservation] = useState<Reservation | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  // React Queryで予約詳細取得
+  const { data: reservation, isLoading, error } = useReservation(id);
 
   // 承認ダイアログ
   const { isOpen: isApprovalDialogOpen, onOpen: onApprovalDialogOpen, onClose: onApprovalDialogClose } = useDisclosure();
 
-  // 予約詳細取得
-  const fetchReservation = async () => {
-    if (!id) return;
-
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await getReservation(id);
-      setReservation(data);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '予約の取得に失敗しました';
-      setError(errorMessage);
-      toast({
-        title: 'エラー',
-        description: errorMessage,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // 初期読み込み
-  useEffect(() => {
-    fetchReservation();
-  }, [id]);
-
   // 承認・拒否成功時の処理
   const handleApprovalSuccess = () => {
-    fetchReservation();
+    // React Queryが自動的に再取得
+    onApprovalDialogClose();
   };
 
   // 予約種別のラベル
@@ -112,7 +81,7 @@ export const ReservationDetailPage = () => {
         {/* ローディング・エラー表示 */}
         {isLoading && <LoadingSpinner />}
 
-        {error && !isLoading && <ErrorMessage message={error} />}
+        {error && !isLoading && <ErrorMessage message={error instanceof Error ? error.message : '予約の取得に失敗しました'} />}
 
         {/* 予約詳細 */}
         {!isLoading && !error && reservation && (

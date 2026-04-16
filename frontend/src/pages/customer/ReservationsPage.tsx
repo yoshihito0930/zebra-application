@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import {
   Container,
   Heading,
@@ -21,45 +20,16 @@ import {
 } from '@chakra-ui/react';
 import { Eye, X, Calendar as CalendarIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { mockGetMyReservations } from '../../services/reservationService';
+import { useMyReservations } from '../../hooks/useReservations';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import StatusBadge from '../../components/common/StatusBadge';
-import type { Reservation } from '../../types';
 
 export default function ReservationsPage() {
   const navigate = useNavigate();
-  const toast = useToast();
-  const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // 予約一覧取得
-  const fetchReservations = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await mockGetMyReservations();
-      setReservations(data);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '予約一覧の取得に失敗しました';
-      setError(errorMessage);
-      toast({
-        title: 'エラー',
-        description: errorMessage,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // 初期読み込み
-  useEffect(() => {
-    fetchReservations();
-  }, []);
+  // React Queryで予約一覧取得
+  const { data: reservations = [], isLoading, error } = useMyReservations();
 
   // 予約種別のラベル
   const getReservationTypeLabel = (type: string) => {
@@ -119,7 +89,7 @@ export default function ReservationsPage() {
         {/* ローディング・エラー表示 */}
         {isLoading && <LoadingSpinner />}
 
-        {error && !isLoading && <ErrorMessage message={error} />}
+        {error && !isLoading && <ErrorMessage message={error instanceof Error ? error.message : '予約一覧の取得に失敗しました'} />}
 
         {/* 予約リスト */}
         {!isLoading && !error && (

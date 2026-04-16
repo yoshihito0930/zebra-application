@@ -7,6 +7,7 @@ import SignupPage from './pages/auth/SignupPage';
 import CustomerCalendarPage from './pages/customer/CalendarPage';
 import ReservationsPage from './pages/customer/ReservationsPage';
 import ReservationDetailPage from './pages/customer/ReservationDetailPage';
+import ProfilePage from './pages/customer/ProfilePage';
 import AdminDashboardPage from './pages/admin/DashboardPage';
 import { ReservationsPage as AdminReservationsPage } from './pages/admin/ReservationsPage';
 import { ReservationDetailPage as AdminReservationDetailPage } from './pages/admin/ReservationDetailPage';
@@ -74,8 +75,7 @@ function App() {
             element={
               <ProtectedRoute>
                 <CustomerLayout>
-                  {/* プロフィールページは後で実装 */}
-                  <Box p={8}>プロフィールページ（実装予定）</Box>
+                  <ProfilePage />
                 </CustomerLayout>
               </ProtectedRoute>
             }

@@ -15,7 +15,7 @@ import {
 } from '@chakra-ui/react';
 import { useState } from 'react';
 import type { Reservation, ReservationStatus } from '../../types';
-import { mockApproveReservation, mockRejectReservation } from '../../services/reservationService';
+import { useApproveReservation, useRejectReservation } from '../../hooks/useReservations';
 
 interface ReservationApprovalDialogProps {
   isOpen: boolean;
@@ -35,38 +35,59 @@ export const ReservationApprovalDialog = ({
     reservation.reservation_type === 'location_scout' ? 'scheduled' : 'confirmed'
   );
   const [rejectNote, setRejectNote] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const toast = useToast();
 
+  // React Queryで承認・拒否処理
+  const approveMutation = useApproveReservation();
+  const rejectMutation = useRejectReservation();
+
   const handleSubmit = async () => {
-    setIsLoading(true);
-    try {
-      if (action === 'approve') {
-        await mockApproveReservation(reservation.reservation_id, approvedStatus);
-        toast({
-          title: '予約を承認しました',
-          status: 'success',
-          duration: 3000,
-        });
-      } else {
-        await mockRejectReservation(reservation.reservation_id, rejectNote);
-        toast({
-          title: '予約を拒否しました',
-          status: 'success',
-          duration: 3000,
-        });
-      }
-      onSuccess();
-      onClose();
-    } catch (error) {
-      toast({
-        title: 'エラーが発生しました',
-        description: error instanceof Error ? error.message : '予約の処理に失敗しました',
-        status: 'error',
-        duration: 5000,
-      });
-    } finally {
-      setIsLoading(false);
+    if (action === 'approve') {
+      approveMutation.mutate(
+        { id: reservation.reservation_id, approvedStatus },
+        {
+          onSuccess: () => {
+            toast({
+              title: '予約を承認しました',
+              status: 'success',
+              duration: 3000,
+            });
+            onSuccess();
+            onClose();
+          },
+          onError: (error) => {
+            toast({
+              title: 'エラーが発生しました',
+              description: error instanceof Error ? error.message : '予約の承認に失敗しました',
+              status: 'error',
+              duration: 5000,
+            });
+          },
+        }
+      );
+    } else {
+      rejectMutation.mutate(
+        { id: reservation.reservation_id, note: rejectNote },
+        {
+          onSuccess: () => {
+            toast({
+              title: '予約を拒否しました',
+              status: 'success',
+              duration: 3000,
+            });
+            onSuccess();
+            onClose();
+          },
+          onError: (error) => {
+            toast({
+              title: 'エラーが発生しました',
+              description: error instanceof Error ? error.message : '予約の拒否に失敗しました',
+              status: 'error',
+              duration: 5000,
+            });
+          },
+        }
+      );
     }
   };
 
@@ -151,13 +172,18 @@ export const ReservationApprovalDialog = ({
         </ModalBody>
 
         <ModalFooter>
-          <Button variant="ghost" mr={3} onClick={onClose} isDisabled={isLoading}>
+          <Button
+            variant="ghost"
+            mr={3}
+            onClick={onClose}
+            isDisabled={approveMutation.isPending || rejectMutation.isPending}
+          >
             キャンセル
           </Button>
           <Button
             colorScheme={action === 'approve' ? 'green' : 'red'}
             onClick={handleSubmit}
-            isLoading={isLoading}
+            isLoading={approveMutation.isPending || rejectMutation.isPending}
           >
             {action === 'approve' ? '承認' : '拒否'}
           </Button>

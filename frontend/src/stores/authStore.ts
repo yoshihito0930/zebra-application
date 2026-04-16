@@ -8,6 +8,7 @@ interface AuthState {
   refreshToken: string | null;
   isAuthenticated: boolean;
   setAuth: (user: User, accessToken: string, refreshToken: string) => void;
+  setUser: (user: User) => void;
   clearAuth: () => void;
   updateUser: (user: Partial<User>) => void;
 }
@@ -33,6 +34,11 @@ export const useAuthStore = create<AuthState>()(
         // LocalStorageにもトークンを保存（APIクライアントで使用）
         localStorage.setItem('access_token', accessToken);
         localStorage.setItem('refresh_token', refreshToken);
+      },
+
+      // ユーザー情報を設定
+      setUser: (user) => {
+        set({ user });
       },
 
       // 認証情報をクリア（ログアウト時）

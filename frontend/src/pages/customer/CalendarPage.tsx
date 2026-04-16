@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Box,
   Container,
@@ -17,10 +17,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import ReservationCalendar from '../../components/calendar/ReservationCalendar';
 import CreateReservationModal from '../../components/reservation/CreateReservationModal';
-import { mockGetCalendar } from '../../services/reservationService';
+import { useCalendar } from '../../hooks/useCalendar';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
-import type { CalendarResponse } from '../../types';
 
 const STUDIO_ID = 'studio_001'; // TODO: 後で動的に取得
 
@@ -28,44 +27,21 @@ export default function CalendarPage() {
   const navigate = useNavigate();
   const toast = useToast();
   const { isAuthenticated } = useAuthStore();
-  const [calendarData, setCalendarData] = useState<CalendarResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
 
-  // カレンダーデータ取得
-  const fetchCalendarData = async (year: number, month: number) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await mockGetCalendar(STUDIO_ID, year, month);
-      setCalendarData(data);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'カレンダーの取得に失敗しました';
-      setError(errorMessage);
-      toast({
-        title: 'エラー',
-        description: errorMessage,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // 初期読み込み
-  useEffect(() => {
-    fetchCalendarData(currentYear, currentMonth);
-  }, []);
+  // React Queryでカレンダーデータ取得
+  const {
+    data: calendarData,
+    isLoading,
+    error,
+  } = useCalendar(STUDIO_ID, currentYear, currentMonth);
 
   // 月変更時
   const handleMonthChange = (year: number, month: number) => {
     setCurrentYear(year);
     setCurrentMonth(month);
-    fetchCalendarData(year, month);
+    // React Queryが自動的に新しいデータを取得
   };
 
   // 予約作成モーダル
@@ -80,8 +56,13 @@ export default function CalendarPage() {
 
   // 予約作成成功時
   const handleReservationSuccess = () => {
-    // カレンダーを再読み込み
-    fetchCalendarData(currentYear, currentMonth);
+    // React Queryが自動的にカレンダーを再取得（invalidateQueriesで処理）
+    toast({
+      title: '予約を作成しました',
+      status: 'success',
+      duration: 3000,
+      isClosable: true,
+    });
   };
 
   return (
@@ -132,7 +113,7 @@ export default function CalendarPage() {
         {/* カレンダー表示 */}
         {isLoading && <LoadingSpinner />}
 
-        {error && !isLoading && <ErrorMessage message={error} />}
+        {error && !isLoading && <ErrorMessage message={error instanceof Error ? error.message : 'カレンダーの取得に失敗しました'} />}
 
         {!isLoading && !error && calendarData && (
           <Box bg="white" p={6} borderRadius="lg" shadow="md">

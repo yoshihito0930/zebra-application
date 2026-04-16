@@ -108,3 +108,93 @@ export const mockSignup = async (data: SignupRequest): Promise<AuthResponse> => 
     },
   };
 };
+
+// プロフィール更新用の型定義
+export interface UpdateProfileRequest {
+  name?: string;
+  phone_number?: string;
+  company_name?: string;
+  address?: string;
+}
+
+// パスワード変更用の型定義
+export interface ChangePasswordRequest {
+  current_password: string;
+  new_password: string;
+}
+
+// プロフィール更新
+export const updateProfile = async (userId: string, data: UpdateProfileRequest): Promise<User> => {
+  return apiRequest<User>({
+    method: 'PATCH',
+    url: `/users/${userId}`,
+    data,
+  });
+};
+
+// パスワード変更
+export const changePassword = async (userId: string, data: ChangePasswordRequest): Promise<void> => {
+  return apiRequest<void>({
+    method: 'POST',
+    url: `/users/${userId}/change-password`,
+    data,
+  });
+};
+
+// モック: プロフィール更新
+export const mockUpdateProfile = async (
+  userId: string,
+  data: UpdateProfileRequest
+): Promise<User> => {
+  await new Promise((resolve) => setTimeout(resolve, 800)); // 800ms遅延
+
+  // LocalStorageから現在のユーザー情報を取得
+  const authStorage = JSON.parse(localStorage.getItem('auth-storage') || '{}');
+  const currentUser = authStorage.state?.user;
+
+  if (!currentUser || currentUser.user_id !== userId) {
+    throw new Error('ユーザー情報が見つかりません');
+  }
+
+  // 更新後のユーザー情報
+  const updatedUser: User = {
+    ...currentUser,
+    ...data,
+  };
+
+  // LocalStorageを更新
+  authStorage.state.user = updatedUser;
+  localStorage.setItem('auth-storage', JSON.stringify(authStorage));
+
+  return updatedUser;
+};
+
+// モック: パスワード変更
+export const mockChangePassword = async (
+  userId: string,
+  data: ChangePasswordRequest
+): Promise<void> => {
+  await new Promise((resolve) => setTimeout(resolve, 1000)); // 1秒遅延
+
+  // LocalStorageから現在のユーザー情報を取得
+  const authStorage = JSON.parse(localStorage.getItem('auth-storage') || '{}');
+  const currentUser = authStorage.state?.user;
+
+  if (!currentUser || currentUser.user_id !== userId) {
+    throw new Error('ユーザー情報が見つかりません');
+  }
+
+  // 現在のパスワードチェック（モックでは常に"password"と仮定）
+  if (data.current_password !== 'password') {
+    throw new Error('現在のパスワードが正しくありません');
+  }
+
+  // 新しいパスワードのバリデーション
+  if (data.new_password.length < 8) {
+    throw new Error('新しいパスワードは8文字以上で入力してください');
+  }
+
+  // 実際のアプリではサーバー側でパスワードを更新
+  // モックでは何もしない（LocalStorageにパスワードは保存しない）
+  return;
+};
