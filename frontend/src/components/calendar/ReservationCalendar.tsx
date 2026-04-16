@@ -287,6 +287,8 @@ export default function ReservationCalendar({
                               ? 'yellow.100'
                               : reservation.status === 'scheduled'
                               ? 'blue.100'
+                              : reservation.status === 'waitlisted'
+                              ? 'purple.100'
                               : 'gray.100'
                           }
                           _dark={{
@@ -299,6 +301,8 @@ export default function ReservationCalendar({
                                 ? 'yellow.800'
                                 : reservation.status === 'scheduled'
                                 ? 'blue.800'
+                                : reservation.status === 'waitlisted'
+                                ? 'purple.800'
                                 : 'gray.800',
                           }}
                           borderLeftWidth="4px"
@@ -311,6 +315,8 @@ export default function ReservationCalendar({
                               ? 'yellow.500'
                               : reservation.status === 'scheduled'
                               ? 'blue.500'
+                              : reservation.status === 'waitlisted'
+                              ? 'purple.500'
                               : 'gray.500'
                           }
                           px={2}
@@ -334,6 +340,8 @@ export default function ReservationCalendar({
                                 ? 'yellow.800'
                                 : reservation.status === 'scheduled'
                                 ? 'blue.800'
+                                : reservation.status === 'waitlisted'
+                                ? 'purple.800'
                                 : 'gray.800'
                             }
                             _dark={{
@@ -346,6 +354,8 @@ export default function ReservationCalendar({
                                   ? 'yellow.100'
                                   : reservation.status === 'scheduled'
                                   ? 'blue.100'
+                                  : reservation.status === 'waitlisted'
+                                  ? 'purple.100'
                                   : 'gray.100',
                             }}
                           >
@@ -434,6 +444,22 @@ export default function ReservationCalendar({
             >
               <Text fontSize="xs" fontWeight="semibold" color="blue.800" _dark={{ color: 'blue.100' }}>
                 ロケハン
+              </Text>
+            </Box>
+          </HStack>
+          <HStack spacing={2}>
+            <Box
+              bg="purple.100"
+              _dark={{ bg: 'purple.800' }}
+              borderLeftWidth="4px"
+              borderLeftColor="purple.500"
+              px={3}
+              py={1}
+              borderRadius="sm"
+              minW="80px"
+            >
+              <Text fontSize="xs" fontWeight="semibold" color="purple.800" _dark={{ color: 'purple.100' }}>
+                第2キープ
               </Text>
             </Box>
           </HStack>
