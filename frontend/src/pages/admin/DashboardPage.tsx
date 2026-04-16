@@ -51,10 +51,18 @@ export default function DashboardPage() {
           <Heading size="md" mb={4}>
             クイックアクション
           </Heading>
-          <HStack spacing={4}>
+          <HStack spacing={4} flexWrap="wrap">
             <Button
               leftIcon={<Calendar size={18} />}
               colorScheme="brand"
+              onClick={() => navigate('/admin/calendar')}
+            >
+              カレンダーを見る
+            </Button>
+            <Button
+              leftIcon={<Calendar size={18} />}
+              colorScheme="brand"
+              variant="outline"
               onClick={() => navigate('/admin/reservations')}
             >
               全予約を見る
