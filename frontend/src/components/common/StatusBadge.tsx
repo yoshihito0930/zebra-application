@@ -18,7 +18,7 @@ const statusConfig: Record<ReservationStatus, { label: string; variant: string }
   completed: { label: '完了', variant: 'completed' },
 };
 
-export default function StatusBadge({ status, size = 'md' }: StatusBadgeProps) {
+export function StatusBadge({ status, size = 'md' }: StatusBadgeProps) {
   const config = statusConfig[status];
 
   const getFontSize = () => {
@@ -40,3 +40,5 @@ export default function StatusBadge({ status, size = 'md' }: StatusBadgeProps) {
     </Badge>
   );
 }
+
+export default StatusBadge;

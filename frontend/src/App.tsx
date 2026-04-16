@@ -8,6 +8,8 @@ import CustomerCalendarPage from './pages/customer/CalendarPage';
 import ReservationsPage from './pages/customer/ReservationsPage';
 import ReservationDetailPage from './pages/customer/ReservationDetailPage';
 import AdminDashboardPage from './pages/admin/DashboardPage';
+import { ReservationsPage as AdminReservationsPage } from './pages/admin/ReservationsPage';
+import { ReservationDetailPage as AdminReservationDetailPage } from './pages/admin/ReservationDetailPage';
 import GuestReservationVerifyPage from './pages/guest/GuestReservationVerifyPage';
 import GuestReservationDetailPage from './pages/guest/GuestReservationDetailPage';
 
@@ -86,6 +88,26 @@ function App() {
               <ProtectedRoute requiredRole="admin">
                 <AdminLayout>
                   <AdminDashboardPage />
+                </AdminLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/reservations"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminLayout>
+                  <AdminReservationsPage />
+                </AdminLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/reservations/:id"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminLayout>
+                  <AdminReservationDetailPage />
                 </AdminLayout>
               </ProtectedRoute>
             }

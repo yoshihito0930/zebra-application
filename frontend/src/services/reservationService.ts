@@ -131,6 +131,86 @@ const mockReservations: Reservation[] = [
     equipment_insurance: true,
     created_at: '2026-04-12T09:00:00Z',
   },
+  {
+    reservation_id: 'rsv_004',
+    studio_id: 'studio_001',
+    user_id: 'user_003',
+    reservation_type: 'regular',
+    status: 'pending',
+    plan_id: 'plan_001',
+    plan_name: 'スチール撮影プラン',
+    plan_price: 15000,
+    plan_tax_rate: 0.1,
+    date: '2026-04-18',
+    start_time: '10:00',
+    end_time: '13:00',
+    options: [],
+    shooting_type: ['stills'],
+    shooting_details: 'ファッション撮影',
+    photographer_name: '山田太郎',
+    number_of_people: 4,
+    needs_protection: false,
+    equipment_insurance: true,
+    note: '初めての利用です',
+    created_at: '2026-04-15T10:00:00Z',
+  },
+  {
+    reservation_id: 'rsv_005',
+    studio_id: 'studio_001',
+    user_id: 'user_004',
+    reservation_type: 'location_scout',
+    status: 'pending',
+    plan_id: 'plan_003',
+    plan_name: 'ロケハンプラン',
+    plan_price: 5000,
+    plan_tax_rate: 0.1,
+    date: '2026-04-19',
+    start_time: '14:00',
+    end_time: '15:00',
+    options: [],
+    shooting_type: ['stills'],
+    shooting_details: '下見のため',
+    photographer_name: '中村花子',
+    number_of_people: 2,
+    needs_protection: false,
+    equipment_insurance: false,
+    created_at: '2026-04-15T14:00:00Z',
+  },
+  {
+    reservation_id: 'rsv_006',
+    studio_id: 'studio_001',
+    user_id: 'guest',
+    reservation_type: 'regular',
+    status: 'pending',
+    plan_id: 'plan_002',
+    plan_name: '動画撮影プラン',
+    plan_price: 20000,
+    plan_tax_rate: 0.1,
+    date: '2026-04-23',
+    start_time: '10:00',
+    end_time: '14:00',
+    options: [
+      {
+        option_id: 'opt_001',
+        option_name: '6人以上のワークショップでご利用',
+        price: 2000,
+        tax_rate: 0.1,
+      },
+    ],
+    shooting_type: ['video'],
+    shooting_details: 'YouTube動画撮影',
+    photographer_name: '佐々木健',
+    number_of_people: 6,
+    needs_protection: false,
+    equipment_insurance: true,
+    is_guest: true,
+    guest_name: '鈴木太郎',
+    guest_email: 'suzuki@example.com',
+    guest_phone: '090-1234-5678',
+    guest_company: '株式会社テスト',
+    guest_token: 'guest_test_token_001',
+    created_at: '2026-04-16T09:00:00Z',
+  },
 ];
 
 // モック: カレンダー取得
@@ -314,6 +394,84 @@ export const mockCancelGuestReservation = async (token: string): Promise<Reserva
   const index = mockReservations.findIndex((r) => r.reservation_id === reservation.reservation_id);
   if (index !== -1) {
     mockReservations[index] = reservation;
+  }
+
+  return reservation;
+};
+
+// モック: 全予約取得（管理者用）
+export const mockGetAllReservations = async (
+  studioId: string,
+  status?: string
+): Promise<Reservation[]> => {
+  await new Promise((resolve) => setTimeout(resolve, 600)); // 600ms遅延
+
+  let reservations = mockReservations.filter((r) => r.studio_id === studioId);
+
+  // ステータスでフィルタリング
+  if (status && status !== 'all') {
+    reservations = reservations.filter((r) => r.status === status);
+  }
+
+  // 日付の降順でソート
+  return reservations.sort((a, b) => {
+    const dateA = new Date(`${a.date} ${a.start_time}`);
+    const dateB = new Date(`${b.date} ${b.start_time}`);
+    return dateB.getTime() - dateA.getTime();
+  });
+};
+
+// モック: 予約承認（管理者用）
+export const mockApproveReservation = async (
+  id: string,
+  approvedStatus: 'confirmed' | 'tentative' | 'scheduled'
+): Promise<Reservation> => {
+  await new Promise((resolve) => setTimeout(resolve, 800)); // 800ms遅延
+
+  const reservation = mockReservations.find((r) => r.reservation_id === id);
+  if (!reservation) {
+    throw new Error('予約が見つかりません');
+  }
+
+  if (reservation.status !== 'pending') {
+    throw new Error('承認できるのは承認待ちの予約のみです');
+  }
+
+  reservation.status = approvedStatus;
+  reservation.updated_at = new Date().toISOString();
+
+  // 仮予約の場合は有効期限を設定（利用日の7日前）
+  if (approvedStatus === 'tentative') {
+    const reservationDate = new Date(reservation.date);
+    const expiryDate = new Date(reservationDate);
+    expiryDate.setDate(expiryDate.getDate() - 7);
+    reservation.expiry_date = expiryDate.toISOString().split('T')[0];
+  }
+
+  return reservation;
+};
+
+// モック: 予約拒否（管理者用）
+export const mockRejectReservation = async (
+  id: string,
+  note?: string
+): Promise<Reservation> => {
+  await new Promise((resolve) => setTimeout(resolve, 800)); // 800ms遅延
+
+  const reservation = mockReservations.find((r) => r.reservation_id === id);
+  if (!reservation) {
+    throw new Error('予約が見つかりません');
+  }
+
+  if (reservation.status !== 'pending') {
+    throw new Error('拒否できるのは承認待ちの予約のみです');
+  }
+
+  reservation.status = 'cancelled';
+  reservation.cancelled_by = 'owner';
+  reservation.cancelled_at = new Date().toISOString();
+  if (note) {
+    reservation.note = note;
   }
 
   return reservation;
