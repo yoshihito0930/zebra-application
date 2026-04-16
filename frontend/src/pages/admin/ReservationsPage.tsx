@@ -153,7 +153,15 @@ export const ReservationsPage = () => {
                         </Text>
                       </Box>
                     ) : (
-                      <Text fontSize="sm">ユーザーID: {reservation.user_id}</Text>
+                      <Box>
+                        <Text fontWeight="bold">{reservation.user_name || reservation.user_id}</Text>
+                        <Text fontSize="xs" color="gray.600">
+                          {reservation.user_email || '-'}
+                        </Text>
+                        <Text fontSize="xs" color="blue.600">
+                          会員予約
+                        </Text>
+                      </Box>
                     )}
                   </Td>
                   <Td>

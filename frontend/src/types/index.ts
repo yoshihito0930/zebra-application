@@ -110,6 +110,11 @@ export interface Reservation {
   guest_phone?: string;
   guest_company?: string;
   guest_token?: string;
+  // 会員予約用の追加情報（管理画面用）
+  user_name?: string;
+  user_email?: string;
+  user_phone?: string;
+  user_company?: string;
 }
 
 // 予約作成リクエスト

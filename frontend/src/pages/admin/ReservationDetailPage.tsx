@@ -169,6 +169,61 @@ export const ReservationDetailPage = () => {
                 </>
               )}
 
+              {/* 会員予約者情報 */}
+              {!reservation.is_guest && (
+                <>
+                  <Box bg="blue.50" p={4} borderRadius="md" mb={6}>
+                    <Heading size="sm" mb={3}>
+                      会員予約者情報
+                    </Heading>
+                    <Grid templateColumns="repeat(2, 1fr)" gap={4}>
+                      <Box>
+                        <HStack spacing={2} mb={1}>
+                          <User size={16} />
+                          <Text fontSize="sm" color="gray.500">
+                            名前
+                          </Text>
+                        </HStack>
+                        <Text fontWeight="medium">{reservation.user_name || '-'}</Text>
+                      </Box>
+                      <Box>
+                        <HStack spacing={2} mb={1}>
+                          <Mail size={16} />
+                          <Text fontSize="sm" color="gray.500">
+                            メールアドレス
+                          </Text>
+                        </HStack>
+                        <Text fontWeight="medium">{reservation.user_email || '-'}</Text>
+                      </Box>
+                      <Box>
+                        <HStack spacing={2} mb={1}>
+                          <Phone size={16} />
+                          <Text fontSize="sm" color="gray.500">
+                            電話番号
+                          </Text>
+                        </HStack>
+                        <Text fontWeight="medium">{reservation.user_phone || '-'}</Text>
+                      </Box>
+                      <Box>
+                        <HStack spacing={2} mb={1}>
+                          <Building size={16} />
+                          <Text fontSize="sm" color="gray.500">
+                            会社名
+                          </Text>
+                        </HStack>
+                        <Text fontWeight="medium">{reservation.user_company || '-'}</Text>
+                      </Box>
+                    </Grid>
+                    <Box mt={3}>
+                      <Text fontSize="xs" color="gray.500">
+                        ユーザーID: {reservation.user_id}
+                      </Text>
+                    </Box>
+                  </Box>
+                  <Divider mb={6} />
+                </>
+              )}
+
               {/* 予約情報 */}
               <Grid templateColumns="repeat(2, 1fr)" gap={6}>
                 <GridItem>
@@ -181,17 +236,6 @@ export const ReservationDetailPage = () => {
                         {reservation.reservation_id}
                       </Text>
                     </Box>
-
-                    {!reservation.is_guest && (
-                      <Box>
-                        <Text fontSize="sm" color="gray.500" mb={1}>
-                          ユーザーID
-                        </Text>
-                        <Text fontWeight="medium" fontFamily="mono">
-                          {reservation.user_id}
-                        </Text>
-                      </Box>
-                    )}
 
                     <Box>
                       <Text fontSize="sm" color="gray.500" mb={1}>
