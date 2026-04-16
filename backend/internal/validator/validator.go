@@ -39,7 +39,8 @@ var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]
 var phoneRegex = regexp.MustCompile(`^0\d{1,4}-?\d{1,4}-?\d{4}$`)
 
 // 時刻の正規表現（HH:MM形式）
-var timeRegex = regexp.MustCompile(`^([01]\d|2[0-3]):([0-5]\d)$`)
+// 日跨ぎ対応のため、24時以降（26:00など）もサポート
+var timeRegex = regexp.MustCompile(`^([01]\d|2[0-7]):([0-5]\d)$`)
 
 // 日付の正規表現（YYYY-MM-DD形式）
 var dateRegex = regexp.MustCompile(`^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$`)
@@ -131,18 +132,39 @@ func ValidateTimeFormat(timeStr string, fieldName string, result *ValidationResu
 }
 
 // ValidateTimeRange は開始時刻が終了時刻より前かチェックする
+// 日跨ぎ対応のため、終了時刻が開始時刻より大きい（分単位）ことをチェック
+// また、最低利用時間2時間（120分）のチェックも実施
 func ValidateTimeRange(startTime, endTime string, result *ValidationResult) {
 	if !ValidateTime(startTime) || !ValidateTime(endTime) {
 		return // 形式エラーは ValidateTimeFormat で既にチェック済み
 	}
 
-	// 時刻を比較用にパース
-	start, _ := time.Parse("15:04", startTime)
-	end, _ := time.Parse("15:04", endTime)
+	// 時刻を分単位に変換
+	startMin := timeToMinutes(startTime)
+	endMin := timeToMinutes(endTime)
 
-	if !start.Before(end) {
+	// 開始時刻が終了時刻以上の場合はエラー
+	if startMin >= endMin {
 		result.AddError("start_time", "開始時刻は終了時刻より前に設定してください")
+		return
 	}
+
+	// 最低利用時間2時間（120分）のチェック
+	duration := endMin - startMin
+	if duration < 120 {
+		result.AddError("start_time", "最低利用時間は2時間です")
+	}
+}
+
+// timeToMinutes は時刻文字列（HH:MM形式）を0時からの経過分に変換する
+// 例: "10:30" → 630, "26:00" → 1560
+func timeToMinutes(timeStr string) int {
+	var hour, min int
+	_, err := fmt.Sscanf(timeStr, "%d:%d", &hour, &min)
+	if err != nil {
+		return 0
+	}
+	return hour*60 + min
 }
 
 // ValidateEnum は値が列挙型の中に含まれるかチェックする

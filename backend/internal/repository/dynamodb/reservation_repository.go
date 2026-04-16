@@ -265,8 +265,27 @@ func (r *ReservationRepositoryImpl) FindConflicting(ctx context.Context, studioI
 }
 
 // isTimeOverlapping は時間帯が重複しているかチェックする
+// 日跨ぎ対応のため、時刻を分単位に変換して比較
 func isTimeOverlapping(start1, end1, start2, end2 string) bool {
-	return start1 < end2 && start2 < end1
+	// 時刻を分単位に変換
+	start1Min := timeToMinutes(start1)
+	end1Min := timeToMinutes(end1)
+	start2Min := timeToMinutes(start2)
+	end2Min := timeToMinutes(end2)
+
+	// 重複判定: start1 < end2 && start2 < end1
+	return start1Min < end2Min && start2Min < end1Min
+}
+
+// timeToMinutes は時刻文字列（HH:MM形式）を0時からの経過分に変換する
+// 例: "10:30" → 630, "26:00" → 1560
+func timeToMinutes(timeStr string) int {
+	var hour, min int
+	_, err := fmt.Sscanf(timeStr, "%d:%d", &hour, &min)
+	if err != nil {
+		return 0
+	}
+	return hour*60 + min
 }
 
 // FindExpiredTentative は期限切れの仮予約を検索する（GSI1を使用）

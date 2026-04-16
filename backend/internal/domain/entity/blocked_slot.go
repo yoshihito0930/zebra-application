@@ -44,7 +44,7 @@ type BlockedSlot struct {
 //
 // 重複判定のロジック:
 // - 終日ブロック（IsAllDay=true）の場合は常にtrue
-// - 時間帯指定ブロックの場合は、時間帯の重複をチェック
+// - 時間帯指定ブロックの場合は、時間帯の重複をチェック（日跨ぎ対応）
 func (b *BlockedSlot) OverlapsWith(startTime, endTime string) bool {
 	// 終日ブロックの場合は常に重複する
 	if b.IsAllDay {
@@ -56,10 +56,26 @@ func (b *BlockedSlot) OverlapsWith(startTime, endTime string) bool {
 		return false
 	}
 
-	// 時間帯の重複チェック（簡易的な文字列比較）
+	// 時間帯の重複チェック（日跨ぎ対応のため分単位で比較）
 	// 重複条件: startTime < b.EndTime && b.StartTime < endTime
 	// 例: 予約(10:00-14:00) と ブロック(12:00-16:00) → 重複
-	return startTime < *b.EndTime && *b.StartTime < endTime
+	startMin := timeToMinutes(startTime)
+	endMin := timeToMinutes(endTime)
+	bStartMin := timeToMinutes(*b.StartTime)
+	bEndMin := timeToMinutes(*b.EndTime)
+
+	return startMin < bEndMin && bStartMin < endMin
+}
+
+// timeToMinutes は時刻文字列（HH:MM形式）を0時からの経過分に変換する
+// 例: "10:30" → 630, "26:00" → 1560
+func timeToMinutes(timeStr string) int {
+	var hour, min int
+	_, err := fmt.Sscanf(timeStr, "%d:%d", &hour, &min)
+	if err != nil {
+		return 0
+	}
+	return hour*60 + min
 }
 
 // IsValid はブロック枠のデータが有効かを判定する

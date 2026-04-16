@@ -34,7 +34,6 @@ import {
   TabPanel,
 } from '@chakra-ui/react';
 import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { usePlans, useOptions } from '../../hooks/usePlans';
 import { useCreateReservation } from '../../hooks/useReservations';
@@ -43,11 +42,17 @@ import ErrorMessage from '../common/ErrorMessage';
 import { useAuthStore } from '../../stores/authStore';
 import type { CreateReservationRequest } from '../../types';
 
+// 時刻を分単位に変換するヘルパー
+const timeToMinutes = (timeStr: string): number => {
+  const [hourStr, minStr] = timeStr.split(':');
+  return parseInt(hourStr) * 60 + parseInt(minStr);
+};
+
 // 会員予約バリデーションスキーマ
 const memberReservationSchema = z.object({
   studio_id: z.string().min(1, 'スタジオIDが必要です'),
   reservation_type: z.enum(['regular', 'tentative', 'location_scout', 'second_keep'], {
-    errorMap: () => ({ message: '予約種別を選択してください' }),
+    message: '予約種別を選択してください',
   }),
   plan_id: z.string().min(1, 'プランを選択してください'),
   date: z.string().min(1, '日付を選択してください'),
@@ -61,6 +66,23 @@ const memberReservationSchema = z.object({
   equipment_insurance: z.boolean(),
   options: z.array(z.string()).optional(),
   note: z.string().max(1000, '備考は1000文字以内で入力してください').optional(),
+}).refine((data) => {
+  // 時刻範囲チェック: 開始時刻 < 終了時刻
+  const startMin = timeToMinutes(data.start_time);
+  const endMin = timeToMinutes(data.end_time);
+  return startMin < endMin;
+}, {
+  message: '開始時刻は終了時刻より前に設定してください',
+  path: ['start_time'],
+}).refine((data) => {
+  // 最低利用時間2時間のチェック
+  const startMin = timeToMinutes(data.start_time);
+  const endMin = timeToMinutes(data.end_time);
+  const duration = endMin - startMin;
+  return duration >= 120;
+}, {
+  message: '最低利用時間は2時間です',
+  path: ['start_time'],
 });
 
 // ゲスト予約バリデーションスキーマ
@@ -75,7 +97,7 @@ const guestReservationSchema = memberReservationSchema.extend({
 // 統合スキーマ
 const createReservationSchema = z.union([memberReservationSchema, guestReservationSchema]);
 
-type CreateReservationFormData = z.infer<typeof createReservationSchema>;
+// type CreateReservationFormData = z.infer<typeof createReservationSchema>;
 
 interface CreateReservationModalProps {
   isOpen: boolean;
@@ -104,7 +126,7 @@ export default function CreateReservationModal({
   const toast = useToast();
   const { isAuthenticated } = useAuthStore();
   const [tabIndex, setTabIndex] = useState(0); // 0: 会員, 1: ゲスト
-  const [guestToken, setGuestToken] = useState<string | null>(null);
+  // const [guestToken, setGuestToken] = useState<string | null>(null);
 
   // React Queryでプラン・オプション取得
   const { data: plans = [], isLoading: isLoadingPlans, error: plansError } = usePlans(studioId);
@@ -166,8 +188,16 @@ export default function CreateReservationModal({
       }
       // 初期開始時刻設定
       if (initialStartTime) {
-        setValue('start_time', initialStartTime);
+        const [hourStr, minStr] = initialStartTime.split(':');
+        setStartHour(parseInt(hourStr));
+        setStartMinute(parseInt(minStr));
       }
+    } else {
+      // モーダルが閉じられたら時刻をリセット
+      setStartHour(null);
+      setStartMinute(null);
+      setEndHour(null);
+      setEndMinute(null);
     }
   }, [isOpen, isAuthenticated, initialDate, initialStartTime, setValue]);
 
@@ -186,8 +216,8 @@ export default function CreateReservationModal({
     const planTax = Math.floor(planPrice * selectedPlan.tax_rate);
 
     const selectedOptions = options.filter((o) => selectedOptionIds.includes(o.option_id));
-    const optionsPrice = selectedOptions.reduce((sum, o) => sum + o.price, 0);
-    const optionsTax = selectedOptions.reduce((sum, o) => Math.floor(o.price * o.tax_rate), 0);
+    const optionsPrice = selectedOptions.reduce((_, o) => _ + o.price, 0);
+    const optionsTax = selectedOptions.reduce((_, o) => Math.floor(o.price * o.tax_rate), 0);
 
     const subtotal = planPrice + optionsPrice;
     const tax = planTax + optionsTax;
@@ -198,7 +228,7 @@ export default function CreateReservationModal({
 
   const priceInfo = calculateTotalPrice();
 
-  // 前後1時間の制約をチェックする関数
+  // 前後1時間の制約をチェックする関数（15分単位で細かく制御）
   const getBlockedTimeRanges = (date: string, reservationType: string) => {
     // 第2キープとロケハンは前後1時間の制約を受けない
     if (reservationType === 'second_keep' || reservationType === 'location_scout') {
@@ -210,29 +240,32 @@ export default function CreateReservationModal({
       (r) => r.date === date && (r.status === 'confirmed' || r.status === 'tentative')
     );
 
-    const blockedRanges: Array<{ start: number; end: number }> = [];
+    const blockedRanges: Array<{ startMin: number; endMin: number }> = [];
 
     for (const reservation of dateReservations) {
-      const startHour = parseInt(reservation.start_time.split(':')[0]);
-      const endHour = parseInt(reservation.end_time.split(':')[0]);
+      const [startHourStr, startMinStr] = reservation.start_time.split(':');
+      const [endHourStr, endMinStr] = reservation.end_time.split(':');
 
-      // 前1時間と後1時間をブロック
+      const startMin = parseInt(startHourStr) * 60 + parseInt(startMinStr);
+      const endMin = parseInt(endHourStr) * 60 + parseInt(endMinStr);
+
+      // 前1時間（60分）と後1時間（60分）をブロック
       blockedRanges.push({
-        start: Math.max(0, startHour - 1),  // 0時より前にはならない
-        end: Math.min(24, endHour + 1),     // 24時より後にはならない
+        startMin: Math.max(0, startMin - 60),
+        endMin: Math.min(24 * 60, endMin + 60),
       });
     }
 
     return blockedRanges;
   };
 
-  // 時刻が無効かどうかをチェック
-  const isTimeDisabled = (time: string, blockedRanges: Array<{ start: number; end: number }>) => {
-    const hour = parseInt(time.split(':')[0]);
+  // 時刻（時＋分）が無効かどうかをチェック
+  const isTimeSlotDisabled = (hour: number, minute: number, blockedRanges: Array<{ startMin: number; endMin: number }>) => {
+    const totalMin = hour * 60 + minute;
 
     return blockedRanges.some((range) => {
       // 時刻がブロック範囲内にあるかチェック
-      return hour >= range.start && hour < range.end;
+      return totalMin >= range.startMin && totalMin < range.endMin;
     });
   };
 
@@ -255,21 +288,37 @@ export default function CreateReservationModal({
     const isGuest = tabIndex === 1;
     const schema = isGuest ? guestReservationSchema : memberReservationSchema;
 
-    const validatedData = schema.parse({
+    const result = schema.safeParse({
       ...data,
       is_guest: isGuest,
     });
 
+    if (!result.success) {
+      console.error('Validation error:', result.error);
+      const firstError = result.error.issues[0];
+      toast({
+        title: 'バリデーションエラー',
+        description: firstError?.message || '入力内容を確認してください',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    const validatedData = result.data;
+
     const reservationData: CreateReservationRequest = {
       ...validatedData,
       options: validatedData.options || [],
+      shooting_type: validatedData.shooting_type as any,
     };
 
     createMutation.mutate(reservationData, {
       onSuccess: (result) => {
         // ゲスト予約の場合、トークンを保存
         if (isGuest && result.guest_token) {
-          setGuestToken(result.guest_token);
+          // setGuestToken(result.guest_token);
 
           toast({
             title: '予約を作成しました',
@@ -309,15 +358,62 @@ export default function CreateReservationModal({
   const handleClose = () => {
     reset();
     setTabIndex(0); // タブをリセット
-    setGuestToken(null); // ゲストトークンをリセット
+    // setGuestToken(null); // ゲストトークンをリセット
     onClose();
   };
 
-  // 時間選択肢（9:00〜21:00）
-  const timeOptions = Array.from({ length: 13 }, (_, i) => {
-    const hour = 9 + i;
-    return `${String(hour).padStart(2, '0')}:00`;
-  });
+  // 時間選択肢（0〜23時、分は00/15/30/45）
+  const startHourOptions = Array.from({ length: 24 }, (_, i) => i); // 0-23
+  const endHourOptions = Array.from({ length: 25 }, (_, i) => i); // 0-24
+  const minuteOptions = [0, 15, 30, 45];
+
+  // 時と分を分けて管理するためのstate
+  const [startHour, setStartHour] = useState<number | null>(null);
+  const [startMinute, setStartMinute] = useState<number | null>(null);
+  const [endHour, setEndHour] = useState<number | null>(null);
+  const [endMinute, setEndMinute] = useState<number | null>(null);
+
+  // 時と分をHH:MM形式に変換（日跨ぎ対応）
+  const formatTimeString = (hour: number | null, minute: number | null, isEndTime: boolean = false): string => {
+    if (hour === null || minute === null) return '';
+
+    // 終了時刻の場合、日跨ぎ判定を行う
+    let adjustedHour = hour;
+    if (isEndTime && startHour !== null && startMinute !== null) {
+      const startTotalMin = startHour * 60 + startMinute;
+      const endTotalMin = hour * 60 + minute;
+
+      // 終了時刻が開始時刻以下の場合、翌日として扱う（24時間加算）
+      if (endTotalMin <= startTotalMin) {
+        adjustedHour = hour + 24;
+      }
+    }
+
+    return `${String(adjustedHour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  };
+
+  // 時刻が日跨ぎかどうか判定
+  const isOvernightTime = (hour: number | null): boolean => {
+    if (hour === null || startHour === null || startMinute === null || endMinute === null) return false;
+
+    const startTotalMin = startHour * 60 + startMinute;
+    const endTotalMin = hour * 60 + endMinute;
+
+    return endTotalMin <= startTotalMin;
+  };
+
+  // 時刻選択時にフォームの値を更新
+  useEffect(() => {
+    const startTimeStr = formatTimeString(startHour, startMinute, false);
+    const endTimeStr = formatTimeString(endHour, endMinute, true);
+
+    if (startTimeStr) {
+      setValue('start_time', startTimeStr);
+    }
+    if (endTimeStr) {
+      setValue('end_time', endTimeStr);
+    }
+  }, [startHour, startMinute, endHour, endMinute, setValue]);
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} size="3xl" scrollBehavior="inside">
@@ -407,59 +503,82 @@ export default function CreateReservationModal({
                 <Divider />
 
                 {/* 日付・時刻 */}
-                <HStack spacing={4}>
-                  <FormControl isInvalid={!!errors.date} flex={1}>
-                    <FormLabel>日付</FormLabel>
-                    <Input type="date" {...register('date')} />
-                    <FormErrorMessage>{errors.date?.message as string}</FormErrorMessage>
-                  </FormControl>
+                <FormControl isInvalid={!!errors.date}>
+                  <FormLabel>日付</FormLabel>
+                  <Input type="date" {...register('date')} />
+                  <FormErrorMessage>{String(errors.date?.message || '')}</FormErrorMessage>
+                </FormControl>
 
-                  <FormControl isInvalid={!!errors.start_time} flex={1}>
+                <VStack spacing={4} align="stretch">
+                  <FormControl isInvalid={!!errors.start_time}>
                     <FormLabel>開始時刻</FormLabel>
-                    <Controller
-                      name="start_time"
-                      control={control}
-                      render={({ field }) => (
-                        <Select placeholder="選択" {...field}>
-                          {timeOptions.map((time) => (
-                            <option
-                              key={time}
-                              value={time}
-                              disabled={isTimeDisabled(time, blockedTimeRanges)}
-                            >
-                              {time}
-                              {isTimeDisabled(time, blockedTimeRanges) && ' (予約不可)'}
+                    <HStack>
+                      <Select
+                        placeholder="時"
+                        value={startHour ?? ''}
+                        onChange={(e) => setStartHour(e.target.value ? parseInt(e.target.value) : null)}
+                        flex={1}
+                      >
+                        {startHourOptions.map((hour) => (
+                          <option key={hour} value={hour}>
+                            {String(hour).padStart(2, '0')}時
+                          </option>
+                        ))}
+                      </Select>
+                      <Select
+                        placeholder="分"
+                        value={startMinute ?? ''}
+                        onChange={(e) => setStartMinute(e.target.value ? parseInt(e.target.value) : null)}
+                        flex={1}
+                      >
+                        {minuteOptions.map((minute) => {
+                          const disabled = startHour !== null && isTimeSlotDisabled(startHour, minute, blockedTimeRanges);
+                          return (
+                            <option key={minute} value={minute} disabled={disabled}>
+                              {String(minute).padStart(2, '0')}分{disabled && ' (予約不可)'}
                             </option>
-                          ))}
-                        </Select>
-                      )}
-                    />
-                    <FormErrorMessage>{errors.start_time?.message as string}</FormErrorMessage>
+                          );
+                        })}
+                      </Select>
+                    </HStack>
+                    <FormErrorMessage>{String(errors.start_time?.message || '')}</FormErrorMessage>
                   </FormControl>
 
-                  <FormControl isInvalid={!!errors.end_time} flex={1}>
+                  <FormControl isInvalid={!!errors.end_time}>
                     <FormLabel>終了時刻</FormLabel>
-                    <Controller
-                      name="end_time"
-                      control={control}
-                      render={({ field }) => (
-                        <Select placeholder="選択" {...field}>
-                          {timeOptions.map((time) => (
-                            <option
-                              key={time}
-                              value={time}
-                              disabled={isTimeDisabled(time, blockedTimeRanges)}
-                            >
-                              {time}
-                              {isTimeDisabled(time, blockedTimeRanges) && ' (予約不可)'}
+                    <HStack>
+                      <Select
+                        placeholder="時"
+                        value={endHour ?? ''}
+                        onChange={(e) => setEndHour(e.target.value ? parseInt(e.target.value) : null)}
+                        flex={1}
+                      >
+                        {endHourOptions.map((hour) => {
+                          const isOvernight = isOvernightTime(hour);
+                          return (
+                            <option key={hour} value={hour}>
+                              {isOvernight && '翌 '}
+                              {String(hour).padStart(2, '0')}時
                             </option>
-                          ))}
-                        </Select>
-                      )}
-                    />
-                    <FormErrorMessage>{errors.end_time?.message as string}</FormErrorMessage>
+                          );
+                        })}
+                      </Select>
+                      <Select
+                        placeholder="分"
+                        value={endMinute ?? ''}
+                        onChange={(e) => setEndMinute(e.target.value ? parseInt(e.target.value) : null)}
+                        flex={1}
+                      >
+                        {minuteOptions.map((minute) => (
+                          <option key={minute} value={minute}>
+                            {String(minute).padStart(2, '0')}分
+                          </option>
+                        ))}
+                      </Select>
+                    </HStack>
+                    <FormErrorMessage>{String(errors.end_time?.message || '')}</FormErrorMessage>
                   </FormControl>
-                </HStack>
+                </VStack>
 
                 {/* 撮影種別 */}
                 <FormControl isInvalid={!!errors.shooting_type}>
@@ -478,7 +597,7 @@ export default function CreateReservationModal({
                       </CheckboxGroup>
                     )}
                   />
-                  <FormErrorMessage>{errors.shooting_type?.message as string}</FormErrorMessage>
+                  <FormErrorMessage>{String(errors.shooting_type?.message || '')}</FormErrorMessage>
                 </FormControl>
 
                 {/* 撮影詳細 */}
@@ -494,7 +613,7 @@ export default function CreateReservationModal({
                       />
                     )}
                   />
-                  <FormErrorMessage>{errors.shooting_details?.message as string}</FormErrorMessage>
+                  <FormErrorMessage>{String(errors.shooting_details?.message || '')}</FormErrorMessage>
                 </FormControl>
 
                 {/* カメラマン名 */}
@@ -507,7 +626,7 @@ export default function CreateReservationModal({
                       <Input {...field} placeholder="山田太郎" />
                     )}
                   />
-                  <FormErrorMessage>{errors.photographer_name?.message as string}</FormErrorMessage>
+                  <FormErrorMessage>{String(errors.photographer_name?.message || '')}</FormErrorMessage>
                 </FormControl>
 
                 {/* 参加人数 */}
@@ -519,7 +638,7 @@ export default function CreateReservationModal({
                     max={100}
                     {...register('number_of_people', { valueAsNumber: true })}
                   />
-                  <FormErrorMessage>{errors.number_of_people?.message as string}</FormErrorMessage>
+                  <FormErrorMessage>{String(errors.number_of_people?.message || '')}</FormErrorMessage>
                 </FormControl>
 
                 {/* 保険・保護 */}
@@ -551,7 +670,7 @@ export default function CreateReservationModal({
                     placeholder="その他ご要望があれば記入してください"
                     {...register('note')}
                   />
-                  <FormErrorMessage>{errors.note?.message as string}</FormErrorMessage>
+                  <FormErrorMessage>{String(errors.note?.message || '')}</FormErrorMessage>
                 </FormControl>
 
                 <Divider />
@@ -627,25 +746,25 @@ export default function CreateReservationModal({
                           <FormControl isInvalid={!!errors.guest_name}>
                             <FormLabel>お名前 *</FormLabel>
                             <Input placeholder="山田太郎" {...register('guest_name')} />
-                            <FormErrorMessage>{errors.guest_name?.message as string}</FormErrorMessage>
+                            <FormErrorMessage>{String(errors.guest_name?.message || '')}</FormErrorMessage>
                           </FormControl>
 
                           <FormControl isInvalid={!!errors.guest_email}>
                             <FormLabel>メールアドレス *</FormLabel>
                             <Input type="email" placeholder="guest@example.com" {...register('guest_email')} />
-                            <FormErrorMessage>{errors.guest_email?.message as string}</FormErrorMessage>
+                            <FormErrorMessage>{String(errors.guest_email?.message || '')}</FormErrorMessage>
                           </FormControl>
 
                           <FormControl isInvalid={!!errors.guest_phone}>
                             <FormLabel>電話番号 *</FormLabel>
                             <Input placeholder="090-1234-5678" {...register('guest_phone')} />
-                            <FormErrorMessage>{errors.guest_phone?.message as string}</FormErrorMessage>
+                            <FormErrorMessage>{String(errors.guest_phone?.message || '')}</FormErrorMessage>
                           </FormControl>
 
                           <FormControl isInvalid={!!errors.guest_company}>
                             <FormLabel>会社名（任意）</FormLabel>
                             <Input placeholder="株式会社サンプル" {...register('guest_company')} />
-                            <FormErrorMessage>{errors.guest_company?.message as string}</FormErrorMessage>
+                            <FormErrorMessage>{String(errors.guest_company?.message || '')}</FormErrorMessage>
                           </FormControl>
                         </VStack>
                       </Box>
@@ -670,7 +789,7 @@ export default function CreateReservationModal({
                             </RadioGroup>
                           )}
                         />
-                        <FormErrorMessage>{errors.reservation_type?.message as string}</FormErrorMessage>
+                        <FormErrorMessage>{String(errors.reservation_type?.message || '')}</FormErrorMessage>
                       </FormControl>
 
                       {/* プラン選択 */}
@@ -689,7 +808,7 @@ export default function CreateReservationModal({
                             </Select>
                           )}
                         />
-                        <FormErrorMessage>{errors.plan_id?.message as string}</FormErrorMessage>
+                        <FormErrorMessage>{String(errors.plan_id?.message || '')}</FormErrorMessage>
                       </FormControl>
 
                       {/* オプション選択 */}
@@ -717,59 +836,82 @@ export default function CreateReservationModal({
                       <Divider />
 
                       {/* 日付・時刻 */}
-                      <HStack spacing={4}>
-                        <FormControl isInvalid={!!errors.date} flex={1}>
-                          <FormLabel>日付</FormLabel>
-                          <Input type="date" {...register('date')} />
-                          <FormErrorMessage>{errors.date?.message as string}</FormErrorMessage>
-                        </FormControl>
+                      <FormControl isInvalid={!!errors.date}>
+                        <FormLabel>日付</FormLabel>
+                        <Input type="date" {...register('date')} />
+                        <FormErrorMessage>{String(errors.date?.message || '')}</FormErrorMessage>
+                      </FormControl>
 
-                        <FormControl isInvalid={!!errors.start_time} flex={1}>
+                      <VStack spacing={4} align="stretch">
+                        <FormControl isInvalid={!!errors.start_time}>
                           <FormLabel>開始時刻</FormLabel>
-                          <Controller
-                            name="start_time"
-                            control={control}
-                            render={({ field }) => (
-                              <Select placeholder="選択" {...field}>
-                                {timeOptions.map((time) => (
-                                  <option
-                                    key={time}
-                                    value={time}
-                                    disabled={isTimeDisabled(time, blockedTimeRanges)}
-                                  >
-                                    {time}
-                                    {isTimeDisabled(time, blockedTimeRanges) && ' (予約不可)'}
+                          <HStack>
+                            <Select
+                              placeholder="時"
+                              value={startHour ?? ''}
+                              onChange={(e) => setStartHour(e.target.value ? parseInt(e.target.value) : null)}
+                              flex={1}
+                            >
+                              {startHourOptions.map((hour) => (
+                                <option key={hour} value={hour}>
+                                  {String(hour).padStart(2, '0')}時
+                                </option>
+                              ))}
+                            </Select>
+                            <Select
+                              placeholder="分"
+                              value={startMinute ?? ''}
+                              onChange={(e) => setStartMinute(e.target.value ? parseInt(e.target.value) : null)}
+                              flex={1}
+                            >
+                              {minuteOptions.map((minute) => {
+                                const disabled = startHour !== null && isTimeSlotDisabled(startHour, minute, blockedTimeRanges);
+                                return (
+                                  <option key={minute} value={minute} disabled={disabled}>
+                                    {String(minute).padStart(2, '0')}分{disabled && ' (予約不可)'}
                                   </option>
-                                ))}
-                              </Select>
-                            )}
-                          />
-                          <FormErrorMessage>{errors.start_time?.message as string}</FormErrorMessage>
+                                );
+                              })}
+                            </Select>
+                          </HStack>
+                          <FormErrorMessage>{String(errors.start_time?.message || '')}</FormErrorMessage>
                         </FormControl>
 
-                        <FormControl isInvalid={!!errors.end_time} flex={1}>
+                        <FormControl isInvalid={!!errors.end_time}>
                           <FormLabel>終了時刻</FormLabel>
-                          <Controller
-                            name="end_time"
-                            control={control}
-                            render={({ field }) => (
-                              <Select placeholder="選択" {...field}>
-                                {timeOptions.map((time) => (
-                                  <option
-                                    key={time}
-                                    value={time}
-                                    disabled={isTimeDisabled(time, blockedTimeRanges)}
-                                  >
-                                    {time}
-                                    {isTimeDisabled(time, blockedTimeRanges) && ' (予約不可)'}
+                          <HStack>
+                            <Select
+                              placeholder="時"
+                              value={endHour ?? ''}
+                              onChange={(e) => setEndHour(e.target.value ? parseInt(e.target.value) : null)}
+                              flex={1}
+                            >
+                              {endHourOptions.map((hour) => {
+                                const isOvernight = isOvernightTime(hour);
+                                return (
+                                  <option key={hour} value={hour}>
+                                    {isOvernight && '翌 '}
+                                    {String(hour).padStart(2, '0')}時
                                   </option>
-                                ))}
-                              </Select>
-                            )}
-                          />
-                          <FormErrorMessage>{errors.end_time?.message as string}</FormErrorMessage>
+                                );
+                              })}
+                            </Select>
+                            <Select
+                              placeholder="分"
+                              value={endMinute ?? ''}
+                              onChange={(e) => setEndMinute(e.target.value ? parseInt(e.target.value) : null)}
+                              flex={1}
+                            >
+                              {minuteOptions.map((minute) => (
+                                <option key={minute} value={minute}>
+                                  {String(minute).padStart(2, '0')}分
+                                </option>
+                              ))}
+                            </Select>
+                          </HStack>
+                          <FormErrorMessage>{String(errors.end_time?.message || '')}</FormErrorMessage>
                         </FormControl>
-                      </HStack>
+                      </VStack>
 
                       {/* 撮影種別 */}
                       <FormControl isInvalid={!!errors.shooting_type}>
@@ -788,7 +930,7 @@ export default function CreateReservationModal({
                             </CheckboxGroup>
                           )}
                         />
-                        <FormErrorMessage>{errors.shooting_type?.message as string}</FormErrorMessage>
+                        <FormErrorMessage>{String(errors.shooting_type?.message || '')}</FormErrorMessage>
                       </FormControl>
 
                       {/* 撮影詳細 */}
@@ -804,7 +946,7 @@ export default function CreateReservationModal({
                             />
                           )}
                         />
-                        <FormErrorMessage>{errors.shooting_details?.message as string}</FormErrorMessage>
+                        <FormErrorMessage>{String(errors.shooting_details?.message || '')}</FormErrorMessage>
                       </FormControl>
 
                       {/* カメラマン名 */}
@@ -817,7 +959,7 @@ export default function CreateReservationModal({
                             <Input {...field} placeholder="山田太郎" />
                           )}
                         />
-                        <FormErrorMessage>{errors.photographer_name?.message as string}</FormErrorMessage>
+                        <FormErrorMessage>{String(errors.photographer_name?.message || '')}</FormErrorMessage>
                       </FormControl>
 
                       {/* 参加人数 */}
@@ -829,7 +971,7 @@ export default function CreateReservationModal({
                           max={100}
                           {...register('number_of_people', { valueAsNumber: true })}
                         />
-                        <FormErrorMessage>{errors.number_of_people?.message as string}</FormErrorMessage>
+                        <FormErrorMessage>{String(errors.number_of_people?.message || '')}</FormErrorMessage>
                       </FormControl>
 
                       {/* 保険・保護 */}
@@ -861,7 +1003,7 @@ export default function CreateReservationModal({
                           placeholder="その他ご要望があれば記入してください"
                           {...register('note')}
                         />
-                        <FormErrorMessage>{errors.note?.message as string}</FormErrorMessage>
+                        <FormErrorMessage>{String(errors.note?.message || '')}</FormErrorMessage>
                       </FormControl>
 
                       <Divider />

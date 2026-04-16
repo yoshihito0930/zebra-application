@@ -103,32 +103,60 @@ func (u *ReservationUsecase) checkBufferTimeConflict(ctx context.Context, studio
 }
 
 // parseTime は時刻文字列（HH:MM形式）をパースする
+// 日跨ぎ対応のため、24時以降（26:00など）もサポート
 func parseTime(timeStr string) (int, int, error) {
 	var hour, min int
 	_, err := fmt.Sscanf(timeStr, "%d:%d", &hour, &min)
 	if err != nil {
 		return 0, 0, err
 	}
+	// 時間の妥当性チェック（0-27時、0-59分）
+	if hour < 0 || hour > 27 || min < 0 || min > 59 {
+		return 0, 0, fmt.Errorf("invalid time: %s", timeStr)
+	}
 	return hour, min, nil
 }
 
 // formatTime は時刻を文字列（HH:MM形式）にフォーマットする
+// 日跨ぎ対応のため、24時以降（26:00など）も許可
 func formatTime(hour, min int) string {
 	// 時間が負の場合は0時として扱う
 	if hour < 0 {
 		hour = 0
+		min = 0
 	}
-	// 時間が24時以上の場合は23:59として扱う
-	if hour >= 24 {
-		hour = 23
+	// 分が負の場合は0分として扱う
+	if min < 0 {
+		min = 0
+	}
+	// 分が60以上の場合は59分として扱う
+	if min >= 60 {
 		min = 59
 	}
 	return fmt.Sprintf("%02d:%02d", hour, min)
 }
 
 // isTimeOverlapping は2つの時間帯が重複しているかチェックする
+// 日跨ぎ対応のため、時刻を分単位に変換して比較
 func isTimeOverlapping(start1, end1, start2, end2 string) bool {
-	return start1 < end2 && start2 < end1
+	// 時刻を分単位に変換
+	start1Min := timeToMinutes(start1)
+	end1Min := timeToMinutes(end1)
+	start2Min := timeToMinutes(start2)
+	end2Min := timeToMinutes(end2)
+
+	// 重複判定: start1 < end2 && start2 < end1
+	return start1Min < end2Min && start2Min < end1Min
+}
+
+// timeToMinutes は時刻文字列（HH:MM形式）を0時からの経過分に変換する
+// 例: "10:30" → 630, "26:00" → 1560
+func timeToMinutes(timeStr string) int {
+	hour, min, err := parseTime(timeStr)
+	if err != nil {
+		return 0
+	}
+	return hour*60 + min
 }
 
 // CreateReservation は予約を作成する
