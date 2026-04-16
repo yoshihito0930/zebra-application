@@ -42,7 +42,7 @@ func NewReservationUsecase(
 // CreateReservationInput は予約作成のリクエスト
 type CreateReservationInput struct {
 	StudioID           string
-	UserID             string
+	UserID             *string // 会員予約の場合のみ設定（ゲスト予約ではnil）
 	ReservationType    entity.ReservationType
 	PlanID             string
 	Date               time.Time
@@ -432,6 +432,202 @@ func (u *ReservationUsecase) PromoteReservation(ctx context.Context, reservation
 
 	if err := u.reservationRepo.Update(ctx, reservation); err != nil {
 		return nil, fmt.Errorf("failed to promote reservation: %w", err)
+	}
+
+	return reservation, nil
+}
+
+// CreateGuestReservationInput はゲスト予約作成のリクエスト
+type CreateGuestReservationInput struct {
+	StudioID           string
+	GuestName          string
+	GuestEmail         string
+	GuestPhone         string
+	GuestCompany       *string // オプショナル
+	ReservationType    entity.ReservationType
+	PlanID             string
+	Date               time.Time
+	StartTime          string
+	EndTime            string
+	Options            []string
+	ShootingType       []string
+	ShootingDetails    string
+	PhotographerName   string
+	NumberOfPeople     int
+	NeedsProtection    bool
+	EquipmentInsurance bool
+	Note               *string
+}
+
+// CreateGuestReservation はゲスト予約を作成する
+// ゲストユーザー機能フェーズ2: 認証なしで予約を作成可能
+//
+// ビジネスルール:
+// 1. CreateReservationと同様のバリデーション（プラン、重複、ブロック枠、定休日）
+// 2. ゲストトークンを生成して保存
+// 3. 確認メールを送信（トークンリンク含む）
+func (u *ReservationUsecase) CreateGuestReservation(ctx context.Context, input CreateGuestReservationInput) (*entity.Reservation, string, error) {
+	// 1. プランの存在確認と有効性チェック
+	plan, err := u.planRepo.FindByID(ctx, input.StudioID, input.PlanID)
+	if err != nil {
+		return nil, "", apierror.ErrPlanNotFound
+	}
+	if !plan.IsActive {
+		return nil, "", apierror.ErrPlanInactive
+	}
+
+	// 2. スタジオの存在確認（定休日チェック用）
+	studio, err := u.studioRepo.FindByID(ctx, input.StudioID)
+	if err != nil {
+		return nil, "", apierror.ErrStudioNotFound
+	}
+
+	// 3. 定休日チェック
+	if studio.IsRegularHoliday(input.Date) {
+		return nil, "", apierror.ErrRegularHoliday
+	}
+
+	// 4. ブロック枠チェック
+	blockedSlots, err := u.blockedSlotRepo.FindByStudioAndDate(ctx, input.StudioID, input.Date)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to find blocked slots: %w", err)
+	}
+	for _, slot := range blockedSlots {
+		if slot.OverlapsWith(input.StartTime, input.EndTime) {
+			return nil, "", apierror.ErrBlockedSlotConflict
+		}
+	}
+
+	// 5. 予約重複チェック
+	conflictingReservations, err := u.reservationRepo.FindConflicting(ctx, input.StudioID, input.Date, input.StartTime, input.EndTime)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to find conflicting reservations: %w", err)
+	}
+
+	if input.ReservationType == entity.ReservationTypeSecondKeep {
+		if len(conflictingReservations) == 0 {
+			return nil, "", apierror.ErrSecondKeepNoPrimary
+		}
+	} else {
+		if len(conflictingReservations) > 0 {
+			return nil, "", apierror.ErrReservationConflict
+		}
+	}
+
+	// 6. ゲストトークンを生成
+	guestToken := uuid.New().String()
+
+	// 7. 予約エンティティを作成
+	now := time.Now()
+	reservation := &entity.Reservation{
+		ReservationID:      uuid.New().String(),
+		StudioID:           input.StudioID,
+		UserID:             nil, // ゲスト予約の場合はnil
+		IsGuest:            true,
+		GuestName:          &input.GuestName,
+		GuestEmail:         &input.GuestEmail,
+		GuestPhone:         &input.GuestPhone,
+		GuestCompany:       input.GuestCompany,
+		GuestToken:         &guestToken,
+		ReservationType:    input.ReservationType,
+		Status:             entity.ReservationStatusPending,
+		PlanID:             input.PlanID,
+		Date:               input.Date,
+		StartTime:          input.StartTime,
+		EndTime:            input.EndTime,
+		Note:               input.Note,
+		NeedsProtection:    input.NeedsProtection,
+		NumberOfPeople:     input.NumberOfPeople,
+		EquipmentInsurance: input.EquipmentInsurance,
+		Options:            input.Options,
+		ShootingType:       input.ShootingType,
+		ShootingDetails:    input.ShootingDetails,
+		PhotographerName:   input.PhotographerName,
+		CreatedAt:          now,
+		UpdatedAt:          now,
+	}
+
+	// 第2キープの場合は LinkedReservationID を設定
+	if input.ReservationType == entity.ReservationTypeSecondKeep && len(conflictingReservations) > 0 {
+		linkedID := conflictingReservations[0].ReservationID
+		reservation.LinkedReservationID = &linkedID
+	}
+
+	// 8. リポジトリに保存
+	if err := u.reservationRepo.Create(ctx, reservation); err != nil {
+		return nil, "", fmt.Errorf("failed to create guest reservation: %w", err)
+	}
+
+	// ゲストトークンを返す（メール送信はハンドラー層で実施）
+	return reservation, guestToken, nil
+}
+
+// FindByGuestToken はゲストトークンで予約を取得する
+func (u *ReservationUsecase) FindByGuestToken(ctx context.Context, guestToken string) (*entity.Reservation, error) {
+	reservation, err := u.reservationRepo.FindByGuestToken(ctx, guestToken)
+	if err != nil {
+		return nil, apierror.ErrReservationNotFound
+	}
+
+	// ゲスト予約であることを確認
+	if !reservation.IsGuest {
+		return nil, apierror.ErrReservationNotFound
+	}
+
+	return reservation, nil
+}
+
+// CancelByGuestToken はゲストトークンで予約をキャンセルする
+func (u *ReservationUsecase) CancelByGuestToken(ctx context.Context, guestToken string) (*entity.Reservation, error) {
+	// 1. トークンで予約を取得
+	reservation, err := u.FindByGuestToken(ctx, guestToken)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. キャンセル可能状態を確認
+	if !reservation.CanCancel() {
+		return nil, apierror.ErrInvalidStatusTransition
+	}
+
+	// 3. ステータスをcancelledに更新
+	now := time.Now()
+	cancelledBy := entity.CancelledByCustomer
+	reservation.Status = entity.ReservationStatusCancelled
+	reservation.CancelledBy = &cancelledBy
+	reservation.CancelledAt = &now
+	reservation.UpdatedAt = now
+
+	if err := u.reservationRepo.Update(ctx, reservation); err != nil {
+		return nil, fmt.Errorf("failed to cancel guest reservation: %w", err)
+	}
+
+	return reservation, nil
+}
+
+// PromoteByGuestToken はゲストトークンで仮予約を本予約に昇格する
+func (u *ReservationUsecase) PromoteByGuestToken(ctx context.Context, guestToken string) (*entity.Reservation, error) {
+	// 1. トークンで予約を取得
+	reservation, err := u.FindByGuestToken(ctx, guestToken)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. 昇格可能ステータスのチェック（tentativeのみ）
+	if !reservation.CanPromoteToConfirmed() {
+		return nil, apierror.ErrInvalidStatusTransition
+	}
+
+	// 3. ステータスをpendingに変更（オーナーの承認待ち）
+	now := time.Now()
+	promotedFrom := entity.PromotedFromTentative
+	reservation.Status = entity.ReservationStatusPending
+	reservation.PromotedFrom = &promotedFrom
+	reservation.PromotedAt = &now
+	reservation.UpdatedAt = now
+
+	if err := u.reservationRepo.Update(ctx, reservation); err != nil {
+		return nil, fmt.Errorf("failed to promote guest reservation: %w", err)
 	}
 
 	return reservation, nil

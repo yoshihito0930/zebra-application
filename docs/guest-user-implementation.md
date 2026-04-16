@@ -223,5 +223,43 @@
 ---
 
 **作成日**: 2026-04-14
-**最終更新日**: 2026-04-14
-**ステータス**: フェーズ1実装中
+**最終更新日**: 2026-04-16
+**ステータス**: フェーズ2バックエンド実装完了、フロントエンド実装待ち
+
+---
+
+## 実装完了履歴
+
+### 2026-04-16: フェーズ2バックエンドAPI実装完了
+
+#### 実装内容
+1. **データモデル拡張**
+   - Reservationエンティティにゲスト用フィールド追加（is_guest, guest_name, guest_email, guest_phone, guest_company, guest_token）
+   - user_idをオプショナルに変更
+
+2. **新規Lambda関数（3つ）**
+   - `reservation-guest-get`: ゲスト予約詳細取得
+   - `reservation-guest-cancel`: ゲスト予約キャンセル
+   - `reservation-guest-promote`: ゲスト仮予約昇格
+
+3. **メール通知機能**
+   - SES SDK v2統合
+   - 予約確認メール（トークンリンク含む）
+   - キャンセル完了メール
+   - 昇格受付メール
+
+4. **リポジトリ・ユースケース拡張**
+   - FindByGuestToken実装（GSI5使用）
+   - CreateGuestReservation、CancelByGuestToken、PromoteByGuestToken実装
+
+5. **ドキュメント更新**
+   - API設計書にゲスト予約エンドポイント追加
+   - データモデル定義にゲストフィールド追加
+   - データベース設計にGSI5追加
+
+#### 今後の作業
+1. DynamoDB GSI5設定（Terraform）
+2. API Gateway設定（新規エンドポイント登録）
+3. SES設定（送信元メール検証、Sandbox解除）
+4. 予約作成APIのゲスト対応実装
+5. フロントエンド実装（予約フォーム、確認ページ）

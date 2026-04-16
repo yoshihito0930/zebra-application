@@ -164,6 +164,34 @@ func (r *ReservationRepositoryImpl) FindByUserID(ctx context.Context, userID str
 	return reservations, nil
 }
 
+// FindByGuestToken はゲストトークンで予約を取得する（GSI5を使用）
+func (r *ReservationRepositoryImpl) FindByGuestToken(ctx context.Context, guestToken string) (*entity.Reservation, error) {
+	result, err := r.client.Query(ctx, &dynamodb.QueryInput{
+		TableName:              aws.String(r.tableName),
+		IndexName:              aws.String("GSI5"),
+		KeyConditionExpression: aws.String("guest_token = :guest_token"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":guest_token": &types.AttributeValueMemberS{Value: guestToken},
+		},
+		Limit: aws.Int32(1),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query reservation by guest token: %w", err)
+	}
+
+	if len(result.Items) == 0 {
+		return nil, fmt.Errorf("reservation not found for guest token")
+	}
+
+	var reservation entity.Reservation
+	err = attributevalue.UnmarshalMap(result.Items[0], &reservation)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal reservation: %w", err)
+	}
+
+	return &reservation, nil
+}
+
 // FindByLinkedReservationID は第2キープを検索する（GSI4を使用）
 func (r *ReservationRepositoryImpl) FindByLinkedReservationID(ctx context.Context, linkedReservationID string) ([]*entity.Reservation, error) {
 	result, err := r.client.Query(ctx, &dynamodb.QueryInput{

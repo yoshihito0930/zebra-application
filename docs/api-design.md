@@ -11,7 +11,7 @@
 ### 予約
 | メソッド | パス | 説明 | UC | 認証 | ロール |
 |---------|------|------|----|------|--------|
-| POST | /reservations | 予約を作成する | UC-103/202 | 要 | customer, admin |
+| POST | /reservations | 予約を作成する（会員/ゲスト両対応） | UC-103/202 | オプショナル | customer, admin, guest |
 | GET | /reservations/{id} | 予約詳細を取得する | UC-104/207 | 要 | customer, admin, staff |
 | GET | /reservations/me | 自分の予約一覧を取得する | UC-104 | 要 | customer |
 | GET | /reservations | 予約一覧を取得する（日付範囲） | UC-206/301 | 要 | admin, staff |
@@ -20,6 +20,13 @@
 | PATCH | /reservations/{id}/approve | 予約を承認する | UC-203 | 要 | admin |
 | PATCH | /reservations/{id}/reject | 予約を拒否する | UC-204 | 要 | admin |
 | PATCH | /reservations/{id}/promote | 仮予約を本予約に切り替える | UC-106/205 | 要 | customer, admin |
+
+### ゲスト予約（トークンベース認証）
+| メソッド | パス | 説明 | UC | 認証 | ロール |
+|---------|------|------|----|------|--------|
+| GET | /reservations/guest/{token} | ゲスト予約詳細を取得する | - | 不要 | guest |
+| PATCH | /reservations/guest/{token}/cancel | ゲスト予約をキャンセルする | - | 不要 | guest |
+| PATCH | /reservations/guest/{token}/promote | ゲスト仮予約を本予約に切り替える | - | 不要 | guest |
 
 ### カレンダー
 | メソッド | パス | 説明 | UC | 認証 | ロール |
@@ -127,10 +134,46 @@
 #### POST /reservations
 予約を作成する
 
+**認証**: オプショナル（会員予約の場合は要、ゲスト予約の場合は不要）
+
+**ゲスト予約対応** (2026-04-16実装完了):
+- ユーザー登録なしでも予約作成が可能
+- ゲスト予約の場合は `is_guest: true` とゲスト情報を含める
+- 予約確認用トークンがメールで送信される
+
+##### 会員予約の場合
+
 リクエスト:
 ```json
 {
   "studio_id": "studio_001",
+  "reservation_type": "regular",
+  "plan_id": "plan_001",
+  "date": "2025-03-15",
+  "start_time": "10:00",
+  "end_time": "13:00",
+  "options": ["opt_001", "opt_002"],
+  "shooting_type": ["stills", "video"],
+  "shooting_details": "商品撮影、モデル2名",
+  "photographer_name": "佐藤次郎",
+  "number_of_people": 5,
+  "needs_protection": false,
+  "equipment_insurance": true,
+  "note": "大型機材を持ち込みます"
+}
+```
+
+##### ゲスト予約の場合
+
+リクエスト:
+```json
+{
+  "studio_id": "studio_001",
+  "is_guest": true,
+  "guest_name": "山田太郎",
+  "guest_email": "guest@example.com",
+  "guest_phone": "090-1234-5678",
+  "guest_company": "株式会社サンプル",
   "reservation_type": "regular",
   "plan_id": "plan_001",
   "date": "2025-03-15",
@@ -1121,3 +1164,143 @@ admin/staffは所属スタジオのデータのみアクセス可能。トーク
 ```
 
 ※ 500エラーでは内部の詳細情報はレスポンスに含めず、CloudWatch Logsに記録する。
+
+---
+
+## ゲスト予約API（2026-04-16実装完了）
+
+### GET /reservations/guest/{token}
+ゲスト予約詳細を取得する
+
+**認証**: 不要（トークンベース認証）
+
+**パスパラメータ**:
+- `token`: 予約確認用トークン（UUID v4形式）
+
+レスポンス (200):
+```json
+{
+  "reservation_id": "rsv_001",
+  "studio_id": "studio_001",
+  "is_guest": true,
+  "guest_name": "山田太郎",
+  "guest_email": "guest@example.com",
+  "guest_phone": "090-1234-5678",
+  "guest_company": "株式会社サンプル",
+  "reservation_type": "regular",
+  "status": "pending",
+  "plan_id": "plan_001",
+  "plan_name": "スチール撮影プラン",
+  "plan_price": 15000,
+  "plan_tax_rate": 0.10,
+  "date": "2025-03-15",
+  "start_time": "10:00",
+  "end_time": "13:00",
+  "options": [
+    {
+      "option_id": "opt_001",
+      "option_name": "6人以上のワークショップでご利用",
+      "price": 2000,
+      "tax_rate": 0.10
+    }
+  ],
+  "shooting_type": ["stills", "video"],
+  "shooting_details": "商品撮影、モデル2名",
+  "photographer_name": "佐藤次郎",
+  "number_of_people": 5,
+  "needs_protection": false,
+  "equipment_insurance": true,
+  "note": "大型機材を持ち込みます",
+  "created_at": "2025-03-10T14:30:00+09:00",
+  "updated_at": "2025-03-10T15:00:00+09:00"
+}
+```
+
+### PATCH /reservations/guest/{token}/cancel
+ゲスト予約をキャンセルする
+
+**認証**: 不要（トークンベース認証）
+
+**パスパラメータ**:
+- `token`: 予約確認用トークン（UUID v4形式）
+
+リクエストボディ: なし
+
+レスポンス (200):
+```json
+{
+  "reservation_id": "rsv_001",
+  "status": "cancelled",
+  "cancelled_by": "customer",
+  "cancelled_at": "2025-03-11T10:00:00+09:00"
+}
+```
+
+処理内容:
+1. トークンで予約を検索
+2. キャンセル可能状態を確認（pending/tentative/confirmed/waitlisted/scheduled）
+3. ステータスを `cancelled` に更新
+4. キャンセル完了メールを送信
+
+### PATCH /reservations/guest/{token}/promote
+ゲスト仮予約を本予約に切り替える
+
+**認証**: 不要（トークンベース認証）
+
+**パスパラメータ**:
+- `token`: 予約確認用トークン（UUID v4形式）
+
+リクエストボディ: なし
+
+レスポンス (200):
+```json
+{
+  "reservation_id": "rsv_001",
+  "reservation_type": "regular",
+  "status": "pending",
+  "promoted_from": "tentative",
+  "promoted_at": "2025-03-11T10:00:00+09:00"
+}
+```
+
+処理内容:
+1. トークンで予約を検索
+2. 昇格可能状態を確認（tentativeのみ）
+3. ステータスを `pending` に変更（管理者の承認待ち）
+4. 昇格受付メールを送信
+
+### ゲスト予約の仕組み
+
+1. **予約作成時**:
+   - `POST /reservations` に `is_guest: true` とゲスト情報を含めて送信
+   - サーバー側でUUID v4形式のトークンを生成
+   - トークンを含む確認メールを送信
+   - メールには予約確認用URL（`https://studio-zebra.com/reservations/guest/{token}`）が含まれる
+
+2. **予約確認**:
+   - メールのリンクをクリックして予約詳細ページにアクセス
+   - トークンで予約を取得して表示
+
+3. **予約変更・キャンセル**:
+   - 同じトークンを使用してキャンセルや昇格が可能
+   - 認証不要（トークンが認証情報の役割を果たす）
+
+4. **セキュリティ**:
+   - トークンはUUID v4形式で推測不可能
+   - HTTPSのみ許可
+   - トークン有効期限は設定せず、予約の存在期間中は有効
+   - メール送信先のアドレスのみがトークンにアクセス可能
+
+### バリデーションルール（ゲスト予約）
+
+#### POST /reservations（ゲスト予約の場合）
+
+| フィールド | ルール |
+|-----------|--------|
+| is_guest | 必須、trueであること |
+| guest_name | 必須、1〜50文字 |
+| guest_email | 必須、メールアドレス形式 |
+| guest_phone | 必須、電話番号形式 |
+| guest_company | 任意、100文字以内 |
+
+その他のフィールド（studio_id, reservation_type, plan_id等）は会員予約と同様のバリデーションを適用。

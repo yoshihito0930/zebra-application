@@ -150,7 +150,7 @@ func createReservationHandler(ctx context.Context, request events.APIGatewayProx
 	// ユースケースの入力データを作成
 	input := usecase.CreateReservationInput{
 		StudioID:           req.StudioID,
-		UserID:             userID,
+		UserID:             &userID,
 		ReservationType:    entity.ReservationType(req.ReservationType),
 		PlanID:             req.PlanID,
 		Date:               date,

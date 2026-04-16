@@ -66,8 +66,26 @@ type Reservation struct {
 	// ReservationID は予約の一意識別子（UUID）
 	ReservationID string `json:"reservation_id" dynamodbav:"reservation_id"`
 
-	// UserID は予約者のユーザーID
-	UserID string `json:"user_id" dynamodbav:"user_id"`
+	// UserID は予約者のユーザーID（ゲスト予約の場合はnil）
+	UserID *string `json:"user_id,omitempty" dynamodbav:"user_id,omitempty"`
+
+	// IsGuest はゲスト予約フラグ
+	IsGuest bool `json:"is_guest" dynamodbav:"is_guest"`
+
+	// GuestName はゲスト名（ゲスト予約の場合のみ）
+	GuestName *string `json:"guest_name,omitempty" dynamodbav:"guest_name,omitempty"`
+
+	// GuestEmail はゲストメールアドレス（ゲスト予約の場合のみ）
+	GuestEmail *string `json:"guest_email,omitempty" dynamodbav:"guest_email,omitempty"`
+
+	// GuestPhone はゲスト電話番号（ゲスト予約の場合のみ）
+	GuestPhone *string `json:"guest_phone,omitempty" dynamodbav:"guest_phone,omitempty"`
+
+	// GuestCompany はゲスト会社名（ゲスト予約の場合のみ、オプショナル）
+	GuestCompany *string `json:"guest_company,omitempty" dynamodbav:"guest_company,omitempty"`
+
+	// GuestToken は予約確認用トークン（ゲスト予約の場合のみ、UUID）
+	GuestToken *string `json:"guest_token,omitempty" dynamodbav:"guest_token,omitempty"`
 
 	// ReservationType は予約種別（regular/tentative/location_scout/second_keep）
 	ReservationType ReservationType `json:"reservation_type" dynamodbav:"reservation_type"`

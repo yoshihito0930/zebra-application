@@ -48,7 +48,13 @@
 |------------|---|------|------|
 | studio_id | string | ○ | スタジオID |
 | reservation_id | string(UUID) | ○ | 予約ID |
-| user_id | string | ○ | 予約者のユーザID |
+| user_id | string | - | 予約者のユーザID（ゲスト予約の場合はnull） |
+| is_guest | boolean | ○ | ゲスト予約フラグ（デフォルト: false、2026-04-16追加） |
+| guest_name | string | - | ゲスト名（ゲスト予約の場合のみ、2026-04-16追加） |
+| guest_email | string | - | ゲストメールアドレス（ゲスト予約の場合のみ、2026-04-16追加） |
+| guest_phone | string | - | ゲスト電話番号（ゲスト予約の場合のみ、2026-04-16追加） |
+| guest_company | string | - | ゲスト会社名（ゲスト予約の場合、オプショナル、2026-04-16追加） |
+| guest_token | string(UUID) | - | 予約確認用トークン（ゲスト予約の場合のみ、UUID v4形式、2026-04-16追加） |
 | reservation_type | enum | ○ | regular / tentative / location_scout / second_keep |
 | status | enum | ○ | pending / tentative / confirmed / waitlisted / scheduled / cancelled / expired / completed |
 | plan_id | string | ○ | 料金プランID |

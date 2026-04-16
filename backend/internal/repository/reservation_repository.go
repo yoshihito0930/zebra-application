@@ -61,6 +61,16 @@ type ReservationRepository interface {
 	// 戻り値: 予約のスライスとエラー。予約が存在しない場合は空スライスを返す
 	FindByUserID(ctx context.Context, userID string) ([]*entity.Reservation, error)
 
+	// FindByGuestToken はゲストトークンで予約を取得する
+	// ゲスト予約の確認・キャンセル・昇格に使用
+	//
+	// DynamoDBキー: GSI5（PK=guest_token）を使用
+	//
+	// ctx: リクエストコンテキスト
+	// guestToken: ゲスト確認用トークン（UUID v4形式）
+	// 戻り値: 予約エンティティとエラー。予約が存在しない場合はnil, errorを返す
+	FindByGuestToken(ctx context.Context, guestToken string) (*entity.Reservation, error)
+
 	// FindByLinkedReservationID は第2キープを検索する
 	// アクセスパターン: AP-42（第2キープ取得）
 	//
