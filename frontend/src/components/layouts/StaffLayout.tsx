@@ -25,17 +25,13 @@ import {
   Calendar,
   LogOut,
   User,
-  MessageCircle,
-  Settings,
   LayoutDashboard,
-  Ban,
-  DollarSign,
   Menu as MenuIcon,
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 
-interface AdminLayoutProps {
+interface StaffLayoutProps {
   children: ReactNode;
 }
 
@@ -66,7 +62,7 @@ function NavItem({ icon, label, isActive, onClick }: NavItemProps) {
   );
 }
 
-export default function AdminLayout({ children }: AdminLayoutProps) {
+export default function StaffLayout({ children }: StaffLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, clearAuth } = useAuthStore();
@@ -78,12 +74,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   };
 
   const navItems = [
-    { icon: <LayoutDashboard size={18} />, label: 'ダッシュボード', path: '/admin/dashboard' },
-    { icon: <Calendar size={18} />, label: '予約管理', path: '/admin/reservations' },
-    { icon: <Ban size={18} />, label: 'ブロック枠', path: '/admin/blocked-slots' },
-    { icon: <DollarSign size={18} />, label: 'プラン管理', path: '/admin/plans' },
-    { icon: <Settings size={18} />, label: 'オプション管理', path: '/admin/options' },
-    { icon: <MessageCircle size={18} />, label: '問い合わせ', path: '/admin/inquiries' },
+    { icon: <LayoutDashboard size={18} />, label: 'ダッシュボード', path: '/staff/dashboard' },
+    { icon: <Calendar size={18} />, label: '予約管理', path: '/staff/reservations' },
   ];
 
   const SidebarContent = () => (
@@ -116,14 +108,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         display={{ base: 'none', md: 'block' }}
       >
         {/* ロゴ */}
-        <HStack spacing={3} mb={8} cursor="pointer" onClick={() => navigate('/admin/dashboard')}>
+        <HStack spacing={3} mb={8} cursor="pointer" onClick={() => navigate('/staff/dashboard')}>
           <Box w="40px" h="40px" bg="brand.300" borderRadius="md" display="flex" alignItems="center" justifyContent="center">
             <Text fontSize="xl" fontWeight="bold" color="white">
               Z
             </Text>
           </Box>
           <Heading size="sm" color="brand.600">
-            管理画面
+            スタッフ画面
           </Heading>
         </HStack>
 
@@ -144,7 +136,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 </Text>
               </Box>
               <Heading size="sm" color="brand.600">
-                管理画面
+                スタッフ画面
               </Heading>
             </HStack>
           </DrawerHeader>
@@ -177,16 +169,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   <Avatar size="sm" name={user?.name} bg="accent.400" />
                   <Box display={{ base: 'none', sm: 'block' }}>
                     <Text fontSize="sm" fontWeight="medium">
-                      {user?.name || '管理者'}
+                      {user?.name || 'スタッフ'}
                     </Text>
                     <Text fontSize="xs" color="gray.500">
-                      {user?.role === 'admin' ? '管理者' : 'スタッフ'}
+                      スタッフ
                     </Text>
                   </Box>
                 </HStack>
               </MenuButton>
               <MenuList>
-                <MenuItem icon={<User size={18} />} onClick={() => navigate('/admin/profile')}>
+                <MenuItem icon={<User size={18} />} onClick={() => navigate('/staff/profile')}>
                   プロフィール
                 </MenuItem>
                 <MenuItem icon={<LogOut size={18} />} onClick={handleLogout}>

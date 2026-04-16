@@ -10,7 +10,6 @@ import {
   Td,
   Select,
   HStack,
-  useDisclosure,
   Spinner,
   Alert,
   AlertIcon,
@@ -18,12 +17,11 @@ import {
   IconButton,
 } from '@chakra-ui/react';
 import { useState } from 'react';
-import { Eye, CheckCircle } from 'lucide-react';
+import { Eye } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAllReservations } from '../../hooks/useReservations';
 import type { Reservation } from '../../types';
 import { StatusBadge } from '../../components/common/StatusBadge';
-import { ReservationApprovalDialog } from '../../components/admin/ReservationApprovalDialog';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
@@ -34,25 +32,13 @@ export const ReservationsPage = () => {
   const initialStatus = searchParams.get('status') || 'all';
 
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus);
-  const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
-  const { isOpen, onOpen, onClose } = useDisclosure();
   const navigate = useNavigate();
 
   // React Queryで全予約取得
   const { data: filteredReservations = [], isLoading, error } = useAllReservations(STUDIO_ID, statusFilter);
 
-  const handleApprovalClick = (reservation: Reservation) => {
-    setSelectedReservation(reservation);
-    onOpen();
-  };
-
-  const handleApprovalSuccess = () => {
-    // React Queryが自動的に再取得
-    onClose();
-  };
-
   const handleViewDetail = (id: string) => {
-    navigate(`/admin/reservations/${id}`);
+    navigate(`/staff/reservations/${id}`);
   };
 
   const calculateTotal = (reservation: Reservation): number => {
@@ -193,40 +179,19 @@ export const ReservationsPage = () => {
                     ¥{calculateTotal(reservation).toLocaleString()}
                   </Td>
                   <Td>
-                    <HStack spacing={2}>
-                      <IconButton
-                        aria-label="詳細表示"
-                        icon={<Eye size={18} />}
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleViewDetail(reservation.reservation_id)}
-                      />
-                      {reservation.status === 'pending' && (
-                        <IconButton
-                          aria-label="承認・拒否"
-                          icon={<CheckCircle size={18} />}
-                          size="sm"
-                          colorScheme="green"
-                          variant="ghost"
-                          onClick={() => handleApprovalClick(reservation)}
-                        />
-                      )}
-                    </HStack>
+                    <IconButton
+                      aria-label="詳細表示"
+                      icon={<Eye size={18} />}
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleViewDetail(reservation.reservation_id)}
+                    />
                   </Td>
                 </Tr>
               ))}
             </Tbody>
           </Table>
         </Box>
-      )}
-
-      {selectedReservation && (
-        <ReservationApprovalDialog
-          isOpen={isOpen}
-          onClose={onClose}
-          reservation={selectedReservation}
-          onSuccess={handleApprovalSuccess}
-        />
       )}
     </Container>
   );

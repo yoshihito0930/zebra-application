@@ -15,7 +15,7 @@ import ErrorMessage from '../../components/common/ErrorMessage';
 
 const STUDIO_ID = 'studio_001'; // TODO: 後で動的に取得
 
-export default function AdminCalendarPage() {
+export default function StaffCalendarPage() {
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
 
@@ -48,7 +48,7 @@ export default function AdminCalendarPage() {
       <VStack spacing={6} align="stretch">
         <Box>
           <Heading size="xl" color="brand.600" mb={2}>
-            予約カレンダー（管理者）
+            予約カレンダー
           </Heading>
           <Text color="gray.600">
             スタジオの予約状況を一覧で確認できます
@@ -74,14 +74,14 @@ export default function AdminCalendarPage() {
           </Box>
         )}
 
-        {/* 日付詳細モーダル（管理者は閲覧のみ） */}
+        {/* 日付詳細モーダル（スタッフは閲覧のみ） */}
         {calendarData && (
           <DayDetailModal
             isOpen={isDayDetailOpen}
             onClose={onDayDetailClose}
             date={selectedDate}
             reservations={calendarData.reservations.filter((r) => r.date === selectedDate)}
-            onCreateReservation={() => {}} // 管理者は別画面で予約作成
+            onCreateReservation={() => {}} // スタッフは予約作成不可
           />
         )}
       </VStack>

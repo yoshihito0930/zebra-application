@@ -12,6 +12,10 @@ import AdminDashboardPage from './pages/admin/DashboardPage';
 import AdminCalendarPage from './pages/admin/CalendarPage';
 import { ReservationsPage as AdminReservationsPage } from './pages/admin/ReservationsPage';
 import { ReservationDetailPage as AdminReservationDetailPage } from './pages/admin/ReservationDetailPage';
+import StaffDashboardPage from './pages/staff/DashboardPage';
+import StaffCalendarPage from './pages/staff/CalendarPage';
+import { ReservationsPage as StaffReservationsPage } from './pages/staff/ReservationsPage';
+import { ReservationDetailPage as StaffReservationDetailPage } from './pages/staff/ReservationDetailPage';
 import GuestReservationVerifyPage from './pages/guest/GuestReservationVerifyPage';
 import GuestReservationDetailPage from './pages/guest/GuestReservationDetailPage';
 
@@ -21,6 +25,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 // レイアウト
 import CustomerLayout from './components/layouts/CustomerLayout';
 import AdminLayout from './components/layouts/AdminLayout';
+import StaffLayout from './components/layouts/StaffLayout';
 
 function App() {
   return (
@@ -120,6 +125,48 @@ function App() {
                 <AdminLayout>
                   <AdminReservationDetailPage />
                 </AdminLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* スタッフ向け画面（すべて認証必要） */}
+          <Route
+            path="/staff/dashboard"
+            element={
+              <ProtectedRoute requiredRole="staff">
+                <StaffLayout>
+                  <StaffDashboardPage />
+                </StaffLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/calendar"
+            element={
+              <ProtectedRoute requiredRole="staff">
+                <StaffLayout>
+                  <StaffCalendarPage />
+                </StaffLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/reservations"
+            element={
+              <ProtectedRoute requiredRole="staff">
+                <StaffLayout>
+                  <StaffReservationsPage />
+                </StaffLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/reservations/:id"
+            element={
+              <ProtectedRoute requiredRole="staff">
+                <StaffLayout>
+                  <StaffReservationDetailPage />
+                </StaffLayout>
               </ProtectedRoute>
             }
           />

@@ -50,8 +50,10 @@ export default function LoginPage() {
       setAuth(response.user, response.access_token, response.refresh_token);
 
       // ロールに応じてリダイレクト
-      if (response.user.role === 'admin' || response.user.role === 'staff') {
+      if (response.user.role === 'admin') {
         navigate('/admin/dashboard');
+      } else if (response.user.role === 'staff') {
+        navigate('/staff/dashboard');
       } else {
         navigate('/customer/calendar');
       }
@@ -100,6 +102,7 @@ export default function LoginPage() {
               <Text fontWeight="bold">テストユーザー:</Text>
               <Text>顧客: customer@example.com / password</Text>
               <Text>管理者: admin@example.com / password</Text>
+              <Text>スタッフ: staff@example.com / password</Text>
             </VStack>
           </Alert>
 

@@ -86,6 +86,24 @@ export const mockLogin = async (data: LoginRequest): Promise<AuthResponse> => {
     };
   }
 
+  if (data.email === 'staff@example.com' && data.password === 'password') {
+    return {
+      access_token: 'mock_access_token_staff',
+      refresh_token: 'mock_refresh_token_staff',
+      expires_in: 3600,
+      user: {
+        user_id: 'user_003',
+        name: 'スタジオスタッフ',
+        email: 'staff@example.com',
+        phone_number: '090-5555-6666',
+        address: '東京都渋谷区',
+        role: 'staff',
+        studio_id: 'studio_001',
+        created_at: new Date().toISOString(),
+      },
+    };
+  }
+
   throw new Error('メールアドレスまたはパスワードが正しくありません');
 };
 
