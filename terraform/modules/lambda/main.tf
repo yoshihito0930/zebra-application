@@ -106,6 +106,26 @@ resource "aws_iam_role_policy" "lambda_cognito" {
   })
 }
 
+# SESへのアクセス権限（ゲスト予約メール通知用、2026-04-16追加）
+resource "aws_iam_role_policy" "lambda_ses" {
+  name = "${var.environment}-lambda-ses-policy"
+  role = aws_iam_role.lambda_execution_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ses:SendEmail",
+          "ses:SendRawEmail"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 # Lambda関数の共通設定
 locals {
   lambda_runtime     = "provided.al2023"
@@ -859,6 +879,83 @@ resource "aws_lambda_function" "batch_second_keep_promote" {
 
   environment {
     variables = local.common_env_vars
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = "zebra-application"
+    ManagedBy   = "terraform"
+  }
+}
+
+# ==================== ゲスト予約Lambda（2026-04-16追加） ====================
+
+# GET /reservations/guest/{token}
+resource "aws_lambda_function" "reservation_guest_get" {
+  filename         = "${var.lambda_artifacts_dir}/reservation-guest-get.zip"
+  function_name    = "${var.environment}-reservation-guest-get"
+  role             = aws_iam_role.lambda_execution_role.arn
+  handler          = "bootstrap"
+  source_code_hash = filebase64sha256("${var.lambda_artifacts_dir}/reservation-guest-get.zip")
+  runtime          = local.lambda_runtime
+  timeout          = local.lambda_timeout
+  memory_size      = local.lambda_memory_size
+
+  environment {
+    variables = merge(local.common_env_vars, {
+      SES_SENDER_EMAIL          = var.ses_sender_email
+      GUEST_RESERVATION_URL     = var.guest_reservation_base_url
+    })
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = "zebra-application"
+    ManagedBy   = "terraform"
+  }
+}
+
+# PATCH /reservations/guest/{token}/cancel
+resource "aws_lambda_function" "reservation_guest_cancel" {
+  filename         = "${var.lambda_artifacts_dir}/reservation-guest-cancel.zip"
+  function_name    = "${var.environment}-reservation-guest-cancel"
+  role             = aws_iam_role.lambda_execution_role.arn
+  handler          = "bootstrap"
+  source_code_hash = filebase64sha256("${var.lambda_artifacts_dir}/reservation-guest-cancel.zip")
+  runtime          = local.lambda_runtime
+  timeout          = local.lambda_timeout
+  memory_size      = local.lambda_memory_size
+
+  environment {
+    variables = merge(local.common_env_vars, {
+      SES_SENDER_EMAIL          = var.ses_sender_email
+      GUEST_RESERVATION_URL     = var.guest_reservation_base_url
+    })
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = "zebra-application"
+    ManagedBy   = "terraform"
+  }
+}
+
+# PATCH /reservations/guest/{token}/promote
+resource "aws_lambda_function" "reservation_guest_promote" {
+  filename         = "${var.lambda_artifacts_dir}/reservation-guest-promote.zip"
+  function_name    = "${var.environment}-reservation-guest-promote"
+  role             = aws_iam_role.lambda_execution_role.arn
+  handler          = "bootstrap"
+  source_code_hash = filebase64sha256("${var.lambda_artifacts_dir}/reservation-guest-promote.zip")
+  runtime          = local.lambda_runtime
+  timeout          = local.lambda_timeout
+  memory_size      = local.lambda_memory_size
+
+  environment {
+    variables = merge(local.common_env_vars, {
+      SES_SENDER_EMAIL          = var.ses_sender_email
+      GUEST_RESERVATION_URL     = var.guest_reservation_base_url
+    })
   }
 
   tags = {

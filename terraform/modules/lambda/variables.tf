@@ -33,3 +33,15 @@ variable "cognito_user_pool_client_id" {
   description = "Cognito User Pool Client ID"
   type        = string
 }
+
+variable "ses_sender_email" {
+  description = "SES送信元メールアドレス（ゲスト予約通知用）"
+  type        = string
+  default     = "noreply@studio-zebra.com"
+}
+
+variable "guest_reservation_base_url" {
+  description = "ゲスト予約確認ページのベースURL"
+  type        = string
+  default     = "https://studio-zebra.com/reservations/guest"
+}

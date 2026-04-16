@@ -191,6 +191,16 @@ module "api_gateway" {
     studio_update = {
       invoke_arn = module.lambda.studio_update_invoke_arn
     }
+    # ゲスト予約（2026-04-16追加）
+    reservation_guest_get = {
+      invoke_arn = module.lambda.reservation_guest_get_invoke_arn
+    }
+    reservation_guest_cancel = {
+      invoke_arn = module.lambda.reservation_guest_cancel_invoke_arn
+    }
+    reservation_guest_promote = {
+      invoke_arn = module.lambda.reservation_guest_promote_invoke_arn
+    }
   }
 
   cloudwatch_log_group_arn          = module.cloudwatch.api_gateway_log_group_arn

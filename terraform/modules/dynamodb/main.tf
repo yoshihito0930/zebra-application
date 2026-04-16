@@ -42,6 +42,12 @@ resource "aws_dynamodb_table" "reservations" {
     type = "S"
   }
 
+  # GSI5: guest_token (ゲストトークン検索、2026-04-16追加)
+  attribute {
+    name = "guest_token"
+    type = "S"
+  }
+
   global_secondary_index {
     name            = "GSI1"
     hash_key        = "studio_id_status"
@@ -66,6 +72,12 @@ resource "aws_dynamodb_table" "reservations" {
     name            = "GSI4"
     hash_key        = "linked_reservation_id"
     range_key       = "date_reservation_id"
+    projection_type = "ALL"
+  }
+
+  global_secondary_index {
+    name            = "GSI5"
+    hash_key        = "guest_token"
     projection_type = "ALL"
   }
 
