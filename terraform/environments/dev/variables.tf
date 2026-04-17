@@ -30,6 +30,12 @@ variable "ses_sender_email" {
   default     = "noreply@studio-zebra.com"
 }
 
+variable "ses_notification_email" {
+  description = "SESバウンス・苦情通知を受け取るメールアドレス"
+  type        = string
+  default     = "" # 設定しない場合は空文字列
+}
+
 variable "guest_reservation_url" {
   description = "ゲスト予約確認ページのベースURL"
   type        = string

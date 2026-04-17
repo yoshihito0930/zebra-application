@@ -1,0 +1,15 @@
+{
+  "studio_id": "studio_001",
+  "studio_name": "スタジオゼブラ",
+  "studio_address": "東京都渋谷区渋谷1-2-3 ゼブラビル3F",
+  "phone_number": "03-1234-5678",
+  "email": "info@studio-zebra.com",
+  "business_hours_start": "09:00",
+  "business_hours_end": "22:00",
+  "regular_holidays": ["monday"],
+  "tentative_expiry_days": 7,
+  "cancellation_policy": "キャンセル料金: 利用日の7日前まで無料、3日前まで50%、当日100%",
+  "is_active": true,
+  "created_at": "2025-01-01T00:00:00Z",
+  "updated_at": "2025-01-01T00:00:00Z"
+}

@@ -209,6 +209,15 @@ module "api_gateway" {
   api_gateway_cloudwatch_role_arn   = module.cloudwatch.api_gateway_cloudwatch_role_arn
 }
 
+# SES（メール送信）
+module "ses" {
+  source = "../../modules/ses"
+
+  environment        = var.environment
+  sender_email       = var.ses_sender_email
+  notification_email = var.ses_notification_email
+}
+
 # EventBridge
 module "eventbridge" {
   source = "../../modules/eventbridge"

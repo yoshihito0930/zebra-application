@@ -1,0 +1,46 @@
+[
+  {
+    "studio_id": "studio_001",
+    "plan_id": "plan_001",
+    "plan_name": "スチール撮影プラン",
+    "description": "物撮りやポートレート撮影に最適なプランです",
+    "duration_hours": 3,
+    "price": 15000,
+    "is_active": true,
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-01-01T00:00:00Z"
+  },
+  {
+    "studio_id": "studio_001",
+    "plan_id": "plan_002",
+    "plan_name": "動画撮影プラン",
+    "description": "YouTube撮影やインタビュー撮影向けのプランです",
+    "duration_hours": 4,
+    "price": 25000,
+    "is_active": true,
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-01-01T00:00:00Z"
+  },
+  {
+    "studio_id": "studio_001",
+    "plan_id": "plan_003",
+    "plan_name": "ロケハンプラン",
+    "description": "スタジオの下見・確認用プランです",
+    "duration_hours": 1,
+    "price": 0,
+    "is_active": true,
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-01-01T00:00:00Z"
+  },
+  {
+    "studio_id": "studio_001",
+    "plan_id": "plan_004",
+    "plan_name": "ワークショッププラン",
+    "description": "セミナーや勉強会に最適なプランです",
+    "duration_hours": 5,
+    "price": 30000,
+    "is_active": true,
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-01-01T00:00:00Z"
+  }
+]

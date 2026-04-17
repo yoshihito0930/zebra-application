@@ -34,3 +34,28 @@ output "lambda_functions" {
   description = "Lambda関数名一覧"
   value       = module.lambda.all_lambda_functions
 }
+
+output "ses_email_identity" {
+  description = "SES送信元メールアドレス"
+  value       = var.ses_sender_email
+}
+
+output "ses_configuration_set_name" {
+  description = "SES Configuration Set名"
+  value       = module.ses.configuration_set_name
+}
+
+output "frontend_s3_bucket" {
+  description = "フロントエンド用S3バケット名"
+  value       = module.frontend.s3_bucket_name
+}
+
+output "frontend_cloudfront_url" {
+  description = "フロントエンドアクセスURL"
+  value       = module.frontend.cloudfront_url
+}
+
+output "frontend_cloudfront_domain" {
+  description = "CloudFrontドメイン名"
+  value       = module.frontend.cloudfront_domain_name
+}

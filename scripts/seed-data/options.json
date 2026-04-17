@@ -1,0 +1,32 @@
+[
+  {
+    "studio_id": "studio_001",
+    "option_id": "option_001",
+    "option_name": "6人以上のワークショップ",
+    "description": "6人以上で利用する場合の追加料金です",
+    "price": 5000,
+    "is_active": true,
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-01-01T00:00:00Z"
+  },
+  {
+    "studio_id": "studio_001",
+    "option_id": "option_002",
+    "option_name": "機材レンタル",
+    "description": "撮影機材のレンタル（照明・三脚など）",
+    "price": 3000,
+    "is_active": true,
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-01-01T00:00:00Z"
+  },
+  {
+    "studio_id": "studio_001",
+    "option_id": "option_003",
+    "option_name": "延長料金",
+    "description": "1時間あたりの延長料金です",
+    "price": 5000,
+    "is_active": true,
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-01-01T00:00:00Z"
+  }
+]
