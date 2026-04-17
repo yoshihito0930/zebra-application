@@ -34,12 +34,13 @@ export const ReservationsPage = () => {
   const initialStatus = searchParams.get('status') || 'all';
 
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus);
+  const [dateRangeFilter, setDateRangeFilter] = useState<'all' | 'future' | 'past'>('all');
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const navigate = useNavigate();
 
   // React Queryで全予約取得
-  const { data: filteredReservations = [], isLoading, error } = useAllReservations(STUDIO_ID, statusFilter);
+  const { data: filteredReservations = [], isLoading, error } = useAllReservations(STUDIO_ID, statusFilter, dateRangeFilter);
 
   const handleApprovalClick = (reservation: Reservation) => {
     setSelectedReservation(reservation);
@@ -92,7 +93,7 @@ export const ReservationsPage = () => {
         <Heading size="lg" mb={4}>
           予約管理
         </Heading>
-        <HStack spacing={4}>
+        <HStack spacing={4} flexWrap="wrap">
           <Select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -107,6 +108,15 @@ export const ReservationsPage = () => {
             <option value="cancelled">キャンセル</option>
             <option value="completed">完了</option>
             <option value="expired">期限切れ</option>
+          </Select>
+          <Select
+            value={dateRangeFilter}
+            onChange={(e) => setDateRangeFilter(e.target.value as 'all' | 'future' | 'past')}
+            maxW="200px"
+          >
+            <option value="all">すべての期間</option>
+            <option value="future">未来の予約</option>
+            <option value="past">過去の予約</option>
           </Select>
           <Text fontSize="sm" color="gray.600">
             {filteredReservations.length}件の予約

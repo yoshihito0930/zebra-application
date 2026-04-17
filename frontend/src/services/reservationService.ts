@@ -54,6 +54,26 @@ export const cancelReservation = async (id: string): Promise<Reservation> => {
   });
 };
 
+// 予約編集（管理者向け）
+export interface UpdateReservationRequest {
+  date?: string;
+  start_time?: string;
+  end_time?: string;
+  note?: string;
+  shooting_details?: string;
+}
+
+export const updateReservation = async (
+  id: string,
+  data: UpdateReservationRequest
+): Promise<Reservation> => {
+  return apiRequest<Reservation>({
+    method: 'PATCH',
+    url: `/reservations/${id}`,
+    data,
+  });
+};
+
 // モックデータ（開発用）
 const mockReservations: Reservation[] = [
   {
@@ -379,6 +399,91 @@ const mockReservations: Reservation[] = [
     equipment_insurance: true,
     created_at: '2026-04-13T09:00:00Z',
   },
+  // 過去の予約（テスト用）
+  {
+    reservation_id: 'rsv_013',
+    studio_id: 'studio_001',
+    user_id: 'user_011',
+    user_name: '田中健太',
+    user_email: 'tanaka@example.com',
+    user_phone: '080-7777-8888',
+    reservation_type: 'regular',
+    status: 'completed',
+    plan_id: 'plan_001',
+    plan_name: 'スチール撮影プラン',
+    plan_price: 15000,
+    plan_tax_rate: 0.1,
+    date: '2026-04-10',
+    start_time: '10:00',
+    end_time: '13:00',
+    options: [],
+    shooting_type: ['stills'],
+    shooting_details: '商品撮影',
+    photographer_name: '佐藤次郎',
+    number_of_people: 3,
+    needs_protection: false,
+    equipment_insurance: true,
+    created_at: '2026-04-01T10:00:00Z',
+  },
+  {
+    reservation_id: 'rsv_014',
+    studio_id: 'studio_001',
+    user_id: 'user_012',
+    user_name: '中村美咲',
+    user_email: 'nakamura@example.com',
+    user_phone: '090-8888-9999',
+    reservation_type: 'regular',
+    status: 'completed',
+    plan_id: 'plan_002',
+    plan_name: '動画撮影プラン',
+    plan_price: 20000,
+    plan_tax_rate: 0.1,
+    date: '2026-04-05',
+    start_time: '14:00',
+    end_time: '18:00',
+    options: [
+      {
+        option_id: 'opt_001',
+        option_name: '6人以上のワークショップでご利用',
+        price: 2000,
+        tax_rate: 0.1,
+      },
+    ],
+    shooting_type: ['video'],
+    shooting_details: 'YouTube動画撮影',
+    photographer_name: '山田太郎',
+    number_of_people: 7,
+    needs_protection: false,
+    equipment_insurance: true,
+    created_at: '2026-03-25T14:00:00Z',
+  },
+  {
+    reservation_id: 'rsv_015',
+    studio_id: 'studio_001',
+    user_id: 'user_013',
+    user_name: '佐藤誠',
+    user_email: 'sato.makoto@example.com',
+    user_phone: '070-9999-0000',
+    reservation_type: 'regular',
+    status: 'cancelled',
+    plan_id: 'plan_001',
+    plan_name: 'スチール撮影プラン',
+    plan_price: 15000,
+    plan_tax_rate: 0.1,
+    date: '2026-04-08',
+    start_time: '10:00',
+    end_time: '14:00',
+    options: [],
+    shooting_type: ['stills'],
+    shooting_details: 'ポートレート撮影',
+    photographer_name: '鈴木一郎',
+    number_of_people: 2,
+    needs_protection: false,
+    equipment_insurance: true,
+    cancelled_at: '2026-04-06T10:00:00Z',
+    cancelled_by: 'customer',
+    created_at: '2026-03-28T10:00:00Z',
+  },
 ];
 
 // モック: カレンダー取得
@@ -570,7 +675,8 @@ export const mockCancelGuestReservation = async (token: string): Promise<Reserva
 // モック: 全予約取得（管理者用）
 export const mockGetAllReservations = async (
   studioId: string,
-  status?: string
+  status?: string,
+  dateRange?: 'all' | 'future' | 'past'
 ): Promise<Reservation[]> => {
   await new Promise((resolve) => setTimeout(resolve, 600)); // 600ms遅延
 
@@ -579,6 +685,24 @@ export const mockGetAllReservations = async (
   // ステータスでフィルタリング
   if (status && status !== 'all') {
     reservations = reservations.filter((r) => r.status === status);
+  }
+
+  // 日付範囲でフィルタリング
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // 時刻を00:00:00にリセット
+
+  if (dateRange === 'future') {
+    reservations = reservations.filter((r) => {
+      const reservationDate = new Date(r.date);
+      reservationDate.setHours(0, 0, 0, 0);
+      return reservationDate >= today;
+    });
+  } else if (dateRange === 'past') {
+    reservations = reservations.filter((r) => {
+      const reservationDate = new Date(r.date);
+      reservationDate.setHours(0, 0, 0, 0);
+      return reservationDate < today;
+    });
   }
 
   // 日付の降順でソート
@@ -641,6 +765,49 @@ export const mockRejectReservation = async (
   if (note) {
     reservation.note = note;
   }
+
+  return reservation;
+};
+
+// モック: 予約更新（管理者用）
+export const mockUpdateReservation = async (
+  id: string,
+  data: UpdateReservationRequest
+): Promise<Reservation> => {
+  await new Promise((resolve) => setTimeout(resolve, 800)); // 800ms遅延
+
+  const reservation = mockReservations.find((r) => r.reservation_id === id);
+  if (!reservation) {
+    throw new Error('予約が見つかりません');
+  }
+
+  // 編集可能ステータスのチェック
+  if (
+    reservation.status !== 'pending' &&
+    reservation.status !== 'tentative' &&
+    reservation.status !== 'confirmed'
+  ) {
+    throw new Error('編集できるステータスではありません');
+  }
+
+  // フィールドを更新
+  if (data.date) {
+    reservation.date = data.date;
+  }
+  if (data.start_time) {
+    reservation.start_time = data.start_time;
+  }
+  if (data.end_time) {
+    reservation.end_time = data.end_time;
+  }
+  if (data.note !== undefined) {
+    reservation.note = data.note;
+  }
+  if (data.shooting_details) {
+    reservation.shooting_details = data.shooting_details;
+  }
+
+  reservation.updated_at = new Date().toISOString();
 
   return reservation;
 };

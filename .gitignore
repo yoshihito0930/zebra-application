@@ -35,6 +35,10 @@ backend/*.so
 backend/*.dylib
 backend/vendor/
 
+# Lambda artifacts
+lambda-artifacts/
+*.zip
+
 # Frontend
 # (frontend has its own .gitignore)
 

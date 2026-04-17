@@ -86,6 +86,8 @@ module "lambda" {
   cognito_user_pool_id  = module.cognito.user_pool_id
   cognito_user_pool_arn = module.cognito.user_pool_arn
   cognito_user_pool_client_id = module.cognito.user_pool_client_id
+  ses_sender_email      = var.ses_sender_email
+  guest_reservation_url = var.guest_reservation_url
 
   depends_on = [module.cloudwatch]
 }
@@ -217,4 +219,12 @@ module "eventbridge" {
   batch_tentative_reminder_function_name  = module.lambda.batch_tentative_reminder_function_name
   batch_second_keep_promote_lambda_arn    = module.lambda.batch_second_keep_promote_function_arn
   batch_second_keep_promote_function_name = module.lambda.batch_second_keep_promote_function_name
+}
+
+# Frontend (S3 + CloudFront)
+module "frontend" {
+  source = "../../modules/frontend"
+
+  environment            = var.environment
+  cloudfront_price_class = var.cloudfront_price_class
 }

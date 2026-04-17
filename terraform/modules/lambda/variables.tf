@@ -40,7 +40,7 @@ variable "ses_sender_email" {
   default     = "noreply@studio-zebra.com"
 }
 
-variable "guest_reservation_base_url" {
+variable "guest_reservation_url" {
   description = "ゲスト予約確認ページのベースURL"
   type        = string
   default     = "https://studio-zebra.com/reservations/guest"

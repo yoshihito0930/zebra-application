@@ -20,7 +20,7 @@ const USE_MOCK = true;
 export const reservationKeys = {
   all: ['reservations'] as const,
   lists: () => [...reservationKeys.all, 'list'] as const,
-  list: (filters?: { studioId?: string; status?: string }) =>
+  list: (filters?: { studioId?: string; status?: string; dateRange?: string }) =>
     [...reservationKeys.lists(), filters] as const,
   details: () => [...reservationKeys.all, 'detail'] as const,
   detail: (id: string) => [...reservationKeys.details(), id] as const,
@@ -121,12 +121,12 @@ export const useCancelReservation = () => {
 /**
  * 全予約一覧を取得するフック（管理者用）
  */
-export const useAllReservations = (studioId: string, status?: string) => {
+export const useAllReservations = (studioId: string, status?: string, dateRange?: 'all' | 'future' | 'past') => {
   return useQuery({
-    queryKey: reservationKeys.list({ studioId, status }),
+    queryKey: reservationKeys.list({ studioId, status, dateRange }),
     queryFn: async () => {
       if (USE_MOCK) {
-        return mockGetAllReservations(studioId, status);
+        return mockGetAllReservations(studioId, status, dateRange);
       }
       // 実APIの場合の実装（未実装）
       throw new Error('実APIは未実装です');

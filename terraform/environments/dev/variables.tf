@@ -23,3 +23,21 @@ variable "alarm_email" {
   type        = string
   default     = ""
 }
+
+variable "ses_sender_email" {
+  description = "SES送信元メールアドレス（ゲスト予約通知用）"
+  type        = string
+  default     = "noreply@studio-zebra.com"
+}
+
+variable "guest_reservation_url" {
+  description = "ゲスト予約確認ページのベースURL"
+  type        = string
+  default     = "https://dev.studio-zebra.com/reservations/guest"
+}
+
+variable "cloudfront_price_class" {
+  description = "CloudFront の価格クラス"
+  type        = string
+  default     = "PriceClass_200"
+}

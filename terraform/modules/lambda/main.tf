@@ -134,8 +134,10 @@ locals {
 
   # 環境変数（全Lambda関数共通）
   common_env_vars = {
-    ENVIRONMENT = var.environment
-    LOG_LEVEL   = var.environment == "prod" ? "INFO" : "DEBUG"
+    ENVIRONMENT          = var.environment
+    LOG_LEVEL            = var.environment == "prod" ? "INFO" : "DEBUG"
+    SES_SENDER_EMAIL     = var.ses_sender_email
+    GUEST_RESERVATION_URL = var.guest_reservation_url
   }
 }
 

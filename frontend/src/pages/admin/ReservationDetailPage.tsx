@@ -15,13 +15,14 @@ import {
   AlertIcon,
   useDisclosure,
 } from '@chakra-ui/react';
-import { ArrowLeft, CheckCircle, XCircle, Calendar as CalendarIcon, User, Mail, Phone, Building } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, Calendar as CalendarIcon, User, Mail, Phone, Building, Edit } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useReservation } from '../../hooks/useReservations';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import StatusBadge from '../../components/common/StatusBadge';
 import { ReservationApprovalDialog } from '../../components/admin/ReservationApprovalDialog';
+import { ReservationEditModal } from '../../components/admin/ReservationEditModal';
 
 export const ReservationDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -32,6 +33,9 @@ export const ReservationDetailPage = () => {
 
   // 承認ダイアログ
   const { isOpen: isApprovalDialogOpen, onOpen: onApprovalDialogOpen, onClose: onApprovalDialogClose } = useDisclosure();
+
+  // 編集モーダル
+  const { isOpen: isEditModalOpen, onOpen: onEditModalOpen, onClose: onEditModalClose } = useDisclosure();
 
   // 承認・拒否成功時の処理
   const handleApprovalSuccess = () => {
@@ -63,6 +67,13 @@ export const ReservationDetailPage = () => {
 
   // 承認・拒否可能かチェック
   const canApprove = reservation && reservation.status === 'pending';
+
+  // 編集可能かチェック
+  const canEdit =
+    reservation &&
+    (reservation.status === 'pending' ||
+      reservation.status === 'tentative' ||
+      reservation.status === 'confirmed');
 
   return (
     <Container maxW="container.lg" py={8}>
@@ -104,8 +115,8 @@ export const ReservationDetailPage = () => {
                   </HStack>
                 </VStack>
 
-                {canApprove && (
-                  <HStack spacing={3}>
+                <HStack spacing={3}>
+                  {canApprove && (
                     <Button
                       leftIcon={<CheckCircle size={18} />}
                       colorScheme="green"
@@ -113,8 +124,18 @@ export const ReservationDetailPage = () => {
                     >
                       承認・拒否
                     </Button>
-                  </HStack>
-                )}
+                  )}
+                  {canEdit && (
+                    <Button
+                      leftIcon={<Edit size={18} />}
+                      colorScheme="blue"
+                      variant="outline"
+                      onClick={onEditModalOpen}
+                    >
+                      編集
+                    </Button>
+                  )}
+                </HStack>
               </HStack>
 
               <Divider mb={6} />
@@ -450,6 +471,15 @@ export const ReservationDetailPage = () => {
             onClose={onApprovalDialogClose}
             reservation={reservation}
             onSuccess={handleApprovalSuccess}
+          />
+        )}
+
+        {/* 編集モーダル */}
+        {reservation && (
+          <ReservationEditModal
+            isOpen={isEditModalOpen}
+            onClose={onEditModalClose}
+            reservation={reservation}
           />
         )}
       </VStack>

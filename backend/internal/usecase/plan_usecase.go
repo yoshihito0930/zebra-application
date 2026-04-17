@@ -144,3 +144,32 @@ func (u *PlanUsecase) UpdatePlan(ctx context.Context, input UpdatePlanInput) (*e
 
 	return plan, nil
 }
+
+// DeletePlan はプランを削除する（論理削除: is_active=false）
+// アクセスパターン: AP-33（プラン無効化）
+func (u *PlanUsecase) DeletePlan(ctx context.Context, studioID, planID string) error {
+	// 1. 既存のプランを取得
+	_, err := u.planRepo.FindByID(ctx, studioID, planID)
+	if err != nil {
+		return apierror.ErrPlanNotFound
+	}
+
+	// 2. 論理削除（is_active=false）
+	if err := u.planRepo.Delete(ctx, studioID, planID); err != nil {
+		return fmt.Errorf("failed to delete plan: %w", err)
+	}
+
+	return nil
+}
+
+// GetPlan はプランを取得する
+// アクセスパターン: AP-32（プラン詳細取得）
+func (u *PlanUsecase) GetPlan(ctx context.Context, studioID, planID string) (*entity.Plan, error) {
+	// プランを取得
+	plan, err := u.planRepo.FindByID(ctx, studioID, planID)
+	if err != nil {
+		return nil, apierror.ErrPlanNotFound
+	}
+
+	return plan, nil
+}
