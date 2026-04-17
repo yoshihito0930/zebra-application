@@ -10,8 +10,9 @@ import {
   mockGetAllReservations,
   mockApproveReservation,
   mockRejectReservation,
+  mockGetMonthlyStatsRange,
 } from '../services/reservationService';
-import type { Reservation, CreateReservationRequest } from '../types';
+import type { Reservation, CreateReservationRequest, MonthlyStats } from '../types';
 
 // 環境変数でモックモード切り替え（現在はモックモード固定）
 const USE_MOCK = true;
@@ -209,6 +210,28 @@ export const useTodayReservations = (studioId: string) => {
         // 全予約を取得してフィルタリング
         const allReservations = await mockGetAllReservations(studioId);
         return allReservations.filter((r) => r.date === todayStr);
+      }
+      // 実APIの場合の実装（未実装）
+      throw new Error('実APIは未実装です');
+    },
+  });
+};
+
+/**
+ * 月別統計を取得するフック（管理者用）
+ */
+export const useMonthlyStatsRange = (
+  studioId: string,
+  startYear: number,
+  startMonth: number,
+  endYear: number,
+  endMonth: number
+) => {
+  return useQuery({
+    queryKey: [...reservationKeys.all, 'monthly-stats', studioId, startYear, startMonth, endYear, endMonth],
+    queryFn: async () => {
+      if (USE_MOCK) {
+        return mockGetMonthlyStatsRange(studioId, startYear, startMonth, endYear, endMonth);
       }
       // 実APIの場合の実装（未実装）
       throw new Error('実APIは未実装です');

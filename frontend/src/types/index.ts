@@ -261,3 +261,13 @@ export interface ListResponse<T> {
   data: T[];
   pagination?: Pagination;
 }
+
+// 月別統計
+export interface MonthlyStats {
+  year: number;
+  month: number;
+  reservation_count: number;
+  total_revenue: number;
+  confirmed_count: number;
+  completed_count: number;
+}

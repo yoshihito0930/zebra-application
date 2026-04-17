@@ -4,6 +4,7 @@ import type {
   CreateReservationRequest,
   CalendarResponse,
   CalendarReservation,
+  MonthlyStats,
 } from '../types';
 
 // 予約カレンダー取得
@@ -54,7 +55,7 @@ export const cancelReservation = async (id: string): Promise<Reservation> => {
   });
 };
 
-// 予約編集（管理者向け）
+// UpdateReservationRequest型定義
 export interface UpdateReservationRequest {
   date?: string;
   start_time?: string;
@@ -62,17 +63,6 @@ export interface UpdateReservationRequest {
   note?: string;
   shooting_details?: string;
 }
-
-export const updateReservation = async (
-  id: string,
-  data: UpdateReservationRequest
-): Promise<Reservation> => {
-  return apiRequest<Reservation>({
-    method: 'PATCH',
-    url: `/reservations/${id}`,
-    data,
-  });
-};
 
 // モックデータ（開発用）
 const mockReservations: Reservation[] = [
@@ -484,6 +474,89 @@ const mockReservations: Reservation[] = [
     cancelled_by: 'customer',
     created_at: '2026-03-28T10:00:00Z',
   },
+  // 2026年3月の過去予約（月別統計用）
+  {
+    reservation_id: 'rsv_016',
+    studio_id: 'studio_001',
+    user_id: 'user_014',
+    user_name: '林美咲',
+    user_email: 'hayashi@example.com',
+    user_phone: '080-1111-3333',
+    reservation_type: 'regular',
+    status: 'completed',
+    plan_id: 'plan_001',
+    plan_name: 'スチール撮影プラン',
+    plan_price: 15000,
+    plan_tax_rate: 0.1,
+    date: '2026-03-15',
+    start_time: '10:00',
+    end_time: '13:00',
+    options: [],
+    shooting_type: ['stills'],
+    shooting_details: '商品撮影',
+    photographer_name: '佐藤次郎',
+    number_of_people: 3,
+    needs_protection: false,
+    equipment_insurance: true,
+    created_at: '2026-03-01T10:00:00Z',
+  },
+  {
+    reservation_id: 'rsv_017',
+    studio_id: 'studio_001',
+    user_id: 'user_015',
+    user_name: '森田健二',
+    user_email: 'morita@example.com',
+    user_phone: '090-2222-4444',
+    reservation_type: 'regular',
+    status: 'completed',
+    plan_id: 'plan_002',
+    plan_name: '動画撮影プラン',
+    plan_price: 20000,
+    plan_tax_rate: 0.1,
+    date: '2026-03-20',
+    start_time: '14:00',
+    end_time: '18:00',
+    options: [
+      {
+        option_id: 'opt_001',
+        option_name: '6人以上のワークショップでご利用',
+        price: 2000,
+        tax_rate: 0.1,
+      },
+    ],
+    shooting_type: ['video'],
+    shooting_details: 'プロモーション動画',
+    photographer_name: '山田太郎',
+    number_of_people: 8,
+    needs_protection: false,
+    equipment_insurance: true,
+    created_at: '2026-03-05T14:00:00Z',
+  },
+  {
+    reservation_id: 'rsv_018',
+    studio_id: 'studio_001',
+    user_id: 'user_016',
+    user_name: '小林さくら',
+    user_email: 'kobayashi@example.com',
+    user_phone: '070-3333-5555',
+    reservation_type: 'regular',
+    status: 'completed',
+    plan_id: 'plan_001',
+    plan_name: 'スチール撮影プラン',
+    plan_price: 15000,
+    plan_tax_rate: 0.1,
+    date: '2026-03-25',
+    start_time: '10:00',
+    end_time: '14:00',
+    options: [],
+    shooting_type: ['stills'],
+    shooting_details: 'ポートレート撮影',
+    photographer_name: '鈴木一郎',
+    number_of_people: 2,
+    needs_protection: false,
+    equipment_insurance: true,
+    created_at: '2026-03-10T10:00:00Z',
+  },
 ];
 
 // モック: カレンダー取得
@@ -810,4 +883,79 @@ export const mockUpdateReservation = async (
   reservation.updated_at = new Date().toISOString();
 
   return reservation;
+};
+
+// 予約の合計金額を計算するヘルパー関数
+const calculateReservationTotal = (reservation: Reservation): number => {
+  const planTotal = reservation.plan_price * (1 + reservation.plan_tax_rate);
+  const optionsTotal = reservation.options.reduce(
+    (sum, opt) => sum + opt.price * (1 + opt.tax_rate),
+    0
+  );
+  return Math.floor(planTotal + optionsTotal);
+};
+
+// モック: 月別統計取得（管理者用）
+export const mockGetMonthlyStats = async (
+  studioId: string,
+  year: number,
+  month: number
+): Promise<MonthlyStats> => {
+  await new Promise((resolve) => setTimeout(resolve, 600)); // 600ms遅延
+
+  // 指定された年月の予約を取得
+  const reservations = mockReservations.filter((r) => {
+    const reservationDate = new Date(r.date);
+    return (
+      r.studio_id === studioId &&
+      reservationDate.getFullYear() === year &&
+      reservationDate.getMonth() + 1 === month
+    );
+  });
+
+  // 確定予約（confirmed）と完了予約（completed）の件数をカウント
+  const confirmedCount = reservations.filter((r) => r.status === 'confirmed').length;
+  const completedCount = reservations.filter((r) => r.status === 'completed').length;
+
+  // 売上は完了した予約のみ計上
+  const totalRevenue = reservations
+    .filter((r) => r.status === 'completed')
+    .reduce((sum, r) => sum + calculateReservationTotal(r), 0);
+
+  return {
+    year,
+    month,
+    reservation_count: reservations.length,
+    total_revenue: totalRevenue,
+    confirmed_count: confirmedCount,
+    completed_count: completedCount,
+  };
+};
+
+// モック: 複数月の統計を一括取得（管理者用）
+export const mockGetMonthlyStatsRange = async (
+  studioId: string,
+  startYear: number,
+  startMonth: number,
+  endYear: number,
+  endMonth: number
+): Promise<MonthlyStats[]> => {
+  await new Promise((resolve) => setTimeout(resolve, 800)); // 800ms遅延
+
+  const stats: MonthlyStats[] = [];
+  let currentYear = startYear;
+  let currentMonth = startMonth;
+
+  while (currentYear < endYear || (currentYear === endYear && currentMonth <= endMonth)) {
+    const monthStats = await mockGetMonthlyStats(studioId, currentYear, currentMonth);
+    stats.push(monthStats);
+
+    currentMonth++;
+    if (currentMonth > 12) {
+      currentMonth = 1;
+      currentYear++;
+    }
+  }
+
+  return stats;
 };

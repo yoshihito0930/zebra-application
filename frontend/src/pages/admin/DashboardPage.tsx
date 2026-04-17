@@ -21,9 +21,9 @@ import {
   AlertIcon,
   Badge,
 } from '@chakra-ui/react';
-import { Calendar, CheckCircle, Clock } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useTodayReservations, useAllReservations } from '../../hooks/useReservations';
+import { useTodayReservations, useAllReservations, useMonthlyStatsRange } from '../../hooks/useReservations';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -42,6 +42,27 @@ export default function DashboardPage() {
 
   // 今月の予約を取得（全体）
   const { data: allReservations = [] } = useAllReservations(STUDIO_ID, 'all');
+
+  // 過去6ヶ月の月別統計を取得
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth() + 1;
+
+  // 6ヶ月前の年月を計算
+  let startYear = currentYear;
+  let startMonth = currentMonth - 5;
+  if (startMonth <= 0) {
+    startMonth += 12;
+    startYear -= 1;
+  }
+
+  const { data: monthlyStats = [], isLoading: isStatsLoading } = useMonthlyStatsRange(
+    STUDIO_ID,
+    startYear,
+    startMonth,
+    currentYear,
+    currentMonth
+  );
 
   // 今月の予約数を計算
   const thisMonth = new Date().getMonth() + 1;
@@ -187,6 +208,72 @@ export default function DashboardPage() {
                   ))}
                 </Tbody>
               </Table>
+            </Box>
+          )}
+        </Box>
+
+        {/* 月別統計セクション */}
+        <Box bg="white" p={6} borderRadius="lg" shadow="md">
+          <HStack justify="space-between" mb={4}>
+            <HStack spacing={2}>
+              <TrendingUp size={20} />
+              <Heading size="md">月別統計（過去6ヶ月）</Heading>
+            </HStack>
+          </HStack>
+
+          {isStatsLoading ? (
+            <Box textAlign="center" py={8}>
+              <Spinner size="lg" />
+              <Text mt={2} color="gray.500">
+                読み込み中...
+              </Text>
+            </Box>
+          ) : monthlyStats.length === 0 ? (
+            <Alert status="info" borderRadius="md">
+              <AlertIcon />
+              統計データがありません
+            </Alert>
+          ) : (
+            <Box overflowX="auto">
+              <Table variant="simple" size="sm">
+                <Thead>
+                  <Tr>
+                    <Th>年月</Th>
+                    <Th isNumeric>予約件数</Th>
+                    <Th isNumeric>完了件数</Th>
+                    <Th isNumeric>確定件数</Th>
+                    <Th isNumeric>売上金額</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {monthlyStats.map((stat) => (
+                    <Tr key={`${stat.year}-${stat.month}`}>
+                      <Td fontWeight="medium">
+                        {stat.year}年{stat.month}月
+                      </Td>
+                      <Td isNumeric>{stat.reservation_count}件</Td>
+                      <Td isNumeric>
+                        <Text color="green.600" fontWeight="medium">
+                          {stat.completed_count}件
+                        </Text>
+                      </Td>
+                      <Td isNumeric>
+                        <Text color="blue.600">
+                          {stat.confirmed_count}件
+                        </Text>
+                      </Td>
+                      <Td isNumeric fontWeight="bold" fontSize="md">
+                        <Text color="brand.600">
+                          ¥{stat.total_revenue.toLocaleString()}
+                        </Text>
+                      </Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+              <Text mt={4} fontSize="xs" color="gray.500">
+                ※売上金額は完了した予約のみを集計しています
+              </Text>
             </Box>
           )}
         </Box>
