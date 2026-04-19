@@ -240,8 +240,8 @@ export default function CreateReservationModal({
 
     // オプション料金（時間によらず固定）
     const selectedOptions = options.filter((o) => selectedOptionIds.includes(o.option_id));
-    const optionsPrice = selectedOptions.reduce((sum, o) => sum + o.price, 0);
-    const optionsTax = selectedOptions.reduce((sum, o) => Math.floor(o.price * o.tax_rate), 0);
+    const optionsPrice = selectedOptions.reduce((total, o) => total + o.price, 0);
+    const optionsTax = selectedOptions.reduce((total, o) => total + Math.floor(o.price * o.tax_rate), 0);
 
     const subtotal = planPrice + optionsPrice;
     const tax = planTax + optionsTax;
