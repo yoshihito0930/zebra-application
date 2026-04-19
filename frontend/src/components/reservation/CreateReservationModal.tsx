@@ -207,23 +207,47 @@ export default function CreateReservationModal({
   const selectedReservationType = watch('reservation_type');
   const selectedDate = watch('date');
 
-  // 料金計算
+  // 利用時間を計算（時間単位、日跨ぎ対応）
+  const calculateUsageHours = (): number => {
+    if (startHour === null || startMinute === null || endHour === null || endMinute === null) {
+      return 0;
+    }
+
+    const startTotalMin = startHour * 60 + startMinute;
+    let endTotalMin = endHour * 60 + endMinute;
+
+    // 終了時刻が開始時刻以下の場合、日跨ぎとして24時間加算
+    if (endTotalMin <= startTotalMin) {
+      endTotalMin += 24 * 60;
+    }
+
+    const durationMin = endTotalMin - startTotalMin;
+    const hours = durationMin / 60;
+
+    return hours;
+  };
+
+  // 料金計算（プラン料金×利用時間＋オプション料金）
   const calculateTotalPrice = () => {
     const selectedPlan = plans.find((p) => p.plan_id === selectedPlanId);
-    if (!selectedPlan) return { subtotal: 0, tax: 0, total: 0 };
+    if (!selectedPlan) return { subtotal: 0, tax: 0, total: 0, hours: 0 };
 
-    const planPrice = selectedPlan.price;
+    const usageHours = calculateUsageHours();
+
+    // プラン料金 = 時間単価 × 利用時間
+    const planPrice = selectedPlan.price * usageHours;
     const planTax = Math.floor(planPrice * selectedPlan.tax_rate);
 
+    // オプション料金（時間によらず固定）
     const selectedOptions = options.filter((o) => selectedOptionIds.includes(o.option_id));
-    const optionsPrice = selectedOptions.reduce((_, o) => _ + o.price, 0);
-    const optionsTax = selectedOptions.reduce((_, o) => Math.floor(o.price * o.tax_rate), 0);
+    const optionsPrice = selectedOptions.reduce((sum, o) => sum + o.price, 0);
+    const optionsTax = selectedOptions.reduce((sum, o) => Math.floor(o.price * o.tax_rate), 0);
 
     const subtotal = planPrice + optionsPrice;
     const tax = planTax + optionsTax;
     const total = subtotal + tax;
 
-    return { subtotal, tax, total };
+    return { subtotal, tax, total, hours: usageHours };
   };
 
   const priceInfo = calculateTotalPrice();
@@ -588,11 +612,10 @@ export default function CreateReservationModal({
                     control={control}
                     render={({ field }) => (
                       <CheckboxGroup value={field.value} onChange={field.onChange}>
-                        <Stack direction="row" spacing={4}>
-                          <Checkbox value="stills">スチール</Checkbox>
-                          <Checkbox value="video">動画</Checkbox>
-                          <Checkbox value="workshop">ワークショップ</Checkbox>
-                          <Checkbox value="other">その他</Checkbox>
+                        <Stack direction="column" spacing={2}>
+                          <Checkbox value="stills">スチール撮影</Checkbox>
+                          <Checkbox value="video">ムービー撮影</Checkbox>
+                          <Checkbox value="music_with_restrictions">楽器の演奏を伴う撮影(制限あり)</Checkbox>
                         </Stack>
                       </CheckboxGroup>
                     )}
@@ -648,7 +671,7 @@ export default function CreateReservationModal({
                     control={control}
                     render={({ field: { value, onChange } }) => (
                       <Checkbox isChecked={value} onChange={onChange}>
-                        壁・床の養生が必要
+                        ホリゾントの養生あり
                       </Checkbox>
                     )}
                   />
@@ -689,6 +712,12 @@ export default function CreateReservationModal({
                 {/* 料金表示 */}
                 <Box bg="gray.50" p={4} borderRadius="md">
                   <VStack align="stretch" spacing={2}>
+                    {priceInfo.hours > 0 && (
+                      <HStack justify="space-between">
+                        <Text fontSize="sm" color="gray.600">利用時間</Text>
+                        <Text fontSize="sm" fontWeight="medium">{priceInfo.hours}時間</Text>
+                      </HStack>
+                    )}
                     <HStack justify="space-between">
                       <Text>小計</Text>
                       <Text fontWeight="medium">¥{priceInfo.subtotal.toLocaleString()}</Text>
@@ -921,11 +950,10 @@ export default function CreateReservationModal({
                           control={control}
                           render={({ field }) => (
                             <CheckboxGroup value={field.value} onChange={field.onChange}>
-                              <Stack direction="row" spacing={4}>
-                                <Checkbox value="stills">スチール</Checkbox>
-                                <Checkbox value="video">動画</Checkbox>
-                                <Checkbox value="workshop">ワークショップ</Checkbox>
-                                <Checkbox value="other">その他</Checkbox>
+                              <Stack direction="column" spacing={2}>
+                                <Checkbox value="stills">スチール撮影</Checkbox>
+                                <Checkbox value="video">ムービー撮影</Checkbox>
+                                <Checkbox value="music_with_restrictions">楽器の演奏を伴う撮影(制限あり)</Checkbox>
                               </Stack>
                             </CheckboxGroup>
                           )}
@@ -981,7 +1009,7 @@ export default function CreateReservationModal({
                           control={control}
                           render={({ field: { value, onChange } }) => (
                             <Checkbox isChecked={value} onChange={onChange}>
-                              壁・床の養生が必要
+                              ホリゾントの養生あり
                             </Checkbox>
                           )}
                         />
@@ -1022,6 +1050,12 @@ export default function CreateReservationModal({
                       {/* 料金表示 */}
                       <Box bg="gray.50" p={4} borderRadius="md">
                         <VStack align="stretch" spacing={2}>
+                          {priceInfo.hours > 0 && (
+                            <HStack justify="space-between">
+                              <Text fontSize="sm" color="gray.600">利用時間</Text>
+                              <Text fontSize="sm" fontWeight="medium">{priceInfo.hours}時間</Text>
+                            </HStack>
+                          )}
                           <HStack justify="space-between">
                             <Text>小計</Text>
                             <Text fontWeight="medium">¥{priceInfo.subtotal.toLocaleString()}</Text>

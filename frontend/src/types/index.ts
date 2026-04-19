@@ -16,7 +16,7 @@ export type ReservationStatus =
   | 'completed';
 
 // 撮影種別
-export type ShootingType = 'stills' | 'video' | 'music';
+export type ShootingType = 'stills' | 'video' | 'music_with_restrictions';
 
 // キャンセル者
 export type CancelledBy = 'customer' | 'owner';

@@ -285,7 +285,7 @@ export default function GuestReservationDetailPage() {
                   <HStack spacing={2}>
                     {reservation.shooting_type.map((type) => (
                       <Badge key={type} colorScheme="blue">
-                        {type === 'stills' ? 'スチール' : type === 'video' ? '動画' : type === 'music' ? '音楽' : type}
+                        {type === 'stills' ? 'スチール撮影' : type === 'video' ? 'ムービー撮影' : type === 'music_with_restrictions' ? '楽器の演奏を伴う撮影(制限あり)' : type}
                       </Badge>
                     ))}
                   </HStack>
