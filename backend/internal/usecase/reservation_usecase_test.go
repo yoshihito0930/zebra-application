@@ -153,6 +153,45 @@ func (m *MockPlanRepository) Delete(ctx context.Context, studioID, planID string
 	return nil
 }
 
+// MockOptionRepository はオプションリポジトリのモック
+type MockOptionRepository struct {
+	FindByIDFunc func(ctx context.Context, studioID, optionID string) (*entity.Option, error)
+}
+
+func (m *MockOptionRepository) FindByID(ctx context.Context, studioID, optionID string) (*entity.Option, error) {
+	if m.FindByIDFunc != nil {
+		return m.FindByIDFunc(ctx, studioID, optionID)
+	}
+	return &entity.Option{
+		OptionID:   optionID,
+		StudioID:   studioID,
+		OptionName: "Test Option",
+		Price:      2000,
+		TaxRate:    0.10,
+		IsActive:   true,
+	}, nil
+}
+
+func (m *MockOptionRepository) FindByStudioID(ctx context.Context, studioID string) ([]*entity.Option, error) {
+	return []*entity.Option{}, nil
+}
+
+func (m *MockOptionRepository) FindActiveByStudioID(ctx context.Context, studioID string) ([]*entity.Option, error) {
+	return []*entity.Option{}, nil
+}
+
+func (m *MockOptionRepository) Create(ctx context.Context, option *entity.Option) error {
+	return nil
+}
+
+func (m *MockOptionRepository) Update(ctx context.Context, option *entity.Option) error {
+	return nil
+}
+
+func (m *MockOptionRepository) Delete(ctx context.Context, studioID, optionID string) error {
+	return nil
+}
+
 // MockBlockedSlotRepository はブロック枠リポジトリのモック
 type MockBlockedSlotRepository struct {
 	FindByStudioAndDateRangeFunc func(ctx context.Context, studioID string, startDate, endDate time.Time) ([]*entity.BlockedSlot, error)
@@ -235,7 +274,7 @@ func TestCreateReservation_Success(t *testing.T) {
 	studioRepo := &MockStudioRepository{}
 
 	// 2. ユースケースを作成
-	usecase := NewReservationUsecase(reservationRepo, userRepo, planRepo, blockedSlotRepo, studioRepo)
+	usecase := NewReservationUsecase(reservationRepo, userRepo, planRepo, &MockOptionRepository{}, blockedSlotRepo, studioRepo)
 
 	// 3. 予約作成リクエストを準備
 	input := CreateReservationInput{
@@ -292,7 +331,7 @@ func TestCreateReservation_Conflict(t *testing.T) {
 	studioRepo := &MockStudioRepository{}
 
 	// 2. ユースケースを作成
-	usecase := NewReservationUsecase(reservationRepo, userRepo, planRepo, blockedSlotRepo, studioRepo)
+	usecase := NewReservationUsecase(reservationRepo, userRepo, planRepo, &MockOptionRepository{}, blockedSlotRepo, studioRepo)
 
 	// 3. 予約作成リクエストを準備
 	input := CreateReservationInput{
@@ -343,7 +382,7 @@ func TestApproveReservation_Success(t *testing.T) {
 	studioRepo := &MockStudioRepository{}
 
 	// 2. ユースケースを作成
-	usecase := NewReservationUsecase(reservationRepo, userRepo, planRepo, blockedSlotRepo, studioRepo)
+	usecase := NewReservationUsecase(reservationRepo, userRepo, planRepo, &MockOptionRepository{}, blockedSlotRepo, studioRepo)
 
 	// 3. 予約を承認
 	reservation, err := usecase.ApproveReservation(context.Background(), "rsv_001")
@@ -384,7 +423,7 @@ func TestRejectReservation_Success(t *testing.T) {
 	studioRepo := &MockStudioRepository{}
 
 	// 2. ユースケースを作成
-	usecase := NewReservationUsecase(reservationRepo, userRepo, planRepo, blockedSlotRepo, studioRepo)
+	usecase := NewReservationUsecase(reservationRepo, userRepo, planRepo, &MockOptionRepository{}, blockedSlotRepo, studioRepo)
 
 	// 3. 予約を拒否
 	reservation, err := usecase.RejectReservation(context.Background(), "rsv_001")
@@ -425,7 +464,7 @@ func TestPromoteReservation_Success(t *testing.T) {
 	studioRepo := &MockStudioRepository{}
 
 	// 2. ユースケースを作成
-	usecase := NewReservationUsecase(reservationRepo, userRepo, planRepo, blockedSlotRepo, studioRepo)
+	usecase := NewReservationUsecase(reservationRepo, userRepo, planRepo, &MockOptionRepository{}, blockedSlotRepo, studioRepo)
 
 	// 3. 予約を昇格
 	reservation, err := usecase.PromoteReservation(context.Background(), "rsv_001")
@@ -590,7 +629,7 @@ func TestCreateReservation_BufferTimeConflict(t *testing.T) {
 				},
 			}
 
-			usecase := NewReservationUsecase(reservationRepo, userRepo, planRepo, blockedSlotRepo, studioRepo)
+			usecase := NewReservationUsecase(reservationRepo, userRepo, planRepo, &MockOptionRepository{}, blockedSlotRepo, studioRepo)
 
 			// 予約作成を試行
 			userID := "user_001"

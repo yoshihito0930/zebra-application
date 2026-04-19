@@ -58,6 +58,18 @@ const (
 	PromotedFromWaitlisted PromotedFrom = "waitlisted"
 )
 
+// OptionSnapshot はオプションのスナップショット（予約時の料金を保存）
+type OptionSnapshot struct {
+	// OptionID はオプションID
+	OptionID string `json:"option_id" dynamodbav:"option_id"`
+	// OptionName はオプション名
+	OptionName string `json:"option_name" dynamodbav:"option_name"`
+	// Price は料金（税抜、スナップショット）
+	Price int `json:"price" dynamodbav:"price"`
+	// TaxRate は税率（スナップショット）
+	TaxRate float64 `json:"tax_rate" dynamodbav:"tax_rate"`
+}
+
 // Reservation は予約エンティティを表す
 type Reservation struct {
 	// StudioID はスタジオの一意識別子
@@ -95,6 +107,18 @@ type Reservation struct {
 
 	// PlanID は料金プランID
 	PlanID string `json:"plan_id" dynamodbav:"plan_id"`
+
+	// PlanName はプラン名（スナップショット）
+	PlanName string `json:"plan_name" dynamodbav:"plan_name"`
+
+	// PlanPrice はプラン料金（税抜、時間単価、スナップショット）
+	PlanPrice int `json:"plan_price" dynamodbav:"plan_price"`
+
+	// PlanTaxRate はプラン税率（スナップショット）
+	PlanTaxRate float64 `json:"plan_tax_rate" dynamodbav:"plan_tax_rate"`
+
+	// OptionSnapshots はオプションのスナップショット（予約時の料金を保存）
+	OptionSnapshots []OptionSnapshot `json:"option_snapshots,omitempty" dynamodbav:"option_snapshots,omitempty"`
 
 	// Date は利用日（YYYY-MM-DD）
 	Date time.Time `json:"date" dynamodbav:"date"`

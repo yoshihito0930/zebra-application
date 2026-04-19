@@ -39,6 +39,7 @@ func init() {
 		reservationRepo,
 		userRepo,
 		planRepo,
+		optionRepo,
 		blockedSlotRepo,
 		studioRepo,
 	)

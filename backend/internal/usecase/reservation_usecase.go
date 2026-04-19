@@ -16,6 +16,7 @@ type ReservationUsecase struct {
 	reservationRepo  repository.ReservationRepository
 	userRepo         repository.UserRepository
 	planRepo         repository.PlanRepository
+	optionRepo       repository.OptionRepository
 	blockedSlotRepo  repository.BlockedSlotRepository
 	studioRepo       repository.StudioRepository
 	tentativeExpiryDays int // 仮予約の有効期限（利用日の何日前か）
@@ -26,6 +27,7 @@ func NewReservationUsecase(
 	reservationRepo repository.ReservationRepository,
 	userRepo repository.UserRepository,
 	planRepo repository.PlanRepository,
+	optionRepo repository.OptionRepository,
 	blockedSlotRepo repository.BlockedSlotRepository,
 	studioRepo repository.StudioRepository,
 ) *ReservationUsecase {
@@ -33,6 +35,7 @@ func NewReservationUsecase(
 		reservationRepo:     reservationRepo,
 		userRepo:            userRepo,
 		planRepo:            planRepo,
+		optionRepo:          optionRepo,
 		blockedSlotRepo:     blockedSlotRepo,
 		studioRepo:          studioRepo,
 		tentativeExpiryDays: 7, // デフォルト7日前
@@ -159,6 +162,22 @@ func timeToMinutes(timeStr string) int {
 	return hour*60 + min
 }
 
+// calculateUsageHours は開始時刻と終了時刻から利用時間（時間単位）を計算する
+// 日跨ぎに対応（終了時刻が "26:00" のような24時を超える場合も考慮）
+// 戻り値: 利用時間（時間単位）
+func calculateUsageHours(startTime, endTime string) (float64, error) {
+	startTotalMin := timeToMinutes(startTime)
+	endTotalMin := timeToMinutes(endTime)
+
+	durationMin := endTotalMin - startTotalMin
+	if durationMin <= 0 {
+		return 0, fmt.Errorf("end time must be after start time")
+	}
+
+	hours := float64(durationMin) / 60.0
+	return hours, nil
+}
+
 // CreateReservation は予約を作成する
 // アクセスパターン: AP-07（予約作成）, AP-17（管理者側予約作成）
 //
@@ -227,7 +246,30 @@ func (u *ReservationUsecase) CreateReservation(ctx context.Context, input Create
 		return nil, err
 	}
 
-	// 7. 予約エンティティを作成
+	// 7. 料金スナップショットを作成
+	// プラン料金のスナップショット
+	planName := plan.PlanName
+	planPrice := plan.Price      // 時間単価（税抜）
+	planTaxRate := plan.TaxRate
+
+	// オプション料金のスナップショット
+	var optionSnapshots []entity.OptionSnapshot
+	if len(input.Options) > 0 {
+		for _, optionID := range input.Options {
+			option, err := u.optionRepo.FindByID(ctx, input.StudioID, optionID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to find option %s: %w", optionID, err)
+			}
+			optionSnapshots = append(optionSnapshots, entity.OptionSnapshot{
+				OptionID:   option.OptionID,
+				OptionName: option.OptionName,
+				Price:      option.Price,
+				TaxRate:    option.TaxRate,
+			})
+		}
+	}
+
+	// 8. 予約エンティティを作成
 	now := time.Now()
 	reservation := &entity.Reservation{
 		ReservationID:      uuid.New().String(),
@@ -236,6 +278,10 @@ func (u *ReservationUsecase) CreateReservation(ctx context.Context, input Create
 		ReservationType:    input.ReservationType,
 		Status:             entity.ReservationStatusPending, // 初期状態は承認待ち
 		PlanID:             input.PlanID,
+		PlanName:           planName,
+		PlanPrice:          planPrice,
+		PlanTaxRate:        planTaxRate,
+		OptionSnapshots:    optionSnapshots,
 		Date:               input.Date,
 		StartTime:          input.StartTime,
 		EndTime:            input.EndTime,

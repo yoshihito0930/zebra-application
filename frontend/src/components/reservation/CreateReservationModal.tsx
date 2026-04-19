@@ -177,6 +177,12 @@ export default function CreateReservationModal({
     },
   });
 
+  // 時と分を分けて管理するためのstate
+  const [startHour, setStartHour] = useState<number | null>(null);
+  const [startMinute, setStartMinute] = useState<number | null>(null);
+  const [endHour, setEndHour] = useState<number | null>(null);
+  const [endMinute, setEndMinute] = useState<number | null>(null);
+
   // モーダルが開かれたときの初期化
   useEffect(() => {
     if (isOpen) {
@@ -390,12 +396,6 @@ export default function CreateReservationModal({
   const startHourOptions = Array.from({ length: 24 }, (_, i) => i); // 0-23
   const endHourOptions = Array.from({ length: 25 }, (_, i) => i); // 0-24
   const minuteOptions = [0, 15, 30, 45];
-
-  // 時と分を分けて管理するためのstate
-  const [startHour, setStartHour] = useState<number | null>(null);
-  const [startMinute, setStartMinute] = useState<number | null>(null);
-  const [endHour, setEndHour] = useState<number | null>(null);
-  const [endMinute, setEndMinute] = useState<number | null>(null);
 
   // 時と分をHH:MM形式に変換（日跨ぎ対応）
   const formatTimeString = (hour: number | null, minute: number | null, isEndTime: boolean = false): string => {
