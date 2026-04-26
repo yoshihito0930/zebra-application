@@ -93,7 +93,7 @@ func BuildReservationResponse(
 	resp := ReservationResponse{
 		ReservationID:      r.ReservationID,
 		StudioID:           r.StudioID,
-		UserID:             r.UserID,
+		UserID:             func() string { if r.UserID != nil { return *r.UserID }; return "" }(),
 		ReservationType:    string(r.ReservationType),
 		Status:             string(r.Status),
 		Plan:               planInfo,

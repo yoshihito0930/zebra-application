@@ -76,10 +76,17 @@ func handler(ctx context.Context, event events.CloudWatchEvent) error {
 
 				// 通知を作成
 				now := time.Now()
+
+				// UserIDの型変換（*string → string）
+				var userID string
+				if r.UserID != nil {
+					userID = *r.UserID
+				}
+
 				notification := &entity.Notification{
 					StudioID:       studioID,
 					NotificationID: uuid.New().String(),
-					UserID:         r.UserID,
+					UserID:         userID,
 					ReservationID:  &r.ReservationID,
 					NotificationType: entity.NotificationTypeTentativeExpiry,
 					NotificationDetail: fmt.Sprintf(

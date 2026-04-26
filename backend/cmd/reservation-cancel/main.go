@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/yoshihito0930/zebra-application/internal/domain/entity"
 	"github.com/yoshihito0930/zebra-application/internal/middleware"
+	"github.com/yoshihito0930/zebra-application/internal/repository"
 	dynamodbRepo "github.com/yoshihito0930/zebra-application/internal/repository/dynamodb"
 	"github.com/yoshihito0930/zebra-application/internal/usecase"
 	"github.com/yoshihito0930/zebra-application/pkg/apierror"
@@ -18,6 +19,7 @@ import (
 
 var (
 	reservationUsecase *usecase.ReservationUsecase
+	optionRepo         repository.OptionRepository
 )
 
 func init() {
@@ -30,6 +32,7 @@ func init() {
 	reservationRepo := dynamodbRepo.NewReservationRepository(dynamoClient)
 	userRepo := dynamodbRepo.NewUserRepository(dynamoClient)
 	planRepo := dynamodbRepo.NewPlanRepository(dynamoClient)
+	optionRepo = dynamodbRepo.NewOptionRepository(dynamoClient)
 	blockedSlotRepo := dynamodbRepo.NewBlockedSlotRepository(dynamoClient)
 	studioRepo := dynamodbRepo.NewStudioRepository(dynamoClient)
 
@@ -71,7 +74,8 @@ func cancelReservationHandler(ctx context.Context, request events.APIGatewayProx
 	}
 
 	// 顧客は自分の予約のみキャンセル可能
-	if role == string(middleware.RoleCustomer) && reservation.UserID != userID {
+	// UserIDの型変換と比較（*string → string）
+	if role == string(middleware.RoleCustomer) && (reservation.UserID == nil || *reservation.UserID != userID) {
 		return response.ErrorWithCORS(apierror.ErrForbiddenResource), nil
 	}
 

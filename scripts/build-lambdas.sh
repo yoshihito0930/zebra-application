@@ -32,11 +32,11 @@ SUCCESS_COUNT=0
 FAIL_COUNT=0
 FAILED_FUNCTIONS=()
 
-# backend/cmd以下の全ディレクトリを取得
+# backend/cmd以下の全ディレクトリを取得（main.goが存在するもののみ）
 cd "${BACKEND_DIR}"
 
 echo -e "${YELLOW}Lambda関数を検出中...${NC}"
-LAMBDA_FUNCTIONS=$(find cmd -maxdepth 1 -mindepth 1 -type d | sed 's|cmd/||' | sort)
+LAMBDA_FUNCTIONS=$(find cmd -maxdepth 1 -mindepth 1 -type d -exec sh -c 'test -f "$1"/main.go && basename "$1"' _ {} \; | sort)
 TOTAL_COUNT=$(echo "${LAMBDA_FUNCTIONS}" | wc -l)
 
 echo -e "${GREEN}検出されたLambda関数: ${TOTAL_COUNT}個${NC}"

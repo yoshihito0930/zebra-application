@@ -176,3 +176,38 @@ func (u *InquiryUsecase) ReplyInquiry(ctx context.Context, input ReplyInquiryInp
 
 	return inquiry, nil
 }
+
+// CloseInquiryInput は問い合わせクローズのリクエスト
+type CloseInquiryInput struct {
+	StudioID  string
+	InquiryID string
+}
+
+// CloseInquiry は問い合わせをクローズする
+//
+// ビジネスルール:
+// 1. 問い合わせのステータスがrepliedであることを確認（openからのクローズは許可しない）
+func (u *InquiryUsecase) CloseInquiry(ctx context.Context, input CloseInquiryInput) (*entity.Inquiry, error) {
+	// 1. 既存の問い合わせを取得
+	inquiry, err := u.inquiryRepo.FindByID(ctx, input.StudioID, input.InquiryID)
+	if err != nil {
+		return nil, apierror.ErrInquiryNotFound
+	}
+
+	// 2. ステータスがrepliedであることを確認（open/closedの場合はエラー）
+	if inquiry.InquiryStatus != entity.InquiryStatusReplied {
+		return nil, apierror.ErrInvalidStatusTransition
+	}
+
+	// 3. ステータスをclosedに変更
+	now := time.Now()
+	inquiry.InquiryStatus = entity.InquiryStatusClosed
+	inquiry.UpdatedAt = now
+
+	// 4. リポジトリに保存
+	if err := u.inquiryRepo.Update(ctx, inquiry); err != nil {
+		return nil, fmt.Errorf("failed to close inquiry: %w", err)
+	}
+
+	return inquiry, nil
+}

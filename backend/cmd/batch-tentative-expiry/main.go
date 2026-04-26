@@ -18,6 +18,7 @@ import (
 var (
 	reservationUsecase *usecase.ReservationUsecase
 	reservationRepo    repository.ReservationRepository
+	optionRepo         repository.OptionRepository
 )
 
 func init() {
@@ -30,6 +31,7 @@ func init() {
 	reservationRepo = dynamodbRepo.NewReservationRepository(dynamoClient)
 	userRepo := dynamodbRepo.NewUserRepository(dynamoClient)
 	planRepo := dynamodbRepo.NewPlanRepository(dynamoClient)
+	optionRepo = dynamodbRepo.NewOptionRepository(dynamoClient)
 	blockedSlotRepo := dynamodbRepo.NewBlockedSlotRepository(dynamoClient)
 	studioRepo := dynamodbRepo.NewStudioRepository(dynamoClient)
 

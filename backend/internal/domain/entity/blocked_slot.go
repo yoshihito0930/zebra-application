@@ -1,6 +1,9 @@
 package entity
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // BlockedSlot は予約不可枠エンティティを表す
 // 休業日やプライベート利用など、予約を受け付けない時間帯を管理する

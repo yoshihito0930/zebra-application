@@ -40,7 +40,7 @@ func deleteOptionHandler(ctx context.Context, request events.APIGatewayProxyRequ
 	// スタジオIDとオプションIDを取得
 	studioID, ok := request.RequestContext.Authorizer["studio_id"].(string)
 	if !ok || studioID == "" {
-		return response.ErrorWithCORS(apierror.ErrForbidden), nil
+		return response.ErrorWithCORS(apierror.ErrForbiddenRole), nil
 	}
 
 	optionID := request.PathParameters["id"]

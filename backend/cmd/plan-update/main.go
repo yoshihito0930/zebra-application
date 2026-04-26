@@ -60,7 +60,7 @@ func updatePlanHandler(ctx context.Context, request events.APIGatewayProxyReques
 	// スタジオIDとプランIDを取得
 	studioID, ok := request.RequestContext.Authorizer["studio_id"].(string)
 	if !ok || studioID == "" {
-		return response.ErrorWithCORS(apierror.ErrForbidden), nil
+		return response.ErrorWithCORS(apierror.ErrForbiddenRole), nil
 	}
 
 	planID := request.PathParameters["id"]
@@ -85,19 +85,11 @@ func updatePlanHandler(ctx context.Context, request events.APIGatewayProxyReques
 	}
 
 	if req.Price != nil && *req.Price <= 0 {
-		validationResult.Valid = false
-		validationResult.Errors = append(validationResult.Errors, validator.ValidationError{
-			Field:   "price",
-			Message: "料金は0より大きい値を指定してください",
-		})
+		validationResult.AddError("price", "料金は0より大きい値を指定してください")
 	}
 
 	if req.TaxRate != nil && (*req.TaxRate < 0 || *req.TaxRate > 1) {
-		validationResult.Valid = false
-		validationResult.Errors = append(validationResult.Errors, validator.ValidationError{
-			Field:   "tax_rate",
-			Message: "税率は0から1の範囲で指定してください",
-		})
+		validationResult.AddError("tax_rate", "税率は0から1の範囲で指定してください")
 	}
 
 	if !validationResult.Valid {

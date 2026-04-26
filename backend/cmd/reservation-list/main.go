@@ -22,6 +22,7 @@ import (
 var (
 	reservationUsecase *usecase.ReservationUsecase
 	planRepo           repository.PlanRepository
+	optionRepo         repository.OptionRepository
 )
 
 func init() {
@@ -34,6 +35,7 @@ func init() {
 	reservationRepo := dynamodbRepo.NewReservationRepository(dynamoClient)
 	userRepo := dynamodbRepo.NewUserRepository(dynamoClient)
 	planRepo = dynamodbRepo.NewPlanRepository(dynamoClient)
+	optionRepo = dynamodbRepo.NewOptionRepository(dynamoClient)
 	blockedSlotRepo := dynamodbRepo.NewBlockedSlotRepository(dynamoClient)
 	studioRepo := dynamodbRepo.NewStudioRepository(dynamoClient)
 
@@ -132,9 +134,15 @@ func listReservationsHandler(ctx context.Context, request events.APIGatewayProxy
 			planName = plan.PlanName
 		}
 
+		// UserIDの型変換（*string → string）
+		var userID string
+		if r.UserID != nil {
+			userID = *r.UserID
+		}
+
 		summaries[i] = ReservationSummary{
 			ReservationID:    r.ReservationID,
-			UserID:           r.UserID,
+			UserID:           userID,
 			ReservationType:  string(r.ReservationType),
 			Status:           string(r.Status),
 			PlanName:         planName,

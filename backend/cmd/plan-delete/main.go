@@ -40,7 +40,7 @@ func deletePlanHandler(ctx context.Context, request events.APIGatewayProxyReques
 	// スタジオIDとプランIDを取得
 	studioID, ok := request.RequestContext.Authorizer["studio_id"].(string)
 	if !ok || studioID == "" {
-		return response.ErrorWithCORS(apierror.ErrForbidden), nil
+		return response.ErrorWithCORS(apierror.ErrForbiddenRole), nil
 	}
 
 	planID := request.PathParameters["id"]

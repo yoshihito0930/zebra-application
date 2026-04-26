@@ -111,10 +111,16 @@ func handler(ctx context.Context, event events.CloudWatchEvent) error {
 				}
 
 				// 繰り上げ通知を作成
+				// UserIDの型変換（*string → string）
+				var userID string
+				if waitlistedRes.UserID != nil {
+					userID = *waitlistedRes.UserID
+				}
+
 				notification := &entity.Notification{
 					StudioID:       studioID,
 					NotificationID: uuid.New().String(),
-					UserID:         waitlistedRes.UserID,
+					UserID:         userID,
 					ReservationID:  &waitlistedRes.ReservationID,
 					NotificationType: entity.NotificationTypePromotion,
 					NotificationDetail: fmt.Sprintf(

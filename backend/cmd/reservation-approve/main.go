@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/yoshihito0930/zebra-application/internal/middleware"
 	dynamodbRepo "github.com/yoshihito0930/zebra-application/internal/repository/dynamodb"
+	"github.com/yoshihito0930/zebra-application/internal/repository"
 	"github.com/yoshihito0930/zebra-application/internal/usecase"
 	"github.com/yoshihito0930/zebra-application/pkg/apierror"
 	"github.com/yoshihito0930/zebra-application/pkg/response"
@@ -17,6 +18,7 @@ import (
 
 var (
 	reservationUsecase *usecase.ReservationUsecase
+	optionRepo         repository.OptionRepository
 )
 
 func init() {
@@ -29,6 +31,7 @@ func init() {
 	reservationRepo := dynamodbRepo.NewReservationRepository(dynamoClient)
 	userRepo := dynamodbRepo.NewUserRepository(dynamoClient)
 	planRepo := dynamodbRepo.NewPlanRepository(dynamoClient)
+	optionRepo = dynamodbRepo.NewOptionRepository(dynamoClient)
 	blockedSlotRepo := dynamodbRepo.NewBlockedSlotRepository(dynamoClient)
 	studioRepo := dynamodbRepo.NewStudioRepository(dynamoClient)
 

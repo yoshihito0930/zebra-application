@@ -75,7 +75,12 @@ func getReservationHandler(ctx context.Context, request events.APIGatewayProxyRe
 	}
 
 	// 所有者チェック（顧客は自分の予約のみ閲覧可能）
-	if !middleware.CheckOwnership(ctx, reservation.UserID) {
+	// UserIDの型変換（*string → string）
+	var userID string
+	if reservation.UserID != nil {
+		userID = *reservation.UserID
+	}
+	if !middleware.CheckOwnership(ctx, userID) {
 		return response.ErrorWithCORS(apierror.ErrForbiddenResource), nil
 	}
 
