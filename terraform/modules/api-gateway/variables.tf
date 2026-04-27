@@ -110,6 +110,16 @@ variable "lambda_functions" {
     studio_update = object({
       invoke_arn = string
     })
+    # ゲスト予約（2026-04-16追加）
+    reservation_guest_get = object({
+      invoke_arn = string
+    })
+    reservation_guest_cancel = object({
+      invoke_arn = string
+    })
+    reservation_guest_promote = object({
+      invoke_arn = string
+    })
   })
 }
 

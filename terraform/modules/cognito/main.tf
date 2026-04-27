@@ -137,21 +137,9 @@ resource "aws_cognito_user_pool_client" "main" {
   # セキュリティ設定
   prevent_user_existence_errors = "ENABLED"
 
-  # 読み取り/書き込み属性
-  read_attributes = [
-    "email",
-    "email_verified",
-    "name",
-    "custom:studio_id",
-    "custom:role",
-    "custom:phone_number"
-  ]
-
-  write_attributes = [
-    "email",
-    "name",
-    "custom:phone_number"
-  ]
+  # 読み取り/書き込み属性を省略（すべての属性にアクセス可能）
+  # read_attributes と write_attributes を指定しない場合、
+  # User Pool で定義されたすべての属性にアクセス可能
 }
 
 # Cognito User Pool Domain（ホストされたUIを使用する場合）

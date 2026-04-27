@@ -26,11 +26,14 @@ resource "aws_api_gateway_integration" "lambda" {
 
 # Lambda実行権限
 resource "aws_lambda_permission" "api_gateway" {
-  statement_id  = "AllowAPIGatewayInvoke-${var.environment}-${replace(var.invoke_arn, "/[^a-zA-Z0-9]/", "-")}"
+  # Extract function name from invoke_arn
+  # invoke_arn format: arn:aws:apigateway:region:lambda:path/2015-03-31/functions/arn:aws:lambda:region:account:function:FUNCTION_NAME/invocations
+  statement_id  = "AllowAPIGatewayInvoke-${regex("function:([^/]+)", var.invoke_arn)[0]}"
   action        = "lambda:InvokeFunction"
-  function_name = split(":", var.invoke_arn)[6]
+  function_name = regex("function:([^/]+)", var.invoke_arn)[0]
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${var.rest_api_id}/*/*"
+  # execute-api ARN format: arn:aws:execute-api:region:account-id:api-id/*/*
+  source_arn    = "${var.rest_api_exec_arn}/*/*"
 }
 
 # メソッドレスポンス

@@ -906,7 +906,7 @@ resource "aws_lambda_function" "reservation_guest_get" {
   environment {
     variables = merge(local.common_env_vars, {
       SES_SENDER_EMAIL          = var.ses_sender_email
-      GUEST_RESERVATION_URL     = var.guest_reservation_base_url
+      GUEST_RESERVATION_URL     = var.guest_reservation_url
     })
   }
 
@@ -931,7 +931,7 @@ resource "aws_lambda_function" "reservation_guest_cancel" {
   environment {
     variables = merge(local.common_env_vars, {
       SES_SENDER_EMAIL          = var.ses_sender_email
-      GUEST_RESERVATION_URL     = var.guest_reservation_base_url
+      GUEST_RESERVATION_URL     = var.guest_reservation_url
     })
   }
 
@@ -956,7 +956,7 @@ resource "aws_lambda_function" "reservation_guest_promote" {
   environment {
     variables = merge(local.common_env_vars, {
       SES_SENDER_EMAIL          = var.ses_sender_email
-      GUEST_RESERVATION_URL     = var.guest_reservation_base_url
+      GUEST_RESERVATION_URL     = var.guest_reservation_url
     })
   }
 

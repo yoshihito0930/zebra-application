@@ -259,9 +259,9 @@ module "lambda_integration" {
     "reservation_promote" = { resource = aws_api_gateway_resource.reservations_id_promote.id, method = "PATCH", invoke_arn = var.lambda_functions.reservation_promote.invoke_arn, auth = true }
     "reservation_cancel"  = { resource = aws_api_gateway_resource.reservations_id_cancel.id, method = "PATCH", invoke_arn = var.lambda_functions.reservation_cancel.invoke_arn, auth = true }
     # ゲスト予約（2026-04-16追加）
-    "reservation_guest_get"     = { resource = aws_api_gateway_resource.reservations_guest_token.id, method = "GET", invoke_arn = var.lambda_functions.reservation_guest_get.invoke_arn, auth = false }
-    "reservation_guest_cancel"  = { resource = aws_api_gateway_resource.reservations_guest_token_cancel.id, method = "PATCH", invoke_arn = var.lambda_functions.reservation_guest_cancel.invoke_arn, auth = false }
-    "reservation_guest_promote" = { resource = aws_api_gateway_resource.reservations_guest_token_promote.id, method = "PATCH", invoke_arn = var.lambda_functions.reservation_guest_promote.invoke_arn, auth = false }
+    "reservation_guest_get"     = { resource = aws_api_gateway_resource.reservations_guest_token.id, method = "GET", invoke_arn = var.lambda_functions["reservation_guest_get"].invoke_arn, auth = false }
+    "reservation_guest_cancel"  = { resource = aws_api_gateway_resource.reservations_guest_token_cancel.id, method = "PATCH", invoke_arn = var.lambda_functions["reservation_guest_cancel"].invoke_arn, auth = false }
+    "reservation_guest_promote" = { resource = aws_api_gateway_resource.reservations_guest_token_promote.id, method = "PATCH", invoke_arn = var.lambda_functions["reservation_guest_promote"].invoke_arn, auth = false }
     # プラン
     "plans_list"   = { resource = aws_api_gateway_resource.studios_id_plans.id, method = "GET", invoke_arn = var.lambda_functions.plans_list.invoke_arn, auth = false }
     "plan_create"  = { resource = aws_api_gateway_resource.plans.id, method = "POST", invoke_arn = var.lambda_functions.plan_create.invoke_arn, auth = true }
@@ -291,12 +291,13 @@ module "lambda_integration" {
 
   source = "./method"
 
-  rest_api_id   = aws_api_gateway_rest_api.main.id
-  resource_id   = each.value.resource
-  http_method   = each.value.method
-  invoke_arn    = each.value.invoke_arn
-  authorizer_id = each.value.auth ? aws_api_gateway_authorizer.cognito.id : null
-  environment   = var.environment
+  rest_api_id       = aws_api_gateway_rest_api.main.id
+  rest_api_exec_arn = aws_api_gateway_rest_api.main.execution_arn
+  resource_id       = each.value.resource
+  http_method       = each.value.method
+  invoke_arn        = each.value.invoke_arn
+  authorizer_id     = each.value.auth ? aws_api_gateway_authorizer.cognito.id : null
+  environment       = var.environment
 }
 
 # デプロイメント
@@ -377,21 +378,21 @@ resource "aws_api_gateway_account" "main" {
 # CORS設定のためのOPTIONSメソッド（すべてのリソースに適用）
 # 簡略化のため、主要なリソースのみ設定
 resource "aws_api_gateway_method" "options" {
-  for_each = toset([
-    aws_api_gateway_resource.auth_signup.id,
-    aws_api_gateway_resource.auth_login.id,
-    aws_api_gateway_resource.users_me.id,
-    aws_api_gateway_resource.studios_id_calendar.id,
-    aws_api_gateway_resource.reservations.id,
-    aws_api_gateway_resource.reservations_id.id,
-    aws_api_gateway_resource.reservations_guest_token.id,
-    aws_api_gateway_resource.reservations_guest_token_cancel.id,
-    aws_api_gateway_resource.reservations_guest_token_promote.id,
-    aws_api_gateway_resource.plans.id,
-    aws_api_gateway_resource.options.id,
-    aws_api_gateway_resource.blocked_slots.id,
-    aws_api_gateway_resource.inquiries.id,
-  ])
+  for_each = {
+    auth_signup                           = aws_api_gateway_resource.auth_signup.id
+    auth_login                            = aws_api_gateway_resource.auth_login.id
+    users_me                              = aws_api_gateway_resource.users_me.id
+    studios_id_calendar                   = aws_api_gateway_resource.studios_id_calendar.id
+    reservations                          = aws_api_gateway_resource.reservations.id
+    reservations_id                       = aws_api_gateway_resource.reservations_id.id
+    reservations_guest_token              = aws_api_gateway_resource.reservations_guest_token.id
+    reservations_guest_token_cancel       = aws_api_gateway_resource.reservations_guest_token_cancel.id
+    reservations_guest_token_promote      = aws_api_gateway_resource.reservations_guest_token_promote.id
+    plans                                 = aws_api_gateway_resource.plans.id
+    options                               = aws_api_gateway_resource.options.id
+    blocked_slots                         = aws_api_gateway_resource.blocked_slots.id
+    inquiries                             = aws_api_gateway_resource.inquiries.id
+  }
 
   rest_api_id   = aws_api_gateway_rest_api.main.id
   resource_id   = each.value

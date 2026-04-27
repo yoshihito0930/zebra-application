@@ -5,6 +5,11 @@ variable "rest_api_id" {
   type        = string
 }
 
+variable "rest_api_exec_arn" {
+  description = "REST API Execution ARN"
+  type        = string
+}
+
 variable "resource_id" {
   description = "リソースID"
   type        = string
