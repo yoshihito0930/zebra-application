@@ -111,6 +111,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	// 電話番号をE.164形式に変換 (Cognito要件)
 	// 例: 090-1234-5678 → +819012345678
 	phoneE164 := convertToE164(req.PhoneNumber)
+	log.Printf("DEBUG: Phone number conversion: %s -> %s", req.PhoneNumber, phoneE164)
 
 	cognitoInput := service.SignUpInput{
 		Email:       req.Email,
