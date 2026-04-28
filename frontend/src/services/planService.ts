@@ -1,4 +1,3 @@
-import apiClient, { apiRequest } from './api';
 import type { Plan, Option } from '../types';
 
 // プラン一覧取得

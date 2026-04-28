@@ -1,4 +1,3 @@
-import apiClient, { apiRequest } from './api';
 import type { AuthResponse, LoginRequest, SignupRequest, User } from '../types';
 import {
   cognitoLogin,

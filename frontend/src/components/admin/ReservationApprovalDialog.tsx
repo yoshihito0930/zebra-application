@@ -14,7 +14,7 @@ import {
   useToast,
 } from '@chakra-ui/react';
 import { useState } from 'react';
-import type { Reservation, ReservationStatus } from '../../types';
+import type { Reservation } from '../../types';
 import { useApproveReservation, useRejectReservation } from '../../hooks/useReservations';
 
 interface ReservationApprovalDialogProps {
