@@ -88,46 +88,46 @@ jobs:
         working-directory: frontend
         run: npm run build
 
-      # 10. S3へアップロード（静的ファイル）
+      # 8. S3へアップロード（静的ファイル）
       - name: Upload to S3 (static files)
         working-directory: frontend
         run: |
-          aws s3 sync dist s3://${{ steps.terraform.outputs.s3_bucket }} \
+          aws s3 sync dist s3://${{ secrets.S3_BUCKET }} \
             --delete \
             --cache-control "public,max-age=31536000,immutable" \
             --exclude "index.html" \
             --exclude "*.html"
 
-      # 11. S3へアップロード（HTMLファイル）
+      # 9. S3へアップロード（HTMLファイル）
       - name: Upload to S3 (HTML files)
         working-directory: frontend
         run: |
-          aws s3 sync dist s3://${{ steps.terraform.outputs.s3_bucket }} \
+          aws s3 sync dist s3://${{ secrets.S3_BUCKET }} \
             --exclude "*" \
             --include "*.html" \
             --cache-control "public,max-age=300,must-revalidate"
 
-      # 12. CloudFrontキャッシュ無効化
+      # 10. CloudFrontキャッシュ無効化
       - name: Invalidate CloudFront cache
         id: invalidate
         run: |
           INVALIDATION_ID=$(aws cloudfront create-invalidation \
-            --distribution-id ${{ steps.terraform.outputs.cloudfront_distribution_id }} \
+            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
             --paths "/*" \
             --query 'Invalidation.Id' \
             --output text)
           echo "invalidation_id=$INVALIDATION_ID" >> $GITHUB_OUTPUT
           echo "✅ キャッシュ無効化リクエストID: $INVALIDATION_ID"
 
-      # 13. デプロイ完了メッセージ
+      # 11. デプロイ完了メッセージ
       - name: Deployment summary
         run: |
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo "🎉 デプロイが完了しました！"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo ""
-          echo "📦 S3バケット: ${{ steps.terraform.outputs.s3_bucket }}"
-          echo "🌐 アクセスURL: ${{ steps.terraform.outputs.cloudfront_url }}"
+          echo "📦 S3バケット: ${{ secrets.S3_BUCKET }}"
+          echo "🌐 アクセスURL: ${{ secrets.CLOUDFRONT_URL }}"
           echo "🔄 CloudFront無効化ID: ${{ steps.invalidate.outputs.invalidation_id }}"
           echo ""
           echo "⚠️  キャッシュ無効化には数分かかる場合があります"
