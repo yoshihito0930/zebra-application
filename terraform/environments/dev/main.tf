@@ -239,3 +239,13 @@ module "frontend" {
   environment            = var.environment
   cloudfront_price_class = var.cloudfront_price_class
 }
+
+# GitHub Actions用IAMロール
+module "iam_github_actions" {
+  source = "../../modules/iam-github-actions"
+
+  environment                = var.environment
+  github_repository          = var.github_repository
+  frontend_s3_bucket_arn     = module.frontend.s3_bucket_arn
+  cloudfront_distribution_arn = module.frontend.cloudfront_distribution_arn
+}

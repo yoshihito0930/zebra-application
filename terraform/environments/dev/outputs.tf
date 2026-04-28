@@ -59,3 +59,18 @@ output "frontend_cloudfront_domain" {
   description = "CloudFrontドメイン名"
   value       = module.frontend.cloudfront_domain_name
 }
+
+output "frontend_cloudfront_distribution_id" {
+  description = "CloudFront Distribution ID（キャッシュ無効化用）"
+  value       = module.frontend.cloudfront_distribution_id
+}
+
+output "github_actions_role_arn" {
+  description = "GitHub Actions用IAMロールARN"
+  value       = module.iam_github_actions.role_arn
+}
+
+output "github_actions_role_name" {
+  description = "GitHub Actions用IAMロール名"
+  value       = module.iam_github_actions.role_name
+}
