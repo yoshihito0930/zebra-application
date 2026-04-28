@@ -23,7 +23,7 @@ type optionRepository struct {
 func NewOptionRepository(client *dynamodb.Client) repository.OptionRepository {
 	return &optionRepository{
 		client:    client,
-		tableName: "options", // TODO: 環境変数から取得
+		tableName: GetTableName("options"),
 	}
 }
 

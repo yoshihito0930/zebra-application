@@ -22,7 +22,7 @@ type PlanRepositoryImpl struct {
 func NewPlanRepository(client *dynamodb.Client) repository.PlanRepository {
 	return &PlanRepositoryImpl{
 		client:    client,
-		tableName: "plans",
+		tableName: GetTableName("plans"),
 	}
 }
 

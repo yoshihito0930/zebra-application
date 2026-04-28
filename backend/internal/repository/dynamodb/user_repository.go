@@ -22,7 +22,7 @@ type UserRepositoryImpl struct {
 func NewUserRepository(client *dynamodb.Client) repository.UserRepository {
 	return &UserRepositoryImpl{
 		client:    client,
-		tableName: "users", // TODO: 環境変数から取得するように修正
+		tableName: GetTableName("users"),
 	}
 }
 

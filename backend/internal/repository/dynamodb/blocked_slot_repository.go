@@ -23,7 +23,7 @@ type BlockedSlotRepositoryImpl struct {
 func NewBlockedSlotRepository(client *dynamodb.Client) repository.BlockedSlotRepository {
 	return &BlockedSlotRepositoryImpl{
 		client:    client,
-		tableName: "blocked_slots",
+		tableName: GetTableName("blocked_slots"),
 	}
 }
 
@@ -110,15 +110,14 @@ func (r *BlockedSlotRepositoryImpl) FindByStudioAndDateRange(ctx context.Context
 
 	result, err := r.client.Query(ctx, &dynamodb.QueryInput{
 		TableName:              aws.String(r.tableName),
-		KeyConditionExpression: aws.String("studio_id = :studio_id"),
-		FilterExpression:       aws.String("#date BETWEEN :start_date AND :end_date"),
+		KeyConditionExpression: aws.String("studio_id = :studio_id AND #sk BETWEEN :start_date AND :end_date"),
 		ExpressionAttributeNames: map[string]string{
-			"#date": "date",
+			"#sk": "date_blocked_slot_id",
 		},
 		ExpressionAttributeValues: map[string]types.AttributeValue{
 			":studio_id":  &types.AttributeValueMemberS{Value: studioID},
 			":start_date": &types.AttributeValueMemberS{Value: startDateStr},
-			":end_date":   &types.AttributeValueMemberS{Value: endDateStr},
+			":end_date":   &types.AttributeValueMemberS{Value: endDateStr + "#ZZZZZZZZ"}, // 日付範囲の最後まで含める
 		},
 	})
 	if err != nil {

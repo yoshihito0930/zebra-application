@@ -22,7 +22,7 @@ type StudioRepositoryImpl struct {
 func NewStudioRepository(client *dynamodb.Client) repository.StudioRepository {
 	return &StudioRepositoryImpl{
 		client:    client,
-		tableName: "studios",
+		tableName: GetTableName("studios"),
 	}
 }
 

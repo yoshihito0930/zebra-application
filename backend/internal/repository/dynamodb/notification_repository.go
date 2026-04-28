@@ -23,7 +23,7 @@ type NotificationRepositoryImpl struct {
 func NewNotificationRepository(client *dynamodb.Client) repository.NotificationRepository {
 	return &NotificationRepositoryImpl{
 		client:    client,
-		tableName: "notifications",
+		tableName: GetTableName("notifications"),
 	}
 }
 

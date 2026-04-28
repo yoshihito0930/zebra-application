@@ -83,9 +83,11 @@ module "lambda" {
   environment           = var.environment
   lambda_artifacts_dir  = var.lambda_artifacts_dir
   dynamodb_table_arns   = values(module.dynamodb.table_arns)
+  dynamodb_table_names  = module.dynamodb.table_names
   cognito_user_pool_id  = module.cognito.user_pool_id
   cognito_user_pool_arn = module.cognito.user_pool_arn
   cognito_user_pool_client_id = module.cognito.user_pool_client_id
+  cognito_user_pool_client_secret = module.cognito.user_pool_client_secret
   ses_sender_email      = var.ses_sender_email
   guest_reservation_url = var.guest_reservation_url
 

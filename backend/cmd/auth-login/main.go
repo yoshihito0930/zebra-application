@@ -9,9 +9,9 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/yoshihito0930/zebra-application/internal/middleware"
 	"github.com/yoshihito0930/zebra-application/internal/repository"
 	dynamodbRepo "github.com/yoshihito0930/zebra-application/internal/repository/dynamodb"
+	"github.com/yoshihito0930/zebra-application/internal/service"
 	"github.com/yoshihito0930/zebra-application/internal/validator"
 	"github.com/yoshihito0930/zebra-application/pkg/apierror"
 	"github.com/yoshihito0930/zebra-application/pkg/response"
@@ -19,7 +19,8 @@ import (
 
 // グローバル変数（コールドスタート対策）
 var (
-	userRepo repository.UserRepository
+	userRepo       repository.UserRepository
+	cognitoService *service.CognitoService
 )
 
 // init は Lambda 関数の初期化時に1度だけ実行される
@@ -35,6 +36,9 @@ func init() {
 
 	// リポジトリを初期化
 	userRepo = dynamodbRepo.NewUserRepository(dynamoClient)
+
+	// Cognitoサービスを初期化
+	cognitoService = service.NewCognitoService(cfg)
 }
 
 // LoginRequest はログインリクエストの構造体
@@ -80,39 +84,32 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return response.ErrorWithCORS(validationResult.ToAPIError()), nil
 	}
 
-	// メールアドレスからユーザーを取得
-	// TODO: 実際にはCognitoで認証を行う
-	user, err := userRepo.FindByEmail(ctx, req.Email)
-	if err != nil || user == nil {
-		// ユーザーが見つからない場合もログイン失敗として扱う
-		// （セキュリティ上、「ユーザーが存在しない」ことを明示しない）
-		log.Printf("User not found or error: %v", err)
+	// 1. Cognitoで認証を行う
+	loginInput := service.LoginInput{
+		Email:    req.Email,
+		Password: req.Password,
+	}
+
+	loginResult, err := cognitoService.Login(ctx, loginInput)
+	if err != nil {
+		log.Printf("Failed to login with Cognito: %v", err)
 		return response.ErrorWithCORS(apierror.ErrAuthLoginFailed), nil
 	}
 
-	// TODO: Cognitoでパスワード検証を行う
-	// 現在はパスワード検証をスキップ（仮実装）
-	// 本番環境ではCognitoのInitiateAuthを使用してパスワードを検証
-
-	// モック認証用のJWTトークンを生成
-	studioID := ""
-	if user.StudioID != nil {
-		studioID = *user.StudioID
+	// 2. DynamoDBからユーザー情報を取得
+	user, err := userRepo.FindByEmail(ctx, req.Email)
+	if err != nil || user == nil {
+		// Cognito認証は成功したがDynamoDBにユーザー情報がない場合
+		// （データ不整合のケース）
+		log.Printf("User authenticated by Cognito but not found in DynamoDB: %v", err)
+		return response.ErrorWithCORS(apierror.ErrAuthLoginFailed), nil
 	}
-	accessToken, err := middleware.GenerateMockToken(user.UserID, user.Email, string(user.Role), studioID)
-	if err != nil {
-		log.Printf("Failed to generate token: %v", err)
-		return response.ErrorWithCORS(apierror.ErrInternalServer), nil
-	}
-
-	// リフレッシュトークンの生成（MVP段階では未実装、Phase 2でCognito移行時に追加）
-	refreshToken := ""
 
 	// レスポンスを作成
 	resp := LoginResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		ExpiresIn:    3600, // 1時間（秒単位）
+		AccessToken:  loginResult.IDToken,      // CognitoのIDトークンを使用
+		RefreshToken: loginResult.RefreshToken, // Cognitoのリフレッシュトークン
+		ExpiresIn:    int(loginResult.ExpiresIn),
 		User: UserInfo{
 			UserID: user.UserID,
 			Name:   user.Name,

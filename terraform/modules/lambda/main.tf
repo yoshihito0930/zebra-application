@@ -133,12 +133,17 @@ locals {
   lambda_memory_size = 256
 
   # 環境変数（全Lambda関数共通）
-  common_env_vars = {
-    ENVIRONMENT          = var.environment
-    LOG_LEVEL            = var.environment == "prod" ? "INFO" : "DEBUG"
-    SES_SENDER_EMAIL     = var.ses_sender_email
-    GUEST_RESERVATION_URL = var.guest_reservation_url
-  }
+  common_env_vars = merge({
+    ENVIRONMENT                = var.environment
+    LOG_LEVEL                  = var.environment == "prod" ? "INFO" : "DEBUG"
+    SES_SENDER_EMAIL           = var.ses_sender_email
+    GUEST_RESERVATION_URL      = var.guest_reservation_url
+    COGNITO_USER_POOL_ID       = var.cognito_user_pool_id
+    COGNITO_CLIENT_ID          = var.cognito_user_pool_client_id
+    COGNITO_CLIENT_SECRET      = var.cognito_user_pool_client_secret
+  }, {
+    for key, value in var.dynamodb_table_names : "${upper(key)}_TABLE" => value
+  })
 }
 
 # ==================== 認証関連Lambda ====================

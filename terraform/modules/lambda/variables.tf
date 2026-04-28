@@ -34,6 +34,12 @@ variable "cognito_user_pool_client_id" {
   type        = string
 }
 
+variable "cognito_user_pool_client_secret" {
+  description = "Cognito User Pool Client Secret"
+  type        = string
+  sensitive   = true
+}
+
 variable "ses_sender_email" {
   description = "SES送信元メールアドレス（ゲスト予約通知用）"
   type        = string
@@ -44,4 +50,9 @@ variable "guest_reservation_url" {
   description = "ゲスト予約確認ページのベースURL"
   type        = string
   default     = "https://studio-zebra.com/reservations/guest"
+}
+
+variable "dynamodb_table_names" {
+  description = "DynamoDBテーブル名のマップ"
+  type        = map(string)
 }

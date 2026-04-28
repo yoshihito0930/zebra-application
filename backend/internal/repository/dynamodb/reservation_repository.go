@@ -23,7 +23,7 @@ type ReservationRepositoryImpl struct {
 func NewReservationRepository(client *dynamodb.Client) repository.ReservationRepository {
 	return &ReservationRepositoryImpl{
 		client:    client,
-		tableName: "reservations",
+		tableName: GetTableName("reservations"),
 	}
 }
 
@@ -80,15 +80,14 @@ func (r *ReservationRepositoryImpl) FindByStudioAndDateRange(ctx context.Context
 
 	result, err := r.client.Query(ctx, &dynamodb.QueryInput{
 		TableName:              aws.String(r.tableName),
-		KeyConditionExpression: aws.String("studio_id = :studio_id AND begins_with(#sk, :start_date)"),
-		FilterExpression:       aws.String("#sk <= :end_date"),
+		KeyConditionExpression: aws.String("studio_id = :studio_id AND #sk BETWEEN :start_date AND :end_date"),
 		ExpressionAttributeNames: map[string]string{
-			"#sk": "date_reservation_id", // SK名（実際のスキーマに合わせて調整）
+			"#sk": "date_reservation_id",
 		},
 		ExpressionAttributeValues: map[string]types.AttributeValue{
 			":studio_id":  &types.AttributeValueMemberS{Value: studioID},
 			":start_date": &types.AttributeValueMemberS{Value: startDateStr},
-			":end_date":   &types.AttributeValueMemberS{Value: endDateStr},
+			":end_date":   &types.AttributeValueMemberS{Value: endDateStr + "#ZZZZZZZZ"}, // 日付範囲の最後まで含める
 		},
 	})
 	if err != nil {

@@ -22,7 +22,7 @@ type InquiryRepositoryImpl struct {
 func NewInquiryRepository(client *dynamodb.Client) repository.InquiryRepository {
 	return &InquiryRepositoryImpl{
 		client:    client,
-		tableName: "inquiries",
+		tableName: GetTableName("inquiries"),
 	}
 }
 
