@@ -5,6 +5,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import theme from './theme'
 import App from './App.tsx'
 
+// Amazon Cognito Identity JS用のポリフィル
+import { Buffer } from 'buffer';
+globalThis.Buffer = Buffer;
+
 // React Query クライアント設定
 const queryClient = new QueryClient({
   defaultOptions: {

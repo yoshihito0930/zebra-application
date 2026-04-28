@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
 import {
   Box,
   Container,
@@ -15,20 +15,20 @@ import {
   Divider,
   Alert,
   AlertIcon,
+  useToast,
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { loginSchema, type LoginFormData } from '../../utils/validationSchemas';
-import { mockLogin } from '../../services/authService';
-import { useAuthStore } from '../../stores/authStore';
+import { useAuth } from '../../hooks/useAuth';
 import ErrorMessage from '../../components/common/ErrorMessage';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { setAuth } = useAuthStore();
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const toast = useToast();
+  const { login, isLoading, error, clearError } = useAuth();
 
   const {
     register,
@@ -38,33 +38,34 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
+  // メール検証完了/パスワードリセット完了時の通知
+  useEffect(() => {
+    if (searchParams.get('verified') === 'true') {
+      toast({
+        title: 'メールアドレスが検証されました',
+        description: 'ログインしてご利用ください',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+    if (searchParams.get('reset') === 'true') {
+      toast({
+        title: 'パスワードがリセットされました',
+        description: '新しいパスワードでログインしてください',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  }, [searchParams, toast]);
+
   const onSubmit = async (data: LoginFormData) => {
-    setIsLoading(true);
-    setErrorMessage(null);
-
     try {
-      // モックログイン（本番ではlogin関数を使用）
-      const response = await mockLogin(data);
-
-      // 認証情報をストアに保存
-      setAuth(response.user, response.access_token, response.refresh_token);
-
-      // ロールに応じてリダイレクト
-      if (response.user.role === 'admin') {
-        navigate('/admin/dashboard');
-      } else if (response.user.role === 'staff') {
-        navigate('/staff/dashboard');
-      } else {
-        navigate('/customer/calendar');
-      }
+      await login(data);
+      // ログイン成功時は useAuth 内でリダイレクトされる
     } catch (error) {
-      if (error instanceof Error) {
-        setErrorMessage(error.message);
-      } else {
-        setErrorMessage('ログインに失敗しました');
-      }
-    } finally {
-      setIsLoading(false);
+      // エラーは useAuth で管理される
     }
   };
 
@@ -88,10 +89,10 @@ export default function LoginPage() {
           </Box>
 
           {/* エラーメッセージ */}
-          {errorMessage && (
+          {error && (
             <ErrorMessage
-              message={errorMessage}
-              onClose={() => setErrorMessage(null)}
+              message={error}
+              onClose={clearError}
             />
           )}
 
@@ -124,7 +125,17 @@ export default function LoginPage() {
 
               {/* パスワード */}
               <FormControl isInvalid={!!errors.password}>
-                <FormLabel>パスワード</FormLabel>
+                <HStack justify="space-between" mb={2}>
+                  <FormLabel mb={0}>パスワード</FormLabel>
+                  <Link
+                    fontSize="sm"
+                    color="brand.600"
+                    fontWeight="semibold"
+                    onClick={() => navigate('/forgot-password')}
+                  >
+                    パスワードを忘れた方
+                  </Link>
+                </HStack>
                 <Input
                   type="password"
                   placeholder="8文字以上"

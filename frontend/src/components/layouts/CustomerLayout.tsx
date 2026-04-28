@@ -13,9 +13,10 @@ import {
   Text,
   HStack,
 } from '@chakra-ui/react';
-import { Calendar, LogOut, User, MessageCircle, List } from 'lucide-react';
+import { Calendar, User, MessageCircle, List } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
+import LogoutButton from '../auth/LogoutButton';
 
 interface CustomerLayoutProps {
   children: ReactNode;
@@ -23,12 +24,7 @@ interface CustomerLayoutProps {
 
 export default function CustomerLayout({ children }: CustomerLayoutProps) {
   const navigate = useNavigate();
-  const { user, isAuthenticated, clearAuth } = useAuthStore();
-
-  const handleLogout = () => {
-    clearAuth();
-    navigate('/login');
-  };
+  const { user, isAuthenticated } = useAuthStore();
 
   return (
     <Box minH="100vh" bg="gray.50">
@@ -91,9 +87,9 @@ export default function CustomerLayout({ children }: CustomerLayoutProps) {
                       <MenuItem icon={<User size={18} />} onClick={() => navigate('/customer/profile')}>
                         プロフィール
                       </MenuItem>
-                      <MenuItem icon={<LogOut size={18} />} onClick={handleLogout}>
-                        ログアウト
-                      </MenuItem>
+                      <Box px={3} py={2}>
+                        <LogoutButton variant="button" size="sm" />
+                      </Box>
                     </MenuList>
                   </Menu>
                 </>

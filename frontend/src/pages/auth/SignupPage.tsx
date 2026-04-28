@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Box,
   Container,
@@ -20,15 +19,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
 import { signupSchema, type SignupFormData } from '../../utils/validationSchemas';
-import { mockSignup } from '../../services/authService';
-import { useAuthStore } from '../../stores/authStore';
+import { useAuth } from '../../hooks/useAuth';
 import ErrorMessage from '../../components/common/ErrorMessage';
 
 export default function SignupPage() {
   const navigate = useNavigate();
-  const { setAuth } = useAuthStore();
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { signup, isLoading, error, clearError } = useAuth();
 
   const {
     register,
@@ -39,29 +35,14 @@ export default function SignupPage() {
   });
 
   const onSubmit = async (data: SignupFormData) => {
-    setIsLoading(true);
-    setErrorMessage(null);
-
     try {
       // confirmPasswordを除いてAPIリクエストを送信
       const { confirmPassword, ...signupData } = data;
 
-      // モックサインアップ（本番ではsignup関数を使用）
-      const response = await mockSignup(signupData);
-
-      // 認証情報をストアに保存
-      setAuth(response.user, response.access_token, response.refresh_token);
-
-      // 顧客向けカレンダーページへリダイレクト
-      navigate('/customer/calendar');
+      // サインアップ（成功時はメール検証画面にリダイレクトされる）
+      await signup(signupData);
     } catch (error) {
-      if (error instanceof Error) {
-        setErrorMessage(error.message);
-      } else {
-        setErrorMessage('アカウント登録に失敗しました');
-      }
-    } finally {
-      setIsLoading(false);
+      // エラーは useAuth で管理される
     }
   };
 
@@ -85,10 +66,10 @@ export default function SignupPage() {
           </Box>
 
           {/* エラーメッセージ */}
-          {errorMessage && (
+          {error && (
             <ErrorMessage
-              message={errorMessage}
-              onClose={() => setErrorMessage(null)}
+              message={error}
+              onClose={clearError}
             />
           )}
 

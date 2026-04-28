@@ -8,7 +8,15 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      // Amazon Cognito Identity JSのポリフィル
+      'buffer': 'buffer',
+      'process': 'process/browser',
     },
+  },
+  define: {
+    // グローバル変数のポリフィル
+    'global': 'globalThis',
+    'process.env': {},
   },
   server: {
     port: 5173,

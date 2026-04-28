@@ -1,46 +1,102 @@
 import apiClient, { apiRequest } from './api';
 import type { AuthResponse, LoginRequest, SignupRequest, User } from '../types';
+import {
+  cognitoLogin,
+  cognitoSignup,
+  cognitoConfirmSignup,
+  cognitoResendConfirmationCode,
+  cognitoLogout,
+  cognitoRefreshToken,
+  cognitoForgotPassword,
+  cognitoConfirmPassword,
+} from './cognitoService';
+
+// 環境変数でモード切り替え（開発時はモック、本番はCognito）
+const USE_COGNITO = import.meta.env.VITE_USE_COGNITO === 'true';
 
 // ログイン
 export const login = async (data: LoginRequest): Promise<AuthResponse> => {
-  return apiRequest<AuthResponse>({
-    method: 'POST',
-    url: '/auth/login',
-    data,
-  });
+  if (USE_COGNITO) {
+    return cognitoLogin(data);
+  }
+  // モック版（開発用）
+  return mockLogin(data);
 };
 
 // サインアップ
-export const signup = async (data: SignupRequest): Promise<AuthResponse> => {
-  return apiRequest<AuthResponse>({
-    method: 'POST',
-    url: '/auth/signup',
-    data,
-  });
+export const signup = async (data: SignupRequest): Promise<{ user_id: string; email: string }> => {
+  if (USE_COGNITO) {
+    const result = await cognitoSignup(data);
+    return { ...result, email: data.email };
+  }
+  // モック版（開発用）
+  const result = await mockSignup(data);
+  return { user_id: result.user.user_id, email: data.email };
+};
+
+// メール検証
+export const confirmSignup = async (email: string, code: string): Promise<void> => {
+  if (USE_COGNITO) {
+    return cognitoConfirmSignup(email, code);
+  }
+  // モック版は何もしない
+  return Promise.resolve();
+};
+
+// 検証コード再送
+export const resendConfirmationCode = async (email: string): Promise<void> => {
+  if (USE_COGNITO) {
+    return cognitoResendConfirmationCode(email);
+  }
+  // モック版は何もしない
+  return Promise.resolve();
+};
+
+// ログアウト
+export const logout = async (): Promise<void> => {
+  if (USE_COGNITO) {
+    return cognitoLogout();
+  }
+  // モック版は何もしない
+  return Promise.resolve();
+};
+
+// トークンリフレッシュ
+export const refreshToken = async (refreshToken: string): Promise<AuthResponse> => {
+  if (USE_COGNITO) {
+    return cognitoRefreshToken(refreshToken);
+  }
+  // モック版は現在のトークンをそのまま返す
+  throw new Error('トークンリフレッシュに失敗しました');
+};
+
+// パスワードリセット申請
+export const forgotPassword = async (email: string): Promise<void> => {
+  if (USE_COGNITO) {
+    return cognitoForgotPassword(email);
+  }
+  // モック版は何もしない
+  return Promise.resolve();
+};
+
+// パスワードリセット確認
+export const confirmPassword = async (
+  email: string,
+  code: string,
+  newPassword: string
+): Promise<void> => {
+  if (USE_COGNITO) {
+    return cognitoConfirmPassword(email, code, newPassword);
+  }
+  // モック版は何もしない
+  return Promise.resolve();
 };
 
 // ユーザー情報取得
 export const getMe = async (): Promise<User> => {
   return apiRequest<User>({
     method: 'GET',
-    url: '/auth/me',
-  });
-};
-
-// トークンリフレッシュ
-export const refreshToken = async (refreshToken: string): Promise<AuthResponse> => {
-  return apiRequest<AuthResponse>({
-    method: 'POST',
-    url: '/auth/refresh',
-    data: { refresh_token: refreshToken },
-  });
-};
-
-// ログアウト
-export const logout = async (): Promise<void> => {
-  return apiRequest<void>({
-    method: 'POST',
-    url: '/auth/logout',
+    url: '/users/me',
   });
 };
 

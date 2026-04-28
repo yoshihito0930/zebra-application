@@ -4,6 +4,9 @@ import { Box } from '@chakra-ui/react';
 // ページコンポーネント
 import LoginPage from './pages/auth/LoginPage';
 import SignupPage from './pages/auth/SignupPage';
+import VerifyEmailPage from './pages/auth/VerifyEmailPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import CustomerCalendarPage from './pages/customer/CalendarPage';
 import ReservationsPage from './pages/customer/ReservationsPage';
 import ReservationDetailPage from './pages/customer/ReservationDetailPage';
@@ -35,6 +38,9 @@ function App() {
           {/* 認証画面（レイアウトなし） */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           {/* 顧客向け画面 */}
           <Route
