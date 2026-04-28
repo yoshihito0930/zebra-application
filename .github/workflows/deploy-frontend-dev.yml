@@ -43,38 +43,18 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ap-northeast-1
 
-      # 4. Terraformセットアップ（output取得用）
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.5.0
-          terraform_wrapper: false  # terraform outputの生出力を取得
-
-      # 5. Terraform初期化とoutput取得
-      - name: Get Terraform outputs
-        id: terraform
-        working-directory: terraform/environments/dev
-        run: |
-          terraform init
-          echo "s3_bucket=$(terraform output -raw frontend_s3_bucket)" >> $GITHUB_OUTPUT
-          echo "cloudfront_distribution_id=$(terraform output -raw frontend_cloudfront_distribution_id)" >> $GITHUB_OUTPUT
-          echo "cloudfront_url=$(terraform output -raw frontend_cloudfront_url)" >> $GITHUB_OUTPUT
-          echo "api_base_url=$(terraform output -raw api_gateway_invoke_url)" >> $GITHUB_OUTPUT
-          echo "cognito_user_pool_id=$(terraform output -raw cognito_user_pool_id)" >> $GITHUB_OUTPUT
-          echo "cognito_client_id=$(terraform output -raw cognito_user_pool_client_id)" >> $GITHUB_OUTPUT
-
-      # 6. 依存関係のインストール
+      # 4. 依存関係のインストール
       - name: Install dependencies
         working-directory: frontend
         run: npm ci
 
-      # 7. Lintチェック
+      # 5. Lintチェック
       - name: Run linter
         working-directory: frontend
         run: npm run lint
         continue-on-error: false  # Lintエラーでビルドを停止
 
-      # 8. 環境変数ファイルの生成
+      # 6. 環境変数ファイルの生成
       - name: Generate .env.production
         working-directory: frontend
         run: |
@@ -84,12 +64,12 @@ jobs:
           # GitHub Actions Run: ${{ github.run_id }}
 
           # API設定
-          VITE_API_BASE_URL=${{ steps.terraform.outputs.api_base_url }}
+          VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}
           VITE_API_TIMEOUT=30000
 
           # AWS Cognito設定
-          VITE_COGNITO_USER_POOL_ID=${{ steps.terraform.outputs.cognito_user_pool_id }}
-          VITE_COGNITO_CLIENT_ID=${{ steps.terraform.outputs.cognito_client_id }}
+          VITE_COGNITO_USER_POOL_ID=${{ secrets.VITE_COGNITO_USER_POOL_ID }}
+          VITE_COGNITO_CLIENT_ID=${{ secrets.VITE_COGNITO_CLIENT_ID }}
           VITE_COGNITO_REGION=ap-northeast-1
 
           # スタジオID（開発用）
@@ -103,7 +83,7 @@ jobs:
           echo "生成された環境変数（一部マスク）:"
           cat .env.production | sed 's/\(VITE_COGNITO_CLIENT_ID=\).*/\1***MASKED***/'
 
-      # 9. フロントエンドビルド
+      # 7. フロントエンドビルド
       - name: Build frontend
         working-directory: frontend
         run: npm run build

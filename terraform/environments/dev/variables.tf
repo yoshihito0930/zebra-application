@@ -51,5 +51,5 @@ variable "cloudfront_price_class" {
 variable "github_repository" {
   description = "GitHubリポジトリ名（例: owner/repo-name）"
   type        = string
-  default     = "your-org/zebra-application" # 実際のリポジトリ名に変更してください
+  default     = "yoshihito0930/zebra-application"
 }
