@@ -5,6 +5,7 @@ import type {
   CalendarReservation,
   MonthlyStats,
 } from '../types';
+import { apiRequest } from './api';
 
 // 予約カレンダー取得
 export const getCalendar = async (

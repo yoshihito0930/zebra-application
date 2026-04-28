@@ -42,17 +42,6 @@ export default function GuestReservationDetailPage() {
 
   const { isOpen: isCancelModalOpen, onOpen: onCancelModalOpen, onClose: onCancelModalClose } = useDisclosure();
 
-  // 予約データ取得
-  useEffect(() => {
-    if (!token) {
-      setError('トークンが指定されていません');
-      setIsLoading(false);
-      return;
-    }
-
-    fetchReservation();
-  }, [token]);
-
   const fetchReservation = async () => {
     if (!token) return;
 
@@ -68,6 +57,18 @@ export default function GuestReservationDetailPage() {
       setIsLoading(false);
     }
   };
+
+  // 予約データ取得
+  useEffect(() => {
+    if (!token) {
+      setError('トークンが指定されていません');
+      setIsLoading(false);
+      return;
+    }
+
+    fetchReservation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   // キャンセル処理
   const handleCancel = async () => {

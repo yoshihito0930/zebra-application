@@ -41,7 +41,7 @@ export default function VerifyEmailPage() {
     try {
       await confirmSignup(email, data.code);
       // 成功時は useAuth 内でログイン画面にリダイレクトされる
-    } catch (error) {
+    } catch {
       // エラーは useAuth で管理される
     }
   };
@@ -53,7 +53,7 @@ export default function VerifyEmailPage() {
     try {
       await resendConfirmationCode(email);
       setResendSuccess(true);
-    } catch (error) {
+    } catch {
       // エラーは useAuth で管理される
     }
   };

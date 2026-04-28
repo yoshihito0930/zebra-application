@@ -13,12 +13,11 @@ import {
   Th,
   Td,
   TableContainer,
-  useToast,
   Badge,
   IconButton,
   Tooltip,
 } from '@chakra-ui/react';
-import { Eye, X, Calendar as CalendarIcon } from 'lucide-react';
+import { Eye, Calendar as CalendarIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useMyReservations } from '../../hooks/useReservations';
 import LoadingSpinner from '../../components/common/LoadingSpinner';

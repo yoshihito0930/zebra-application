@@ -58,7 +58,7 @@ const memberReservationSchema = z.object({
   date: z.string().min(1, '日付を選択してください'),
   start_time: z.string().min(1, '開始時刻を選択してください'),
   end_time: z.string().min(1, '終了時刻を選択してください'),
-  shooting_type: z.array(z.string()).min(1, '撮影種別を選択してください'),
+  shooting_type: z.array(z.enum(['stills', 'video', 'music_with_restrictions'])).min(1, '撮影種別を選択してください'),
   shooting_details: z.string().min(1, '撮影詳細を入力してください').max(500, '撮影詳細は500文字以内で入力してください'),
   photographer_name: z.string().min(1, 'カメラマン名を入力してください').max(100, 'カメラマン名は100文字以内で入力してください'),
   number_of_people: z.number().int().min(1, '参加人数は1人以上で入力してください').max(100, '参加人数は100人以下で入力してください'),
@@ -95,9 +95,16 @@ const guestReservationSchema = memberReservationSchema.extend({
 });
 
 // 統合スキーマ
+// @ts-expect-error - kept for future use
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const createReservationSchema = z.union([memberReservationSchema, guestReservationSchema]);
 
-// type CreateReservationFormData = z.infer<typeof createReservationSchema>;
+// @ts-expect-error - kept for type reference
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type MemberReservationFormData = z.infer<typeof memberReservationSchema>;
+type GuestReservationFormData = z.infer<typeof guestReservationSchema>;
+// Union type for the form - use the broader guest type to include all fields but make is_guest optional
+type ReservationFormData = Omit<GuestReservationFormData, 'is_guest'> & { is_guest?: boolean };
 
 interface CreateReservationModalProps {
   isOpen: boolean;
@@ -152,7 +159,7 @@ export default function CreateReservationModal({
     setValue,
     reset,
     formState: { errors },
-  } = useForm<any>({
+  } = useForm<ReservationFormData>({
     shouldUnregister: false, // フィールドがDOMから削除されても値を保持
     defaultValues: {
       studio_id: studioId,
@@ -309,7 +316,7 @@ export default function CreateReservationModal({
   };
 
   // フォーム送信
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: ReservationFormData) => {
     // デバッグ: 送信データを確認
     console.log('Form submit data:', data);
     console.log('Tab index:', tabIndex);
@@ -341,7 +348,7 @@ export default function CreateReservationModal({
     const reservationData: CreateReservationRequest = {
       ...validatedData,
       options: validatedData.options || [],
-      shooting_type: validatedData.shooting_type as any,
+      shooting_type: validatedData.shooting_type,
     };
 
     createMutation.mutate(reservationData, {
@@ -437,7 +444,7 @@ export default function CreateReservationModal({
     if (endTimeStr) {
       setValue('end_time', endTimeStr);
     }
-  }, [startHour, startMinute, endHour, endMinute, setValue]);
+  }, [startHour, startMinute, endHour, endMinute, setValue, formatTimeString]);
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} size="3xl" scrollBehavior="inside">

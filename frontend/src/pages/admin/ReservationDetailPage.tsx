@@ -6,7 +6,6 @@ import {
   HStack,
   Box,
   Button,
-  useToast,
   Divider,
   Badge,
   Grid,
@@ -15,7 +14,7 @@ import {
   AlertIcon,
   useDisclosure,
 } from '@chakra-ui/react';
-import { ArrowLeft, CheckCircle, XCircle, Calendar as CalendarIcon, User, Mail, Phone, Building, Edit } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Calendar as CalendarIcon, User, Mail, Phone, Building, Edit } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useReservation } from '../../hooks/useReservations';
 import LoadingSpinner from '../../components/common/LoadingSpinner';

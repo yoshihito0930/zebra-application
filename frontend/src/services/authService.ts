@@ -9,6 +9,7 @@ import {
   cognitoForgotPassword,
   cognitoConfirmPassword,
 } from './cognitoService';
+import { apiRequest } from './api';
 
 // 環境変数でモード切り替え（開発時はモック、本番はCognito）
 const USE_COGNITO = import.meta.env.VITE_USE_COGNITO === 'true';

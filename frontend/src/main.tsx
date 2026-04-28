@@ -7,7 +7,7 @@ import App from './App.tsx'
 
 // Amazon Cognito Identity JS用のポリフィル
 import { Buffer } from 'buffer';
-globalThis.Buffer = Buffer;
+(globalThis as typeof globalThis & { Buffer: typeof Buffer }).Buffer = Buffer;
 
 // React Query クライアント設定
 const queryClient = new QueryClient({

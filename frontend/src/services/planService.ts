@@ -1,4 +1,5 @@
 import type { Plan, Option } from '../types';
+import { apiRequest } from './api';
 
 // プラン一覧取得
 export const getPlans = async (studioId: string): Promise<Plan[]> => {

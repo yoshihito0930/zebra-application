@@ -52,7 +52,7 @@ function NavItem({ icon, label, isActive, onClick }: NavItemProps) {
     <Button
       variant="ghost"
       justifyContent="flex-start"
-      leftIcon={icon as any}
+      leftIcon={icon as React.ReactElement}
       w="full"
       bg={isActive ? 'brand.50' : 'transparent'}
       color={isActive ? 'brand.600' : 'gray.700'}
@@ -63,6 +63,29 @@ function NavItem({ icon, label, isActive, onClick }: NavItemProps) {
     >
       {label}
     </Button>
+  );
+}
+
+interface SidebarContentProps {
+  navItems: Array<{ icon: ReactNode; label: string; path: string }>;
+  currentPath: string;
+  onNavigate: (path: string) => void;
+}
+
+function SidebarContent({ navItems, currentPath, onNavigate }: SidebarContentProps) {
+  return (
+    <VStack spacing={2} align="stretch">
+      {navItems.map((item) => (
+        <NavItem
+          key={item.path}
+          icon={item.icon}
+          label={item.label}
+          path={item.path}
+          isActive={currentPath === item.path}
+          onClick={() => onNavigate(item.path)}
+        />
+      ))}
+    </VStack>
   );
 }
 
@@ -86,23 +109,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     { icon: <MessageCircle size={18} />, label: '問い合わせ', path: '/admin/inquiries' },
   ];
 
-  const SidebarContent = () => (
-    <VStack spacing={2} align="stretch">
-      {navItems.map((item) => (
-        <NavItem
-          key={item.path}
-          icon={item.icon}
-          label={item.label}
-          path={item.path}
-          isActive={location.pathname === item.path}
-          onClick={() => {
-            navigate(item.path);
-            onClose();
-          }}
-        />
-      ))}
-    </VStack>
-  );
+  const handleNavigate = (path: string) => {
+    navigate(path);
+    onClose();
+  };
 
   return (
     <Flex minH="100vh" bg="gray.50">
@@ -128,7 +138,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </HStack>
 
         {/* ナビゲーション */}
-        <SidebarContent />
+        <SidebarContent navItems={navItems} currentPath={location.pathname} onNavigate={handleNavigate} />
       </Box>
 
       {/* モバイル用サイドバー（ドロワー） */}
@@ -149,7 +159,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </HStack>
           </DrawerHeader>
           <DrawerBody>
-            <SidebarContent />
+            <SidebarContent navItems={navItems} currentPath={location.pathname} onNavigate={handleNavigate} />
           </DrawerBody>
         </DrawerContent>
       </Drawer>

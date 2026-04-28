@@ -64,7 +64,7 @@ export default function LoginPage() {
     try {
       await login(data);
       // ログイン成功時は useAuth 内でリダイレクトされる
-    } catch (error) {
+    } catch {
       // エラーは useAuth で管理される
     }
   };

@@ -37,11 +37,12 @@ export default function SignupPage() {
   const onSubmit = async (data: SignupFormData) => {
     try {
       // confirmPasswordを除いてAPIリクエストを送信
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { confirmPassword, ...signupData } = data;
 
       // サインアップ（成功時はメール検証画面にリダイレクトされる）
       await signup(signupData);
-    } catch (error) {
+    } catch {
       // エラーは useAuth で管理される
     }
   };

@@ -56,7 +56,7 @@ export default function ResetPasswordPage() {
     try {
       await confirmPassword(email, data.code, data.newPassword);
       // 成功時は useAuth 内でログイン画面にリダイレクトされる
-    } catch (error) {
+    } catch {
       // エラーは useAuth で管理される
     }
   };

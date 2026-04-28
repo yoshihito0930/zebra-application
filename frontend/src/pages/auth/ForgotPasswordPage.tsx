@@ -40,7 +40,7 @@ export default function ForgotPasswordPage() {
     try {
       await forgotPassword(data.email);
       // 成功時は useAuth 内でパスワード再設定画面にリダイレクトされる
-    } catch (error) {
+    } catch {
       // エラーは useAuth で管理される
     }
   };

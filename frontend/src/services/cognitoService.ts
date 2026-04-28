@@ -4,6 +4,7 @@ import {
   AuthenticationDetails,
   CognitoUserAttribute,
   CognitoRefreshToken,
+  CognitoUserSession,
 } from 'amazon-cognito-identity-js';
 import type { AuthResponse, LoginRequest, SignupRequest } from '../types';
 
@@ -16,7 +17,7 @@ const poolData = {
 const userPool = new CognitoUserPool(poolData);
 
 // エラーコードをユーザーフレンドリーなメッセージに変換
-const getErrorMessage = (error: any): string => {
+const getErrorMessage = (error: Error & { code?: string }): string => {
   const code = error.code || error.name;
 
   const errorMessages: Record<string, string> = {
@@ -161,7 +162,7 @@ export const cognitoLogin = (data: LoginRequest): Promise<AuthResponse> => {
       onFailure: (err) => {
         reject(new Error(getErrorMessage(err)));
       },
-      newPasswordRequired: (userAttributes) => {
+      newPasswordRequired: () => {
         // 初回ログイン時のパスワード変更が必要な場合
         reject(new Error('パスワードの変更が必要です'));
       },
@@ -287,7 +288,7 @@ export const cognitoGetCurrentUser = (): CognitoUser | null => {
 /**
  * セッションを取得
  */
-export const cognitoGetSession = (): Promise<any> => {
+export const cognitoGetSession = (): Promise<CognitoUserSession> => {
   return new Promise((resolve, reject) => {
     const cognitoUser = userPool.getCurrentUser();
 
@@ -296,9 +297,14 @@ export const cognitoGetSession = (): Promise<any> => {
       return;
     }
 
-    cognitoUser.getSession((err: any, session: any) => {
+    cognitoUser.getSession((err: Error | null, session: CognitoUserSession | null) => {
       if (err) {
         reject(new Error(getErrorMessage(err)));
+        return;
+      }
+
+      if (!session) {
+        reject(new Error('セッションが取得できません'));
         return;
       }
 

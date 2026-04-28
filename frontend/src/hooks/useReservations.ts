@@ -12,7 +12,7 @@ import {
   mockRejectReservation,
   mockGetMonthlyStatsRange,
 } from '../services/reservationService';
-import type { Reservation, CreateReservationRequest, MonthlyStats } from '../types';
+import type { CreateReservationRequest } from '../types';
 
 // 環境変数でモックモード切り替え（現在はモックモード固定）
 const USE_MOCK = true;
