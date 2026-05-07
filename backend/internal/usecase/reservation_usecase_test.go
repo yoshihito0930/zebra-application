@@ -11,11 +11,12 @@ import (
 
 // MockReservationRepository は予約リポジトリのモック
 type MockReservationRepository struct {
-	FindByIDFunc               func(ctx context.Context, reservationID string) (*entity.Reservation, error)
-	FindConflictingFunc        func(ctx context.Context, studioID string, date time.Time, startTime, endTime string) ([]*entity.Reservation, error)
-	CreateFunc                 func(ctx context.Context, reservation *entity.Reservation) error
-	UpdateFunc                 func(ctx context.Context, reservation *entity.Reservation) error
-	FindByStudioAndStatusFunc  func(ctx context.Context, studioID string, status entity.ReservationStatus) ([]*entity.Reservation, error)
+	FindByIDFunc                    func(ctx context.Context, reservationID string) (*entity.Reservation, error)
+	FindConflictingFunc             func(ctx context.Context, studioID string, date time.Time, startTime, endTime string) ([]*entity.Reservation, error)
+	CreateFunc                      func(ctx context.Context, reservation *entity.Reservation) error
+	UpdateFunc                      func(ctx context.Context, reservation *entity.Reservation) error
+	FindByStudioAndStatusFunc       func(ctx context.Context, studioID string, status entity.ReservationStatus) ([]*entity.Reservation, error)
+	FindByStudioAndDateRangeFunc    func(ctx context.Context, studioID string, startDate, endDate time.Time) ([]*entity.Reservation, error)
 }
 
 func (m *MockReservationRepository) FindByID(ctx context.Context, reservationID string) (*entity.Reservation, error) {
@@ -47,6 +48,9 @@ func (m *MockReservationRepository) Update(ctx context.Context, reservation *ent
 }
 
 func (m *MockReservationRepository) FindByStudioAndDateRange(ctx context.Context, studioID string, startDate, endDate time.Time) ([]*entity.Reservation, error) {
+	if m.FindByStudioAndDateRangeFunc != nil {
+		return m.FindByStudioAndDateRangeFunc(ctx, studioID, startDate, endDate)
+	}
 	return []*entity.Reservation{}, nil
 }
 
@@ -80,6 +84,12 @@ func (m *MockReservationRepository) FindPastConfirmed(ctx context.Context, studi
 func (m *MockReservationRepository) Delete(ctx context.Context, reservationID string) error {
 	return nil
 }
+
+func (m *MockReservationRepository) FindByGuestToken(ctx context.Context, guestToken string) (*entity.Reservation, error) {
+	return nil, apierror.ErrReservationNotFound
+}
+
+func strPtr(s string) *string { return &s }
 
 // MockUserRepository はユーザーリポジトリのモック
 type MockUserRepository struct {
@@ -279,7 +289,7 @@ func TestCreateReservation_Success(t *testing.T) {
 	// 3. 予約作成リクエストを準備
 	input := CreateReservationInput{
 		StudioID:        "studio_001",
-		UserID:          "user_001",
+		UserID:          strPtr("user_001"),
 		ReservationType: entity.ReservationTypeRegular,
 		PlanID:          "plan_001",
 		Date:      time.Now().AddDate(0, 0, 7), // 7日後
@@ -336,7 +346,7 @@ func TestCreateReservation_Conflict(t *testing.T) {
 	// 3. 予約作成リクエストを準備
 	input := CreateReservationInput{
 		StudioID:        "studio_001",
-		UserID:          "user_001",
+		UserID:          strPtr("user_001"),
 		ReservationType: entity.ReservationTypeRegular,
 		PlanID:    "plan_001",
 		Date:      time.Now().AddDate(0, 0, 7),
@@ -367,7 +377,7 @@ func TestApproveReservation_Success(t *testing.T) {
 			return &entity.Reservation{
 				ReservationID:   reservationID,
 				StudioID:        "studio_001",
-				UserID:          "user_001",
+				UserID:          strPtr("user_001"),
 				ReservationType: entity.ReservationTypeRegular,
 				Status:          entity.ReservationStatusPending,
 				Date:            time.Now().AddDate(0, 0, 7),
@@ -411,7 +421,7 @@ func TestRejectReservation_Success(t *testing.T) {
 			return &entity.Reservation{
 				ReservationID:   reservationID,
 				StudioID:        "studio_001",
-				UserID:          "user_001",
+				UserID:          strPtr("user_001"),
 				ReservationType: entity.ReservationTypeRegular,
 				Status:          entity.ReservationStatusPending,
 			}, nil
@@ -451,7 +461,7 @@ func TestPromoteReservation_Success(t *testing.T) {
 			return &entity.Reservation{
 				ReservationID:   reservationID,
 				StudioID:        "studio_001",
-				UserID:          "user_001",
+				UserID:          strPtr("user_001"),
 				ReservationType: entity.ReservationTypeTentative,
 				Status:          entity.ReservationStatusTentative,
 				Date:            time.Now().AddDate(0, 0, 7),

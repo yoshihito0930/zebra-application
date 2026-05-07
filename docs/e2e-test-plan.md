@@ -31,7 +31,7 @@
 
 | ステータス | テストID | テスト内容 | 入力データ | 期待結果 | 優先度 | メモ |
 |----------|---------|----------|----------|---------|--------|------|
-| ✅ | AUTH-001 | 新規ユーザー登録が成功する | 有効なメールアドレス、パスワード、電話番号、住所 | 201 Created、user_idが返される、Cognitoにユーザーが作成される | 高 | 2026-04-29 Playwright API実行で確認。company_name付きpayloadではdev側で誤って409が返る既知不具合あり (helpers/testData.ts でomit) |
+| ✅ | AUTH-001 | 新規ユーザー登録が成功する | 有効なメールアドレス、パスワード、電話番号、住所 | 201 Created、user_idが返される、Cognitoにユーザーが作成される | 高 | 2026-05-08 再実行 PASS。company_name付きpayloadで201が返ることを確認（Bug 1 修正済み） |
 | ✅ | AUTH-002 | 既に登録済みのメールアドレスで登録を試みる | 既存のメールアドレス | 409 Conflict、EMAIL_ALREADY_EXISTS | 高 | 2026-04-29 PASS |
 | ✅ | AUTH-003 | 無効なメールアドレス形式で登録を試みる | 不正なメール形式 | 400 Bad Request、VALIDATION_ERROR | 中 | 2026-04-29 PASS |
 | ✅ | AUTH-004 | パスワードが短すぎる場合 | 7文字以下のパスワード | 400 Bad Request、VALIDATION_ERROR | 中 | 2026-04-29 PASS |
@@ -41,7 +41,7 @@
 
 | ステータス | テストID | テスト内容 | 入力データ | 期待結果 | 優先度 | メモ |
 |----------|---------|----------|----------|---------|--------|------|
-| ✅ | AUTH-101 | 正しい認証情報でログインが成功する | 有効なメールアドレス、パスワード | 200 OK、access_token、refresh_token、user情報が返される | 高 | 2026-04-29 PASS。 user オブジェクトに email が含まれない実装差異あり (API仕様書では含まれる想定) |
+| ✅ | AUTH-101 | 正しい認証情報でログインが成功する | 有効なメールアドレス、パスワード | 200 OK、access_token、refresh_token、user情報が返される | 高 | 2026-05-08 再実行 PASS。user.email を含む全フィールドを検証済み（Bug 5 修正済み） |
 | ✅ | AUTH-102 | 誤ったパスワードでログインを試みる | 正しいメール、誤ったパスワード | 401 Unauthorized、AUTH_LOGIN_FAILED | 高 | 2026-04-29 PASS |
 | ✅ | AUTH-103 | 存在しないメールアドレスでログインを試みる | 未登録のメールアドレス | 401 Unauthorized、AUTH_LOGIN_FAILED | 高 | 2026-04-29 PASS |
 | ✅ | AUTH-104 | メールアドレスが空の場合 | メールなし | 400 Bad Request、VALIDATION_ERROR | 低 | 2026-04-29 PASS |
@@ -59,23 +59,22 @@
 
 | ステータス | テストID | テスト内容 | 入力データ | 期待結果 | 優先度 | メモ |
 |----------|---------|----------|----------|---------|--------|------|
-| ✅ | AUTH-301 | customerロールがadmin専用エンドポイントにアクセスできない | customerトークン、admin専用エンドポイント | 403 Forbidden、FORBIDDEN_ROLE | 高 | 2026-04-29 `POST /plans` で PASS |
-| ⚠️ | AUTH-302 | staffロールが予約編集エンドポイントにアクセスできない | staffトークン、PATCH /reservations/{id} | 403 Forbidden、FORBIDDEN_ROLE | 高 | 2026-04-29 staffトークン未seed・signupでのstaff作成不可のため customer トークンで代替検証 (401/403で拒否を確認)。完全検証には UC-201 (admin によるstaff登録) の事前実行が必要 |
+| ✅ | AUTH-301 | customerロールがadmin専用エンドポイントにアクセスできない | customerトークン、admin専用エンドポイント | 403 Forbidden、FORBIDDEN_ROLE | 高 | 2026-05-08 再実行 PASS。CognitoAuthMiddleware + custom:role により正確に 403 FORBIDDEN_ROLE を返すことを確認（Bug 3 修正済み） |
+| ⚠️ | AUTH-302 | staffロールが予約編集エンドポイントにアクセスできない | staffトークン、PATCH /reservations/{id} | 403 Forbidden、FORBIDDEN_ROLE | 高 | 2026-05-08 再実行 PASS（代替検証）。staffトークン未seed・signupでのstaff作成不可のため customer トークンで代替検証 (403で拒否を確認)。完全検証には UC-201 (admin によるstaff登録) の事前実行が必要 |
 | ⚠️ | AUTH-303 | customerが他ユーザーの予約詳細を取得できない | customerトークン、他ユーザーのreservation_id | 403 Forbidden、FORBIDDEN_RESOURCE | 高 | 2026-04-29 dev環境にテスト用予約データ未seed。存在しないIDで 403/404 拒否を確認。完全検証には他ユーザー予約のseedが必要 |
 | ⚠️ | AUTH-304 | adminが他スタジオのデータにアクセスできない | adminトークン、他studio_id | 403 Forbidden、FORBIDDEN_RESOURCE | 高 | 2026-04-29 adminトークン未seed・signupでrole=admin不可のため customer トークンで代替検証 (401/403で拒否を確認) |
 
-### 1.5 実行結果サマリ (2026-04-29)
+### 1.5 実行結果サマリ (2026-05-08 — Bug 1〜5 修正後)
 
 - **実行ツール**: Playwright (`@playwright/test`) APIテスト (`frontend/e2e/auth/*.api.spec.ts`)
 - **対象API**: dev環境 (`https://ynnrspq7rl.execute-api.ap-northeast-1.amazonaws.com/dev/`)
 - **実行コマンド**: `cd frontend && E2E_SKIP_WEBSERVER=1 npx playwright test --project=api`
-- **結果**: 17/17 PASS (初回クリーン実行時、内 3件は環境制約による代替検証)
-- **Node.js**: テストは Node ≥18 が必要 (Playwright 制約)。本リポジトリの環境では `/usr/local/bin/node` (v22) を使用
+- **結果**: **17/17 PASS** (内 3件は環境制約による代替検証)
+- **Node.js**: テストは Node ≥18 が必要 (Playwright 制約)。本リポジトリの環境では `/usr/local/n/versions/node/22.4.1/bin/node` (v22) を使用
 
 #### 連続実行時の注意 (Cognito throttle)
 
 - AWS Cognito の SignUp API は短時間に多数のサインアップを行うとスロットルされる (1 user pool あたり概ね数十/分が上限)
-- スロットル時、バックエンドの `auth-signup` Lambda はあらゆる Cognito エラーを `EMAIL_ALREADY_EXISTS` (409) に変換する既知不具合があり、結果的に signup が連続で失敗するように見える
 - 連続でスイートを回すと AUTH-001 / AUTH-101 / AUTH-201 / AUTH-301〜304 がまとめて失敗する場合あり
 - **回避策**:
   - 5〜10分待ってから再実行
@@ -84,18 +83,16 @@
 
 #### 検出された不具合・改善要望
 
-1. **signup で `company_name` を送ると EMAIL_ALREADY_EXISTS が誤って返る**
-   完全に新規のメールアドレスでも `company_name` フィールドを payload に含めると409が返る。
-   再現: `POST /auth/signup` に `company_name: "..."` を含めるだけで再現。
-   影響: フロントエンドで company_name 入力を有効化するとサインアップ全件失敗する可能性。
+1. ~~**signup で `company_name` を送ると EMAIL_ALREADY_EXISTS が誤って返る**~~ **✅ 修正済み (2026-05-08)**
+   `company_name` を Cognito 属性から除外し、`UsernameExistsException` のみ `EMAIL_ALREADY_EXISTS` にマッピングするよう修正。
 2. **API Gateway authorizer のエラー応答が API設計と乖離** ※既知制約・対応保留
    `/auth` 以外の保護エンドポイントは未認証/無効トークン時に `{"message":"Unauthorized"}` を返し、`AUTH_TOKEN_MISSING` 等の構造化エラーコードが返らない。COGNITO_USER_POOLS タイプの Authorizer では応答形式をカスタマイズできないため、Lambda Authorizer への変更が必要。現状のテスト（AUTH-202/203/204）は HTTP ステータス 401 のみを検証しており PASS のため、Lambda Authorizer 導入まで対応を保留する。
-3. **signup で発行された Cognito JWT に role/cognito:groups クレームが無い**
-   結果として認証済み customer が `/reservations/me` 等の customer 用エンドポイントにアクセスすると `FORBIDDEN_ROLE` で拒否される。Cognito Pre Token Generation Trigger 等で role クレームを付与する必要あり。
-4. **`POST /reservations` が認証済みでも 401 を返す / `PATCH /reservations/{id}` が IAM SigV4 を要求**
-   dev 環境の API Gateway 上でこれらのルートが Cognito Authorizer に正しく接続されていない可能性。
-5. **login レスポンスの user オブジェクトに `email` が含まれない**
-   API設計書では含まれる想定。実装側 or 設計側のすり合わせが必要。
+3. ~~**signup で発行された Cognito JWT に role クレームが無く、customer が customer 用エンドポイントで FORBIDDEN_ROLE になる**~~ **✅ 修正済み (2026-05-08)**
+   サインアップ時に `AdminUpdateUserAttributes` で `custom:role=customer` を設定。`CognitoAuthMiddleware` が claims から role を読み取る。`custom:role` 未設定の場合は `customer` をデフォルトとするフォールバックも実装済み。
+4. ~~**`POST /reservations` が 401 / `PATCH /reservations/{id}` が IAM SigV4 を要求**~~ **✅ 修正済み (2026-05-08)**
+   全 Lambda を `MockAuthMiddleware` から `CognitoAuthMiddleware` に切り替え。`PATCH /reservations/{id}` の Terraform リソース (`reservation_update` Lambda + API Gateway 統合) を追加しデプロイ完了。
+5. ~~**login レスポンスの user オブジェクトに `email` が含まれない**~~ **✅ 修正済み (2026-05-08)**
+   `auth-login` Lambda の `UserInfo` 構造体に `Email` フィールドを追加。AUTH-101 でレスポンスに `email` が含まれることを検証済み。
 
 ---
 

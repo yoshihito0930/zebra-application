@@ -50,6 +50,9 @@ variable "lambda_functions" {
     reservation_cancel = object({
       invoke_arn = string
     })
+    reservation_update = object({
+      invoke_arn = string
+    })
     plans_list = object({
       invoke_arn = string
     })
