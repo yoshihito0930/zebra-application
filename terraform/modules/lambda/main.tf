@@ -400,6 +400,28 @@ resource "aws_lambda_function" "reservation_cancel" {
   }
 }
 
+# PATCH /reservations/{id}
+resource "aws_lambda_function" "reservation_update" {
+  filename         = "${var.lambda_artifacts_dir}/reservation-update.zip"
+  function_name    = "${var.environment}-reservation-update"
+  role             = aws_iam_role.lambda_execution_role.arn
+  handler          = "bootstrap"
+  source_code_hash = filebase64sha256("${var.lambda_artifacts_dir}/reservation-update.zip")
+  runtime          = local.lambda_runtime
+  timeout          = local.lambda_timeout
+  memory_size      = local.lambda_memory_size
+
+  environment {
+    variables = local.common_env_vars
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = "zebra-application"
+    ManagedBy   = "terraform"
+  }
+}
+
 # ==================== プラン関連Lambda ====================
 
 # GET /studios/{id}/plans

@@ -75,7 +75,7 @@ func deleteBlockedSlotHandler(ctx context.Context, request events.APIGatewayProx
 }
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	authHandler := middleware.MockAuthMiddleware(deleteBlockedSlotHandler)
+	authHandler := middleware.CognitoAuthMiddleware(deleteBlockedSlotHandler)
 	authzHandler := middleware.RequireRole(authHandler, middleware.RoleAdmin)
 	return authzHandler(ctx, request)
 }

@@ -54,9 +54,9 @@ type OptionResponse struct {
 }
 
 func createOptionHandler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// スタジオIDを取得（認証ミドルウェアから渡される）
-	studioID, ok := request.RequestContext.Authorizer["studio_id"].(string)
-	if !ok || studioID == "" {
+	// スタジオIDをコンテキストから取得（CognitoAuthMiddleware が設定）
+	studioID := middleware.GetStudioIDFromContext(ctx)
+	if studioID == "" {
 		return response.ErrorWithCORS(apierror.ErrForbiddenRole), nil
 	}
 
@@ -119,7 +119,7 @@ func createOptionHandler(ctx context.Context, request events.APIGatewayProxyRequ
 }
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	authHandler := middleware.MockAuthMiddleware(createOptionHandler)
+	authHandler := middleware.CognitoAuthMiddleware(createOptionHandler)
 	authzHandler := middleware.RequireRole(authHandler, middleware.RoleAdmin)
 	return authzHandler(ctx, request)
 }

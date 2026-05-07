@@ -135,6 +135,9 @@ module "api_gateway" {
     reservation_cancel = {
       invoke_arn = module.lambda.reservation_cancel_invoke_arn
     }
+    reservation_update = {
+      invoke_arn = module.lambda.reservation_update_invoke_arn
+    }
     plans_list = {
       invoke_arn = module.lambda.plans_list_invoke_arn
     }

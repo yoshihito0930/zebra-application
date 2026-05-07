@@ -81,7 +81,7 @@ func getOptionHandler(ctx context.Context, request events.APIGatewayProxyRequest
 }
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	authHandler := middleware.MockAuthMiddleware(getOptionHandler)
+	authHandler := middleware.CognitoAuthMiddleware(getOptionHandler)
 	authzHandler := middleware.RequireRole(authHandler, middleware.RoleAdmin)
 	return authzHandler(ctx, request)
 }

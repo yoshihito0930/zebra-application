@@ -130,7 +130,7 @@ func createInquiryHandler(ctx context.Context, request events.APIGatewayProxyReq
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// 認証ミドルウェアを適用
-	authHandler := middleware.MockAuthMiddleware(createInquiryHandler)
+	authHandler := middleware.CognitoAuthMiddleware(createInquiryHandler)
 
 	// 認可ミドルウェアを適用（customer のみ）
 	authzHandler := middleware.RequireRole(authHandler, middleware.RoleCustomer)

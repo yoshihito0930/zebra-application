@@ -58,8 +58,8 @@ type PlanResponse struct {
 
 func updatePlanHandler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// スタジオIDとプランIDを取得
-	studioID, ok := request.RequestContext.Authorizer["studio_id"].(string)
-	if !ok || studioID == "" {
+	studioID := middleware.GetStudioIDFromContext(ctx)
+	if studioID == "" {
 		return response.ErrorWithCORS(apierror.ErrForbiddenRole), nil
 	}
 
@@ -136,7 +136,7 @@ func updatePlanHandler(ctx context.Context, request events.APIGatewayProxyReques
 }
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	authHandler := middleware.MockAuthMiddleware(updatePlanHandler)
+	authHandler := middleware.CognitoAuthMiddleware(updatePlanHandler)
 	authzHandler := middleware.RequireRole(authHandler, middleware.RoleAdmin)
 	return authzHandler(ctx, request)
 }

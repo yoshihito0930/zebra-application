@@ -119,6 +119,16 @@ output "reservation_cancel_invoke_arn" {
   value       = aws_lambda_function.reservation_cancel.invoke_arn
 }
 
+output "reservation_update_function_name" {
+  description = "予約更新Lambda関数名"
+  value       = aws_lambda_function.reservation_update.function_name
+}
+
+output "reservation_update_invoke_arn" {
+  description = "予約更新Lambda呼び出しARN"
+  value       = aws_lambda_function.reservation_update.invoke_arn
+}
+
 # プラン関連Lambda
 output "plans_list_function_name" {
   description = "プラン一覧Lambda関数名"
@@ -391,6 +401,7 @@ output "all_lambda_functions" {
     reservation_reject          = aws_lambda_function.reservation_reject.function_name
     reservation_promote         = aws_lambda_function.reservation_promote.function_name
     reservation_cancel          = aws_lambda_function.reservation_cancel.function_name
+    reservation_update          = aws_lambda_function.reservation_update.function_name
     plans_list                  = aws_lambda_function.plans_list.function_name
     plan_create                 = aws_lambda_function.plan_create.function_name
     plan_get                    = aws_lambda_function.plan_get.function_name

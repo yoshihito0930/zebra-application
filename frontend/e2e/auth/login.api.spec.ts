@@ -14,9 +14,9 @@ test.describe('1.2 ログイン (POST /auth/login)', () => {
     expect(body.access_token).toBeTruthy();
     expect(body.refresh_token).toBeTruthy();
     expect(typeof body.expires_in).toBe('number');
-    // 注: 現状の login API レスポンスは user に email を含めない（access_token のJWT内には含まれる）
     expect(body.user).toMatchObject({
       name: sharedCustomer.payload.name,
+      email: sharedCustomer.payload.email,
       role: 'customer',
     });
     expect(body.user.user_id).toBeTruthy();

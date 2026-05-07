@@ -83,7 +83,7 @@ func promoteReservationHandler(ctx context.Context, request events.APIGatewayPro
 }
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	authHandler := middleware.MockAuthMiddleware(promoteReservationHandler)
+	authHandler := middleware.CognitoAuthMiddleware(promoteReservationHandler)
 	// 顧客と管理者の両方がアクセス可能
 	authzHandler := middleware.RequireRole(authHandler, middleware.RoleCustomer, middleware.RoleAdmin)
 	return authzHandler(ctx, request)

@@ -258,6 +258,7 @@ module "lambda_integration" {
     "reservation_reject"  = { resource = aws_api_gateway_resource.reservations_id_reject.id, method = "PATCH", invoke_arn = var.lambda_functions.reservation_reject.invoke_arn, auth = true }
     "reservation_promote" = { resource = aws_api_gateway_resource.reservations_id_promote.id, method = "PATCH", invoke_arn = var.lambda_functions.reservation_promote.invoke_arn, auth = true }
     "reservation_cancel"  = { resource = aws_api_gateway_resource.reservations_id_cancel.id, method = "PATCH", invoke_arn = var.lambda_functions.reservation_cancel.invoke_arn, auth = true }
+    "reservation_update"  = { resource = aws_api_gateway_resource.reservations_id.id, method = "PATCH", invoke_arn = var.lambda_functions.reservation_update.invoke_arn, auth = true }
     # ゲスト予約（2026-04-16追加）
     "reservation_guest_get"     = { resource = aws_api_gateway_resource.reservations_guest_token.id, method = "GET", invoke_arn = var.lambda_functions["reservation_guest_get"].invoke_arn, auth = false }
     "reservation_guest_cancel"  = { resource = aws_api_gateway_resource.reservations_guest_token_cancel.id, method = "PATCH", invoke_arn = var.lambda_functions["reservation_guest_cancel"].invoke_arn, auth = false }

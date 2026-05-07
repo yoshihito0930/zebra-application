@@ -56,8 +56,8 @@ type OptionResponse struct {
 
 func updateOptionHandler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// スタジオIDとオプションIDを取得
-	studioID, ok := request.RequestContext.Authorizer["studio_id"].(string)
-	if !ok || studioID == "" {
+	studioID := middleware.GetStudioIDFromContext(ctx)
+	if studioID == "" {
 		return response.ErrorWithCORS(apierror.ErrForbiddenRole), nil
 	}
 
@@ -128,7 +128,7 @@ func updateOptionHandler(ctx context.Context, request events.APIGatewayProxyRequ
 }
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	authHandler := middleware.MockAuthMiddleware(updateOptionHandler)
+	authHandler := middleware.CognitoAuthMiddleware(updateOptionHandler)
 	authzHandler := middleware.RequireRole(authHandler, middleware.RoleAdmin)
 	return authzHandler(ctx, request)
 }

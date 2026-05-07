@@ -196,7 +196,7 @@ func createReservationHandler(ctx context.Context, request events.APIGatewayProx
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// 認証ミドルウェアを適用
-	authHandler := middleware.MockAuthMiddleware(createReservationHandler)
+	authHandler := middleware.CognitoAuthMiddleware(createReservationHandler)
 
 	// 認可ミドルウェアを適用（customer または admin のみ）
 	authzHandler := middleware.RequireRole(authHandler, middleware.RoleCustomer, middleware.RoleAdmin)

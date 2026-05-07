@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"strings"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	cognitotypes "github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider/types"
 	dynamodbRepo "github.com/yoshihito0930/zebra-application/internal/repository/dynamodb"
 	"github.com/yoshihito0930/zebra-application/internal/service"
 	"github.com/yoshihito0930/zebra-application/internal/usecase"
@@ -119,20 +121,28 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		Name:        req.Name,
 		PhoneNumber: phoneE164,
 		Address:     req.Address,
-		CompanyName: req.CompanyName,
 	}
 
 	cognitoResult, err := cognitoService.SignUp(ctx, cognitoInput)
 	if err != nil {
 		log.Printf("Failed to sign up to Cognito: %v", err)
-		// Cognitoのエラーをチェック（メールアドレス重複など）
-		return response.ErrorWithCORS(apierror.ErrEmailAlreadyExists), nil
+		var usernameExists *cognitotypes.UsernameExistsException
+		if errors.As(err, &usernameExists) {
+			return response.ErrorWithCORS(apierror.ErrEmailAlreadyExists), nil
+		}
+		return response.ErrorWithCORS(apierror.ErrInternalServer), nil
 	}
 
 	// 開発環境では自動でユーザーを確認状態にする
 	if err := cognitoService.AdminConfirmSignUp(ctx, req.Email); err != nil {
 		log.Printf("Warning: Failed to auto-confirm user: %v", err)
 		// 確認失敗は警告のみでエラーにしない（本番では手動確認が必要）
+	}
+
+	// Cognito ID トークンの claims に custom:role を含めるため属性を設定する
+	if err := cognitoService.AdminSetUserRole(ctx, req.Email, "customer"); err != nil {
+		log.Printf("Warning: Failed to set custom:role in Cognito: %v", err)
+		// 非致命的: DynamoDB の role が正となるため処理は続行する
 	}
 
 	// 2. DynamoDBにユーザー情報を保存
@@ -142,12 +152,13 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	}
 
 	input := usecase.SignupInput{
-		Name:        req.Name,
-		Email:       req.Email,
-		Password:    req.Password,
-		PhoneNumber: req.PhoneNumber,
-		CompanyName: companyName,
-		Address:     req.Address,
+		Name:           req.Name,
+		Email:          req.Email,
+		Password:       req.Password,
+		PhoneNumber:    req.PhoneNumber,
+		CompanyName:    companyName,
+		Address:        req.Address,
+		CognitoUserSub: cognitoResult.UserSub,
 	}
 
 	user, err := userUsecase.Signup(ctx, input)

@@ -162,7 +162,7 @@ func listReservationsHandler(ctx context.Context, request events.APIGatewayProxy
 }
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	authHandler := middleware.MockAuthMiddleware(listReservationsHandler)
+	authHandler := middleware.CognitoAuthMiddleware(listReservationsHandler)
 	authzHandler := middleware.RequireRole(authHandler, middleware.RoleAdmin, middleware.RoleStaff)
 	return authzHandler(ctx, request)
 }

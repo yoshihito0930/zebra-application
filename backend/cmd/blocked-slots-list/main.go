@@ -124,7 +124,7 @@ func listBlockedSlotsHandler(ctx context.Context, request events.APIGatewayProxy
 }
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	authHandler := middleware.MockAuthMiddleware(listBlockedSlotsHandler)
+	authHandler := middleware.CognitoAuthMiddleware(listBlockedSlotsHandler)
 	authzHandler := middleware.RequireRole(authHandler, middleware.RoleAdmin)
 	return authzHandler(ctx, request)
 }

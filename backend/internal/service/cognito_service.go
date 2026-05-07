@@ -37,7 +37,6 @@ type SignUpInput struct {
 	Name        string
 	PhoneNumber string
 	Address     string
-	CompanyName string
 }
 
 // SignUpOutput はサインアップの出力
@@ -48,6 +47,7 @@ type SignUpOutput struct {
 // SignUp はCognitoにユーザーを登録する
 func (s *CognitoService) SignUp(ctx context.Context, input SignUpInput) (*SignUpOutput, error) {
 	// ユーザー属性を設定
+	// company_name は Cognito スキーマ外のため DynamoDB のみに保存する
 	userAttributes := []types.AttributeType{
 		{
 			Name:  aws.String("email"),
@@ -65,14 +65,6 @@ func (s *CognitoService) SignUp(ctx context.Context, input SignUpInput) (*SignUp
 			Name:  aws.String("address"),
 			Value: aws.String(input.Address),
 		},
-	}
-
-	// 会社名が指定されている場合は追加
-	if input.CompanyName != "" {
-		userAttributes = append(userAttributes, types.AttributeType{
-			Name:  aws.String("custom:company_name"),
-			Value: aws.String(input.CompanyName),
-		})
 	}
 
 	// Cognitoへユーザー登録
@@ -162,6 +154,27 @@ func (s *CognitoService) AdminConfirmSignUp(ctx context.Context, email string) e
 	_, err := s.client.AdminConfirmSignUp(ctx, input)
 	if err != nil {
 		return fmt.Errorf("failed to admin confirm sign up: %w", err)
+	}
+
+	return nil
+}
+
+// AdminSetUserRole はユーザーの custom:role 属性を設定する（サインアップ後に呼び出す）
+func (s *CognitoService) AdminSetUserRole(ctx context.Context, email, role string) error {
+	input := &cognitoidentityprovider.AdminUpdateUserAttributesInput{
+		UserPoolId: aws.String(s.userPoolID),
+		Username:   aws.String(email),
+		UserAttributes: []types.AttributeType{
+			{
+				Name:  aws.String("custom:role"),
+				Value: aws.String(role),
+			},
+		},
+	}
+
+	_, err := s.client.AdminUpdateUserAttributes(ctx, input)
+	if err != nil {
+		return fmt.Errorf("failed to set user role in Cognito: %w", err)
 	}
 
 	return nil

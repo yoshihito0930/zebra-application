@@ -30,12 +30,13 @@ func NewUserUsecase(
 
 // SignupInput はユーザー登録のリクエスト
 type SignupInput struct {
-	Name        string
-	Email       string
-	Password    string
-	PhoneNumber string
-	CompanyName *string
-	Address     string
+	Name           string
+	Email          string
+	Password       string
+	PhoneNumber    string
+	CompanyName    *string
+	Address        string
+	CognitoUserSub string // Cognito の sub を DynamoDB user_id として使用する
 }
 
 // Signup はユーザーを登録する
@@ -55,9 +56,14 @@ func (u *UserUsecase) Signup(ctx context.Context, input SignupInput) (*entity.Us
 	}
 
 	// 2. ユーザーエンティティを作成
+	// Cognito sub を user_id として使用することで CognitoAuthMiddleware と一致させる
+	userID := input.CognitoUserSub
+	if userID == "" {
+		userID = uuid.New().String() // テスト等で Cognito を使わない場合のフォールバック
+	}
 	now := time.Now()
 	user := &entity.User{
-		UserID:      uuid.New().String(),
+		UserID:      userID,
 		Name:        input.Name,
 		Email:       input.Email,
 		PhoneNumber: input.PhoneNumber,

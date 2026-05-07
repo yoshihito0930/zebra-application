@@ -15,13 +15,12 @@ export const uniqueEmail = (prefix = 'e2e'): string => {
   return `${prefix}${Date.now()}${rand}@example.com`;
 };
 
-// 注意: company_name を含めると現状のdev APIで EMAIL_ALREADY_EXISTS が誤って返る既知不具合あり。
-// デフォルト payload では omit する。検証時は overrides で渡すこと。
 export const validSignupPayload = (overrides: Partial<SignupPayload> = {}): SignupPayload => ({
   name: 'E2Eテストユーザー',
   email: uniqueEmail(),
   password: 'Password123!',
   phone_number: '090-1234-5678',
+  company_name: 'E2Eテスト株式会社',
   address: '東京都渋谷区テスト1-2-3',
   ...overrides,
 });

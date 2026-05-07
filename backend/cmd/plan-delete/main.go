@@ -38,8 +38,8 @@ type DeletePlanResponse struct {
 
 func deletePlanHandler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// スタジオIDとプランIDを取得
-	studioID, ok := request.RequestContext.Authorizer["studio_id"].(string)
-	if !ok || studioID == "" {
+	studioID := middleware.GetStudioIDFromContext(ctx)
+	if studioID == "" {
 		return response.ErrorWithCORS(apierror.ErrForbiddenRole), nil
 	}
 
@@ -68,7 +68,7 @@ func deletePlanHandler(ctx context.Context, request events.APIGatewayProxyReques
 }
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	authHandler := middleware.MockAuthMiddleware(deletePlanHandler)
+	authHandler := middleware.CognitoAuthMiddleware(deletePlanHandler)
 	authzHandler := middleware.RequireRole(authHandler, middleware.RoleAdmin)
 	return authzHandler(ctx, request)
 }

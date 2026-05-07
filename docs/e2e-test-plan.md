@@ -88,8 +88,8 @@
    完全に新規のメールアドレスでも `company_name` フィールドを payload に含めると409が返る。
    再現: `POST /auth/signup` に `company_name: "..."` を含めるだけで再現。
    影響: フロントエンドで company_name 入力を有効化するとサインアップ全件失敗する可能性。
-2. **API Gateway authorizer のエラー応答が API設計と乖離**
-   `/auth` 以外の保護エンドポイントは未認証/無効トークン時に `{"message":"Unauthorized"}` を返し、`AUTH_TOKEN_MISSING` 等の構造化エラーコードが返らない。Lambda Authorizer のカスタム化が必要。
+2. **API Gateway authorizer のエラー応答が API設計と乖離** ※既知制約・対応保留
+   `/auth` 以外の保護エンドポイントは未認証/無効トークン時に `{"message":"Unauthorized"}` を返し、`AUTH_TOKEN_MISSING` 等の構造化エラーコードが返らない。COGNITO_USER_POOLS タイプの Authorizer では応答形式をカスタマイズできないため、Lambda Authorizer への変更が必要。現状のテスト（AUTH-202/203/204）は HTTP ステータス 401 のみを検証しており PASS のため、Lambda Authorizer 導入まで対応を保留する。
 3. **signup で発行された Cognito JWT に role/cognito:groups クレームが無い**
    結果として認証済み customer が `/reservations/me` 等の customer 用エンドポイントにアクセスすると `FORBIDDEN_ROLE` で拒否される。Cognito Pre Token Generation Trigger 等で role クレームを付与する必要あり。
 4. **`POST /reservations` が認証済みでも 401 を返す / `PATCH /reservations/{id}` が IAM SigV4 を要求**

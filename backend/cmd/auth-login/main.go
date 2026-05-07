@@ -59,6 +59,7 @@ type LoginResponse struct {
 type UserInfo struct {
 	UserID string `json:"user_id"`
 	Name   string `json:"name"`
+	Email  string `json:"email"`
 	Role   string `json:"role"`
 }
 
@@ -113,6 +114,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		User: UserInfo{
 			UserID: user.UserID,
 			Name:   user.Name,
+			Email:  user.Email,
 			Role:   string(user.Role),
 		},
 	}
