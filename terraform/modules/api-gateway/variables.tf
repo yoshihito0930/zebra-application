@@ -35,6 +35,9 @@ variable "lambda_functions" {
     reservation_list = object({
       invoke_arn = string
     })
+    reservation_list_me = object({
+      invoke_arn = string
+    })
     reservation_get = object({
       invoke_arn = string
     })

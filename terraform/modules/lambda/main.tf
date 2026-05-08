@@ -290,6 +290,28 @@ resource "aws_lambda_function" "reservation_list" {
   }
 }
 
+# GET /reservations/me（2026-05-08追加 Bug 8）
+resource "aws_lambda_function" "reservation_list_me" {
+  filename         = "${var.lambda_artifacts_dir}/reservation-list-me.zip"
+  function_name    = "${var.environment}-reservation-list-me"
+  role             = aws_iam_role.lambda_execution_role.arn
+  handler          = "bootstrap"
+  source_code_hash = filebase64sha256("${var.lambda_artifacts_dir}/reservation-list-me.zip")
+  runtime          = local.lambda_runtime
+  timeout          = local.lambda_timeout
+  memory_size      = local.lambda_memory_size
+
+  environment {
+    variables = local.common_env_vars
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = "zebra-application"
+    ManagedBy   = "terraform"
+  }
+}
+
 # GET /reservations/{id}
 resource "aws_lambda_function" "reservation_get" {
   filename         = "${var.lambda_artifacts_dir}/reservation-get.zip"

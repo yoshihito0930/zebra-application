@@ -81,9 +81,7 @@ func approveReservationHandler(ctx context.Context, request events.APIGatewayPro
 }
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	authHandler := middleware.CognitoAuthMiddleware(approveReservationHandler)
-	authzHandler := middleware.RequireRole(authHandler, middleware.RoleAdmin)
-	return authzHandler(ctx, request)
+	return middleware.Compose(approveReservationHandler, middleware.RoleAdmin)(ctx, request)
 }
 
 func main() {

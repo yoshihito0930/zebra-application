@@ -1,5 +1,5 @@
 import type { APIRequestContext, APIResponse } from '@playwright/test';
-import type { SignupPayload, GuestReservationPayload } from './testData';
+import type { SignupPayload, GuestReservationPayload, MemberReservationPayload } from './testData';
 
 export type AuthError = {
   error: { code: string; message: string; details?: Array<{ field: string; message: string }> };
@@ -60,6 +60,42 @@ export const cancelGuestReservationApi = (request: APIRequestContext, token: str
 
 export const promoteGuestReservationApi = (request: APIRequestContext, token: string) =>
   request.patch(`reservations/guest/${token}/promote`);
+
+// 会員予約 API ラッパ（CUSTOMER-001..404 用、2026-05-08 追加）
+const authHeaders = (token: string) => ({ Authorization: `Bearer ${token}` });
+
+export const createReservationApi = (
+  request: APIRequestContext,
+  token: string,
+  payload: Partial<MemberReservationPayload>
+) => request.post('reservations', { headers: authHeaders(token), data: payload });
+
+export const getReservationApi = (
+  request: APIRequestContext,
+  token: string,
+  reservationID: string
+) => request.get(`reservations/${reservationID}`, { headers: authHeaders(token) });
+
+export const listMyReservationsApi = (
+  request: APIRequestContext,
+  token: string,
+  status?: string
+) => {
+  const path = status ? `reservations/me?status=${encodeURIComponent(status)}` : 'reservations/me';
+  return request.get(path, { headers: authHeaders(token) });
+};
+
+export const cancelReservationApi = (
+  request: APIRequestContext,
+  token: string,
+  reservationID: string
+) => request.patch(`reservations/${reservationID}/cancel`, { headers: authHeaders(token) });
+
+export const promoteReservationApi = (
+  request: APIRequestContext,
+  token: string,
+  reservationID: string
+) => request.patch(`reservations/${reservationID}/promote`, { headers: authHeaders(token) });
 
 export const signupAndLogin = async (
   request: APIRequestContext,

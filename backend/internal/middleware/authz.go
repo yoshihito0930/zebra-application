@@ -17,6 +17,28 @@ const (
 	RoleStaff    Role = "staff"    // スタジオスタッフ（閲覧のみ）
 )
 
+// Compose は CognitoAuthMiddleware と RequireRole を正しい順序で合成する。
+//
+// 過去の不具合 (Bug 9, 2026-05-08) で、各 Lambda が以下のように書いていた:
+//
+//	authHandler := CognitoAuthMiddleware(realHandler)
+//	authzHandler := RequireRole(authHandler, RoleCustomer, RoleAdmin)
+//	return authzHandler(ctx, request)
+//
+// この場合 RequireRole が先に実行されてしまい、ctx に role が無いため常に 403 FORBIDDEN_ROLE
+// を返していた。Compose は順序を固定し再発を防ぐためのヘルパー。
+//
+// 使用例:
+//
+//	func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+//	    return middleware.Compose(realHandler, middleware.RoleCustomer, middleware.RoleAdmin)(ctx, request)
+//	}
+func Compose(next Handler, allowedRoles ...Role) Handler {
+	// 内側から外側へ: realHandler → RequireRole → CognitoAuthMiddleware
+	// 実行順は外側から内側: CognitoAuthMiddleware (claims を ctx に詰める) → RequireRole (role 検査) → realHandler
+	return CognitoAuthMiddleware(RequireRole(next, allowedRoles...))
+}
+
 // RequireRole は指定されたロールのいずれかを持つユーザーのみアクセスを許可するミドルウェア
 //
 // 使用例:

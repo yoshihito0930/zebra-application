@@ -69,6 +69,16 @@ output "reservation_list_invoke_arn" {
   value       = aws_lambda_function.reservation_list.invoke_arn
 }
 
+output "reservation_list_me_function_name" {
+  description = "自分の予約一覧Lambda関数名"
+  value       = aws_lambda_function.reservation_list_me.function_name
+}
+
+output "reservation_list_me_invoke_arn" {
+  description = "自分の予約一覧Lambda呼び出しARN"
+  value       = aws_lambda_function.reservation_list_me.invoke_arn
+}
+
 output "reservation_get_function_name" {
   description = "予約詳細Lambda関数名"
   value       = aws_lambda_function.reservation_get.function_name

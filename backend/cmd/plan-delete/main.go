@@ -68,9 +68,7 @@ func deletePlanHandler(ctx context.Context, request events.APIGatewayProxyReques
 }
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	authHandler := middleware.CognitoAuthMiddleware(deletePlanHandler)
-	authzHandler := middleware.RequireRole(authHandler, middleware.RoleAdmin)
-	return authzHandler(ctx, request)
+	return middleware.Compose(deletePlanHandler, middleware.RoleAdmin)(ctx, request)
 }
 
 func main() {

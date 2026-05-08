@@ -136,12 +136,7 @@ func listMyReservationsHandler(ctx context.Context, request events.APIGatewayPro
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// 認証ミドルウェアを適用
-	authHandler := middleware.CognitoAuthMiddleware(listMyReservationsHandler)
-
-	// 認可ミドルウェアを適用（customer のみ）
-	authzHandler := middleware.RequireRole(authHandler, middleware.RoleCustomer)
-
-	return authzHandler(ctx, request)
+	return middleware.Compose(listMyReservationsHandler, middleware.RoleCustomer)(ctx, request)
 }
 
 func main() {

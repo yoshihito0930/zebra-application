@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go vet *)",
+      "Bash(/usr/local/go/bin/go vet *)",
+      "Bash(echo \"exit:$?\")"
+    ]
+  }
+}

@@ -93,12 +93,7 @@ func listMyInquiriesHandler(ctx context.Context, request events.APIGatewayProxyR
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// 認証ミドルウェアを適用
-	authHandler := middleware.CognitoAuthMiddleware(listMyInquiriesHandler)
-
-	// 認可ミドルウェアを適用（customer のみ）
-	authzHandler := middleware.RequireRole(authHandler, middleware.RoleCustomer)
-
-	return authzHandler(ctx, request)
+	return middleware.Compose(listMyInquiriesHandler, middleware.RoleCustomer)(ctx, request)
 }
 
 func main() {

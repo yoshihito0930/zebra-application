@@ -120,6 +120,9 @@ module "api_gateway" {
     reservation_list = {
       invoke_arn = module.lambda.reservation_list_invoke_arn
     }
+    reservation_list_me = {
+      invoke_arn = module.lambda.reservation_list_me_invoke_arn
+    }
     reservation_get = {
       invoke_arn = module.lambda.reservation_get_invoke_arn
     }

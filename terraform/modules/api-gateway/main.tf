@@ -106,6 +106,14 @@ resource "aws_api_gateway_resource" "reservations" {
   path_part   = "reservations"
 }
 
+# /reservations/me（自分の予約一覧、2026-05-08追加 Bug 8）
+# 注: /reservations/{id} より前に定義する必要がある（API Gateway の path matching では先に定義された具体的なリソースが優先される）
+resource "aws_api_gateway_resource" "reservations_me" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  parent_id   = aws_api_gateway_resource.reservations.id
+  path_part   = "me"
+}
+
 # /reservations/{id}
 resource "aws_api_gateway_resource" "reservations_id" {
   rest_api_id = aws_api_gateway_rest_api.main.id
@@ -253,6 +261,7 @@ module "lambda_integration" {
     # 予約
     "reservation_create"  = { resource = aws_api_gateway_resource.reservations.id, method = "POST", invoke_arn = var.lambda_functions.reservation_create.invoke_arn, auth = true }
     "reservation_list"    = { resource = aws_api_gateway_resource.reservations.id, method = "GET", invoke_arn = var.lambda_functions.reservation_list.invoke_arn, auth = true }
+    "reservation_list_me" = { resource = aws_api_gateway_resource.reservations_me.id, method = "GET", invoke_arn = var.lambda_functions.reservation_list_me.invoke_arn, auth = true }
     "reservation_get"     = { resource = aws_api_gateway_resource.reservations_id.id, method = "GET", invoke_arn = var.lambda_functions.reservation_get.invoke_arn, auth = true }
     "reservation_approve" = { resource = aws_api_gateway_resource.reservations_id_approve.id, method = "PATCH", invoke_arn = var.lambda_functions.reservation_approve.invoke_arn, auth = true }
     "reservation_reject"  = { resource = aws_api_gateway_resource.reservations_id_reject.id, method = "PATCH", invoke_arn = var.lambda_functions.reservation_reject.invoke_arn, auth = true }

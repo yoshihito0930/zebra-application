@@ -78,3 +78,41 @@ export const validGuestReservationPayload = (
   guest_phone: '090-1234-5678',
   ...overrides,
 });
+
+// 会員予約 (Bearer 認証) 用の payload。 guest_* は含まない。
+// CUSTOMER-001..404 で使用 (2026-05-08 追加)
+export type MemberReservationPayload = {
+  studio_id: string;
+  reservation_type: string;
+  plan_id: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  options: string[];
+  shooting_type: string[];
+  shooting_details: string;
+  photographer_name: string;
+  number_of_people: number;
+  needs_protection: boolean;
+  equipment_insurance: boolean;
+  note?: string;
+};
+
+export const validReservationPayload = (
+  overrides: Partial<MemberReservationPayload> = {}
+): MemberReservationPayload => ({
+  studio_id: 'studio_001',
+  reservation_type: 'regular',
+  plan_id: 'plan_001',
+  date: futureDateStr(120),
+  start_time: '10:00',
+  end_time: '12:00',
+  options: [],
+  shooting_type: ['portrait'],
+  shooting_details: 'E2Eテスト撮影',
+  photographer_name: 'E2Eカメラマン',
+  number_of_people: 2,
+  needs_protection: false,
+  equipment_insurance: false,
+  ...overrides,
+});

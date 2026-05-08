@@ -119,9 +119,7 @@ func createOptionHandler(ctx context.Context, request events.APIGatewayProxyRequ
 }
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	authHandler := middleware.CognitoAuthMiddleware(createOptionHandler)
-	authzHandler := middleware.RequireRole(authHandler, middleware.RoleAdmin)
-	return authzHandler(ctx, request)
+	return middleware.Compose(createOptionHandler, middleware.RoleAdmin)(ctx, request)
 }
 
 func main() {

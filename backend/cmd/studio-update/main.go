@@ -242,9 +242,7 @@ func updateStudioHandler(ctx context.Context, request events.APIGatewayProxyRequ
 }
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	authHandler := middleware.CognitoAuthMiddleware(updateStudioHandler)
-	authzHandler := middleware.RequireRole(authHandler, middleware.RoleAdmin)
-	return authzHandler(ctx, request)
+	return middleware.Compose(updateStudioHandler, middleware.RoleAdmin)(ctx, request)
 }
 
 func main() {

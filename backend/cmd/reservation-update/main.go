@@ -164,9 +164,7 @@ func updateReservationHandler(ctx context.Context, request events.APIGatewayProx
 }
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	authHandler := middleware.CognitoAuthMiddleware(updateReservationHandler)
-	authzHandler := middleware.RequireRole(authHandler, middleware.RoleAdmin)
-	return authzHandler(ctx, request)
+	return middleware.Compose(updateReservationHandler, middleware.RoleAdmin)(ctx, request)
 }
 
 func main() {
