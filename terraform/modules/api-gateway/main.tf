@@ -263,6 +263,8 @@ module "lambda_integration" {
     "reservation_guest_get"     = { resource = aws_api_gateway_resource.reservations_guest_token.id, method = "GET", invoke_arn = var.lambda_functions["reservation_guest_get"].invoke_arn, auth = false }
     "reservation_guest_cancel"  = { resource = aws_api_gateway_resource.reservations_guest_token_cancel.id, method = "PATCH", invoke_arn = var.lambda_functions["reservation_guest_cancel"].invoke_arn, auth = false }
     "reservation_guest_promote" = { resource = aws_api_gateway_resource.reservations_guest_token_promote.id, method = "PATCH", invoke_arn = var.lambda_functions["reservation_guest_promote"].invoke_arn, auth = false }
+    # ゲスト予約作成（2026-05-08追加）
+    "reservation_guest_create"  = { resource = aws_api_gateway_resource.reservations_guest.id, method = "POST", invoke_arn = var.lambda_functions["reservation_guest_create"].invoke_arn, auth = false }
     # プラン
     "plans_list"   = { resource = aws_api_gateway_resource.studios_id_plans.id, method = "GET", invoke_arn = var.lambda_functions.plans_list.invoke_arn, auth = false }
     "plan_create"  = { resource = aws_api_gateway_resource.plans.id, method = "POST", invoke_arn = var.lambda_functions.plan_create.invoke_arn, auth = true }
@@ -386,6 +388,7 @@ resource "aws_api_gateway_method" "options" {
     studios_id_calendar                   = aws_api_gateway_resource.studios_id_calendar.id
     reservations                          = aws_api_gateway_resource.reservations.id
     reservations_id                       = aws_api_gateway_resource.reservations_id.id
+    reservations_guest                    = aws_api_gateway_resource.reservations_guest.id
     reservations_guest_token              = aws_api_gateway_resource.reservations_guest_token.id
     reservations_guest_token_cancel       = aws_api_gateway_resource.reservations_guest_token_cancel.id
     reservations_guest_token_promote      = aws_api_gateway_resource.reservations_guest_token_promote.id

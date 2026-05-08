@@ -994,3 +994,28 @@ resource "aws_lambda_function" "reservation_guest_promote" {
     ManagedBy   = "terraform"
   }
 }
+
+# POST /reservations/guest（ゲスト予約作成, 2026-05-08追加）
+resource "aws_lambda_function" "reservation_guest_create" {
+  filename         = "${var.lambda_artifacts_dir}/reservation-guest-create.zip"
+  function_name    = "${var.environment}-reservation-guest-create"
+  role             = aws_iam_role.lambda_execution_role.arn
+  handler          = "bootstrap"
+  source_code_hash = filebase64sha256("${var.lambda_artifacts_dir}/reservation-guest-create.zip")
+  runtime          = local.lambda_runtime
+  timeout          = local.lambda_timeout
+  memory_size      = local.lambda_memory_size
+
+  environment {
+    variables = merge(local.common_env_vars, {
+      SES_SENDER_EMAIL      = var.ses_sender_email
+      GUEST_RESERVATION_URL = var.guest_reservation_url
+    })
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = "zebra-application"
+    ManagedBy   = "terraform"
+  }
+}

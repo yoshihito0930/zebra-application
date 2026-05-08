@@ -123,6 +123,10 @@ variable "lambda_functions" {
     reservation_guest_promote = object({
       invoke_arn = string
     })
+    # ゲスト予約作成（2026-05-08追加）
+    reservation_guest_create = object({
+      invoke_arn = string
+    })
   })
 }
 

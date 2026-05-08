@@ -386,6 +386,16 @@ output "reservation_guest_promote_invoke_arn" {
   value       = aws_lambda_function.reservation_guest_promote.invoke_arn
 }
 
+output "reservation_guest_create_function_name" {
+  description = "ゲスト予約作成Lambda関数名"
+  value       = aws_lambda_function.reservation_guest_create.function_name
+}
+
+output "reservation_guest_create_invoke_arn" {
+  description = "ゲスト予約作成Lambda呼び出しARN"
+  value       = aws_lambda_function.reservation_guest_create.invoke_arn
+}
+
 # すべてのLambda関数名をマップで出力
 output "all_lambda_functions" {
   description = "すべてのLambda関数名のマップ"
@@ -427,5 +437,6 @@ output "all_lambda_functions" {
     reservation_guest_get       = aws_lambda_function.reservation_guest_get.function_name
     reservation_guest_cancel    = aws_lambda_function.reservation_guest_cancel.function_name
     reservation_guest_promote   = aws_lambda_function.reservation_guest_promote.function_name
+    reservation_guest_create    = aws_lambda_function.reservation_guest_create.function_name
   }
 }

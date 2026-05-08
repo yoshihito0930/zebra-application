@@ -208,6 +208,10 @@ module "api_gateway" {
     reservation_guest_promote = {
       invoke_arn = module.lambda.reservation_guest_promote_invoke_arn
     }
+    # ゲスト予約作成（2026-05-08追加）
+    reservation_guest_create = {
+      invoke_arn = module.lambda.reservation_guest_create_invoke_arn
+    }
   }
 
   cloudwatch_log_group_arn          = module.cloudwatch.api_gateway_log_group_arn

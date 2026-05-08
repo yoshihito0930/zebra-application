@@ -33,6 +33,10 @@ func (r *ReservationRepositoryImpl) Create(ctx context.Context, reservation *ent
 	if err != nil {
 		return fmt.Errorf("failed to marshal reservation: %w", err)
 	}
+	// SK (date_reservation_id) はエンティティに存在しないため明示的に追加
+	item["date_reservation_id"] = &types.AttributeValueMemberS{
+		Value: fmt.Sprintf("%s#%s", reservation.Date.Format("2006-01-02"), reservation.ReservationID),
+	}
 
 	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{
 		TableName: aws.String(r.tableName),
@@ -363,6 +367,10 @@ func (r *ReservationRepositoryImpl) Update(ctx context.Context, reservation *ent
 	item, err := attributevalue.MarshalMap(reservation)
 	if err != nil {
 		return fmt.Errorf("failed to marshal reservation: %w", err)
+	}
+	// SK (date_reservation_id) はエンティティに存在しないため明示的に追加
+	item["date_reservation_id"] = &types.AttributeValueMemberS{
+		Value: fmt.Sprintf("%s#%s", reservation.Date.Format("2006-01-02"), reservation.ReservationID),
 	}
 
 	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{

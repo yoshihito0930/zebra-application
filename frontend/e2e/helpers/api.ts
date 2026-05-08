@@ -1,5 +1,5 @@
 import type { APIRequestContext, APIResponse } from '@playwright/test';
-import type { SignupPayload } from './testData';
+import type { SignupPayload, GuestReservationPayload } from './testData';
 
 export type AuthError = {
   error: { code: string; message: string; details?: Array<{ field: string; message: string }> };
@@ -35,6 +35,31 @@ export const meApi = (request: APIRequestContext, accessToken?: string) =>
 
 export const parseError = async (response: APIResponse): Promise<AuthError> =>
   (await response.json()) as AuthError;
+
+export type GuestReservationCreateResponse = {
+  reservation_id: string;
+  guest_token: string;
+  status: string;
+  reservation_type: string;
+  studio_id: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+};
+
+export const createGuestReservationApi = (
+  request: APIRequestContext,
+  payload: Partial<GuestReservationPayload>
+) => request.post('reservations/guest', { data: payload });
+
+export const getGuestReservationApi = (request: APIRequestContext, token: string) =>
+  request.get(`reservations/guest/${token}`);
+
+export const cancelGuestReservationApi = (request: APIRequestContext, token: string) =>
+  request.patch(`reservations/guest/${token}/cancel`);
+
+export const promoteGuestReservationApi = (request: APIRequestContext, token: string) =>
+  request.patch(`reservations/guest/${token}/promote`);
 
 export const signupAndLogin = async (
   request: APIRequestContext,
