@@ -179,18 +179,20 @@ func ValidateEnum(value string, fieldName string, allowedValues []string, result
 }
 
 // ValidatePassword はパスワードの強度をチェックする
+// Cognito User Pool のポリシー (大文字・小文字・数字・記号すべて必須・8文字以上) に揃えている
 func ValidatePassword(password string, fieldName string, result *ValidationResult) {
 	if len(password) < 8 {
 		result.AddError(fieldName, fmt.Sprintf("%sは8文字以上で入力してください", fieldName))
 		return
 	}
 
-	// 英数字記号を含むかチェック
-	hasLetter := regexp.MustCompile(`[a-zA-Z]`).MatchString(password)
+	hasLower := regexp.MustCompile(`[a-z]`).MatchString(password)
+	hasUpper := regexp.MustCompile(`[A-Z]`).MatchString(password)
 	hasDigit := regexp.MustCompile(`\d`).MatchString(password)
+	hasSymbol := regexp.MustCompile(`[^a-zA-Z\d]`).MatchString(password)
 
-	if !hasLetter || !hasDigit {
-		result.AddError(fieldName, fmt.Sprintf("%sは英字と数字を含める必要があります", fieldName))
+	if !hasLower || !hasUpper || !hasDigit || !hasSymbol {
+		result.AddError(fieldName, fmt.Sprintf("%sは大文字、小文字、数字、記号をすべて含める必要があります", fieldName))
 	}
 }
 

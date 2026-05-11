@@ -26,8 +26,8 @@ const resetPasswordSchema = z
       .string()
       .min(8, 'パスワードは8文字以上で入力してください')
       .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-        'パスワードは大文字、小文字、数字を含む必要があります'
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d])/,
+        'パスワードは大文字、小文字、数字、記号を含む必要があります'
       ),
     confirmPassword: z.string(),
   })
@@ -131,7 +131,7 @@ export default function ResetPasswordPage() {
                   <FormErrorMessage>{errors.newPassword.message}</FormErrorMessage>
                 )}
                 <FormHelperText fontSize="xs">
-                  大文字、小文字、数字を含む8文字以上
+                  大文字、小文字、数字、記号を含む8文字以上
                 </FormHelperText>
               </FormControl>
 

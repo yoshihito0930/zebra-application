@@ -29,8 +29,8 @@ export const signupSchema = z.object({
     .min(8, 'パスワードは8文字以上で入力してください')
     .max(100, 'パスワードは100文字以内で入力してください')
     .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-      'パスワードは大文字、小文字、数字を含む必要があります'
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d])/,
+      'パスワードは大文字、小文字、数字、記号を含む必要があります'
     ),
   confirmPassword: z.string().min(1, 'パスワード（確認）を入力してください'),
   phone_number: z
@@ -78,8 +78,8 @@ export const changePasswordSchema = z.object({
     .min(8, '新しいパスワードは8文字以上で入力してください')
     .max(100, '新しいパスワードは100文字以内で入力してください')
     .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-      'パスワードは大文字、小文字、数字を含む必要があります'
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d])/,
+      'パスワードは大文字、小文字、数字、記号を含む必要があります'
     ),
   confirm_password: z.string().min(1, 'パスワード（確認）を入力してください'),
 }).refine((data) => data.new_password === data.confirm_password, {

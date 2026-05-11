@@ -129,7 +129,7 @@ export default function SignupPage() {
                     <FormErrorMessage>{errors.password.message}</FormErrorMessage>
                   )}
                   <FormHelperText fontSize="xs">
-                    大文字、小文字、数字を含む8文字以上
+                    大文字、小文字、数字、記号を含む8文字以上
                   </FormHelperText>
                 </FormControl>
 
