@@ -55,8 +55,9 @@ export const useAuth = () => {
     try {
       const result = await authService.signup(data);
 
-      // サインアップ後、メール検証画面にリダイレクト
-      navigate(`/verify-email?email=${encodeURIComponent(result.email)}`);
+      // dev/本番ともバックエンドの POST /auth/signup が Cognito を CONFIRMED 状態で作成するため、
+      // メール検証コード入力ステップは挟まずログイン画面へ誘導する。
+      navigate(`/login?signup=success&email=${encodeURIComponent(result.email)}`);
 
       return result;
     } catch (err) {

@@ -1,7 +1,5 @@
 import type { AuthResponse, LoginRequest, SignupRequest, User } from '../types';
 import {
-  cognitoLogin,
-  cognitoSignup,
   cognitoConfirmSignup,
   cognitoResendConfirmationCode,
   cognitoLogout,
@@ -15,23 +13,25 @@ import { apiRequest } from './api';
 const USE_COGNITO = import.meta.env.VITE_USE_COGNITO === 'true';
 
 // ログイン
+// バックエンドの POST /auth/login を呼ぶ。signup と同じく Cognito + DynamoDB の整合を
+// バックエンド側で担保する設計のため、フロントは API を呼ぶだけにする。
 export const login = async (data: LoginRequest): Promise<AuthResponse> => {
-  if (USE_COGNITO) {
-    return cognitoLogin(data);
-  }
-  // モック版（開発用）
-  return mockLogin(data);
+  return apiRequest<AuthResponse>({
+    method: 'POST',
+    url: '/auth/login',
+    data,
+  });
 };
 
 // サインアップ
+// バックエンドの POST /auth/signup を呼び、Cognito 登録と DynamoDB ユーザー作成を一気通貫で行う。
 export const signup = async (data: SignupRequest): Promise<{ user_id: string; email: string }> => {
-  if (USE_COGNITO) {
-    const result = await cognitoSignup(data);
-    return { ...result, email: data.email };
-  }
-  // モック版（開発用）
-  const result = await mockSignup(data);
-  return { user_id: result.user.user_id, email: data.email };
+  const result = await apiRequest<{ user_id: string; email: string }>({
+    method: 'POST',
+    url: '/auth/signup',
+    data,
+  });
+  return { user_id: result.user_id, email: result.email };
 };
 
 // メール検証
