@@ -142,3 +142,11 @@ variable "api_gateway_cloudwatch_role_arn" {
   description = "API GatewayがCloudWatch Logsに書き込むためのIAMロールARN"
   type        = string
 }
+
+# 2026-05-13 追加: API Gateway deployment の強制再作成用ノンス。
+# resource/method の追加が triggers に取り込まれない場合に手動 bump する。
+variable "redeploy_nonce" {
+  description = "API Gateway deployment 再作成用のノンス。値を変更すると terraform apply 時に deployment が再生成される"
+  type        = string
+  default     = "2026-05-13-bug20-fix"
+}

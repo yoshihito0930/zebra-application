@@ -320,10 +320,12 @@ resource "aws_api_gateway_deployment" "main" {
   depends_on = [module.lambda_integration]
 
   # デプロイメントを強制的に更新
+  # 2026-05-13: drift 復旧のため redeploy_nonce を追加。手動で bump することで強制再デプロイ可能。
   triggers = {
     redeployment = sha1(jsonencode([
       aws_api_gateway_rest_api.main.body,
       module.lambda_integration,
+      var.redeploy_nonce,
     ]))
   }
 

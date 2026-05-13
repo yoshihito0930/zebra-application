@@ -260,6 +260,9 @@ func (u *ReservationUsecase) CreateReservation(ctx context.Context, input Create
 			if err != nil {
 				return nil, fmt.Errorf("failed to find option %s: %w", optionID, err)
 			}
+			if !option.IsActive {
+				return nil, apierror.ErrOptionInactive
+			}
 			optionSnapshots = append(optionSnapshots, entity.OptionSnapshot{
 				OptionID:   option.OptionID,
 				OptionName: option.OptionName,
@@ -696,7 +699,18 @@ func (u *ReservationUsecase) CreateGuestReservation(ctx context.Context, input C
 		return nil, "", err
 	}
 
-	// 7. ゲストトークンを生成
+	// 7. オプションの存在確認と有効性チェック
+	for _, optionID := range input.Options {
+		option, err := u.optionRepo.FindByID(ctx, input.StudioID, optionID)
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to find option %s: %w", optionID, err)
+		}
+		if !option.IsActive {
+			return nil, "", apierror.ErrOptionInactive
+		}
+	}
+
+	// 8. ゲストトークンを生成
 	guestToken := uuid.New().String()
 
 	// 8. 予約エンティティを作成

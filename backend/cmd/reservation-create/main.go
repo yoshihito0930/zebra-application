@@ -182,6 +182,8 @@ func createReservationHandler(ctx context.Context, request events.APIGatewayProx
 			return response.ErrorWithCORS(apierror.ErrPlanNotFound), nil
 		case apierror.ErrPlanInactive:
 			return response.ErrorWithCORS(apierror.ErrPlanInactive), nil
+		case apierror.ErrOptionInactive:
+			return response.ErrorWithCORS(apierror.ErrOptionInactive), nil
 		default:
 			log.Printf("Failed to create reservation: %v", err)
 			return response.ErrorWithCORS(apierror.ErrInternalServer), nil

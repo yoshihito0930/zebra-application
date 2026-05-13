@@ -533,20 +533,102 @@ aws dynamodb update-item --region ap-northeast-1 --table-name dev-users \
 
 | ステータス | テストID | テスト内容 | 入力データ | 期待結果 | 優先度 | メモ |
 |----------|---------|----------|----------|---------|--------|------|
-| ⬜ | ADMIN-601 | 管理者がプランを作成できる | studio_id、plan_name、price、tax_rate | 201 Created、is_active=true | 高 | |
-| ⬜ | ADMIN-602 | 管理者がプランを更新できる | price、description | 200 OK、プランが更新される | 中 | |
-| ⬜ | ADMIN-603 | 管理者がプランを無効化できる | is_active=false | 200 OK、is_active=false | 中 | |
-| ⬜ | ADMIN-604 | 無効化されたプランが公開プラン一覧に表示されない | is_active=false のプラン | GET /studios/{id}/plans に含まれない | 中 | |
-| ⬜ | ADMIN-605 | 他スタジオのプランを作成しようとする | 他studio_id | 403 Forbidden、FORBIDDEN_RESOURCE | 高 | |
+| ✅ | ADMIN-601 | 管理者がプランを作成できる | studio_id、plan_name、price、tax_rate | 201 Created、is_active=true | 高 | 2026-05-13 PASS。ephemeral plan を POST /plans で作成し is_active=true / studio_id=studio_001 を確認 |
+| ✅ | ADMIN-602 | 管理者がプランを更新できる | price、description | 200 OK、プランが更新される | 中 | 2026-05-13 PASS。PATCH /plans/{id} で price と description を更新し body に反映されることを確認 |
+| ✅ | ADMIN-603 | 管理者がプランを無効化できる | is_active=false | 200 OK、is_active=false | 中 | 2026-05-13 PASS。PATCH で is_active=false を送信し body.is_active === false を確認 |
+| ✅ | ADMIN-604 | 無効化されたプランが公開プラン一覧に表示されない | is_active=false のプラン | GET /studios/{id}/plans に含まれない | 中 | 2026-05-13 PASS。無効化後の GET 公開一覧に当該 plan_id が含まれない+ seed plan_001 が含まれることを確認 |
+| ⏸️ | ADMIN-605 | 管理者が他スタジオのプランを作成しようとする | 他studio_id | 403 Forbidden、FORBIDDEN_RESOURCE | 高 | 2026-05-13 SKIP。POST /plans は body の studio_id を受け付けず Cognito の custom:studio_id を信頼する設計のため「他スタジオ指定」を本エンドポイントで再現できない。PATCH /plans/{id} も他スタジオ id では (studio_id, plan_id) 複合キー検索で 404 PLAN_NOT_FOUND を返すため 403 は構造上発生しない (Bug 17 として記録) |
 
 ### 5.2 オプション管理（UC-211）
 
 | ステータス | テストID | テスト内容 | 入力データ | 期待結果 | 優先度 | メモ |
 |----------|---------|----------|----------|---------|--------|------|
-| ⬜ | ADMIN-701 | 管理者がオプションを作成できる | studio_id、option_name、price、tax_rate | 201 Created、is_active=true | 高 | |
-| ⬜ | ADMIN-702 | 管理者がオプションを更新できる | price、option_name | 200 OK、オプションが更新される | 中 | |
-| ⬜ | ADMIN-703 | 管理者がオプションを無効化できる | is_active=false | 200 OK、is_active=false | 中 | |
-| ⬜ | ADMIN-704 | 無効化されたオプションが公開オプション一覧に表示されない | is_active=false のオプション | GET /studios/{id}/options に含まれない | 中 | |
+| ✅ | ADMIN-701 | 管理者がオプションを作成できる | studio_id、option_name、price、tax_rate | 201 Created、is_active=true | 高 | 2026-05-13 PASS (Bug 19 修正後)。修正前は entity の dynamodbav タグ欠落で PutItem が "Missing the key studio_id" を返し 500 を返していた |
+| ✅ | ADMIN-702 | 管理者がオプションを更新できる | price、option_name | 200 OK、オプションが更新される | 中 | 2026-05-13 PASS。PATCH /options/{id} で option_name / price を更新し反映を確認 |
+| ✅ | ADMIN-703 | 管理者がオプションを無効化できる | is_active=false | 200 OK、is_active=false | 中 | 2026-05-13 PASS。PATCH で is_active=false を送信し body.is_active === false を確認 |
+| ✅ | ADMIN-704 | 無効化されたオプションが公開オプション一覧に表示されない | is_active=false のオプション | GET /studios/{id}/options に含まれない | 中 | 2026-05-13 PASS。無効化後の GET 公開一覧に当該 option_id が含まれない + seed option_001 が含まれることを確認 |
+
+### 5.3 実行結果サマリ (2026-05-13 — Category 5 完了 + Bug 17/18/19/20 検出)
+
+- **実行ツール**: Playwright (`@playwright/test`) APIテスト (`frontend/e2e/admin/plan-management.api.spec.ts`, `option-management.api.spec.ts`, `customer-recheck-plans.api.spec.ts`)
+- **対象API**: dev環境 (`https://ynnrspq7rl.execute-api.ap-northeast-1.amazonaws.com/dev/`)
+- **実行コマンド**:
+  ```
+  cd frontend && E2E_SKIP_WEBSERVER=1 \
+    E2E_REUSE_USER_EMAIL=e2ecustomer1@example.com E2E_REUSE_USER_PASSWORD=CustPass123! \
+    E2E_REUSE_USER2_EMAIL=e2ecustomer2@example.com E2E_REUSE_USER2_PASSWORD=CustPass123! \
+    E2E_REUSE_USER_ADMIN_EMAIL=e2eadmin@example.com E2E_REUSE_USER_ADMIN_PASSWORD=AdminPass123! \
+    npx playwright test --project=api \
+      e2e/admin/plan-management.api.spec.ts \
+      e2e/admin/option-management.api.spec.ts \
+      e2e/admin/customer-recheck-plans.api.spec.ts
+  ```
+- **結果**: **10 PASS, 0 FAIL, 1 SKIP** (admin 8/9 + customer recheck 2/2)
+- **高優先度テスト**: ADMIN-601 / ADMIN-701 PASS。ADMIN-605 は SKIP (Bug 17 — 構造上発生しない 403 期待) — 高優先度の本質的失敗は 0、設計仕様の見直しを要求
+- **Category 2 再検証**: CUSTOMER-012 PASS (PLAN_INACTIVE)、CUSTOMER-014 PASS (OPTION_INACTIVE) — Bug 18 修正後の正しい挙動を確認
+- **リグレッション確認**: `e2e/admin/` (45), `e2e/customer/` (24), `e2e/guest/` (26) を本セッション末尾で再実行し 74 PASS / 26 SKIP / 0 FAIL (Bug 20 修正後)
+- **新規 API wrapper**: `createPlanApi`, `updatePlanApi`, `getPlanApi`, `listPublicPlansApi`, `createOptionApi`, `updateOptionApi`, `getOptionApi`, `listPublicOptionsApi` (`e2e/helpers/api.ts`)
+- **Node.js**: v22.4.1
+
+#### カテゴリ別実行結果
+
+| サブカテゴリ | 総数 | PASS | FAIL | SKIP | 合格率（実行分） |
+|------------|------|------|------|------|--------|
+| 5.1 プラン管理 | 5 | 4 | 0 | 1 | 100% |
+| 5.2 オプション管理 | 4 | 4 | 0 | 0 | 100% |
+| **合計** | **9** | **8** | **0** | **1** | **100%** (実行分) |
+| Category 2 再検証 | 2 | 2 | 0 | 0 | 100% |
+
+#### Category 2 再検証結果 (Cat 5 連携)
+
+| テストID | 旧結果 | 新結果 | メモ |
+|---|---|---|---|
+| CUSTOMER-012 | SKIP | PASS | admin が plan 作成 → 無効化 → customer が当該 plan_id で予約 → 409 PLAN_INACTIVE |
+| CUSTOMER-014 | SKIP | PASS | admin が option 作成 → 無効化 → customer が有効 plan + 無効 option で予約 → 409 OPTION_INACTIVE (Bug 18 修正後) |
+
+#### 検出された不具合・改善要望
+
+17. **Bug 17: plan/option 書き込み API に studio_id 跨ぎを 403 で弾く認可ロジックが無い**  ※未修正 (仕様確認要)
+    - POST /plans / POST /options は `CreatePlanRequest` / `CreateOptionRequest` に `studio_id` フィールドを持たず、Cognito の `custom:studio_id` を信頼して常に自スタジオ配下に作成する設計
+      (`backend/cmd/plan-create/main.go:37-43, 58-60` / `backend/cmd/option-create/main.go:37-42, 56-61`)
+    - PATCH /plans/{id} / PATCH /options/{id} は `(studio_id, id)` 複合キーで FindByID するため、他スタジオの id を指定すると `ErrPlanNotFound` / `ErrOptionNotFound` (404) を返す
+      (`backend/internal/usecase/plan_usecase.go:111-115`)
+    - 影響: ADMIN-605「他スタジオのプランを作成 → 403 FORBIDDEN_RESOURCE」が現実装では再現不能。404 と 403 のどちらをセキュリティポリシーとするか仕様確認が必要
+    - 修正案 (どちらか):
+      (a) usecase 層で「リクエスト studio_id != 既存リソースの studio_id」を別途判定し `ErrForbiddenResource` を返すよう変更
+      (b) test plan 側で ADMIN-605 を「404 PLAN_NOT_FOUND」期待に書き換え、403 表記を撤回
+    - 検証: PATCH /plans/<存在しない id> で 404 を返すことを確認 (curl 実測)
+
+18. **Bug 18: CreateReservation / CreateGuestReservation が option.IsActive を検証しない**  ✅ **修正済み (2026-05-13)**
+    - `backend/internal/usecase/reservation_usecase.go:256-270` (`CreateReservation`) は `optionRepo.FindByID` 後、`IsActive` を確認せず `OptionSnapshot` を作成していた
+    - `CreateGuestReservation` (同ファイル 700 番台) はそもそも `optionRepo.FindByID` を呼ばずに `input.Options` をそのまま予約エンティティへ代入していた (ゲスト経路はオプションスナップショット未実装、ただし IsActive 検証も無し)
+    - `apierror.ErrOptionInactive` (409 `OPTION_INACTIVE`) は `backend/pkg/apierror/error.go:212-218` で定義済みだが usecase 層で raise されていなかった (grep 結果 0 件)
+    - 影響: CUSTOMER-014「無効化オプションを指定 → 409 OPTION_INACTIVE」が 201 を返してしまっていた。料金スナップショット作成時に営業停止オプションが使用されるリスクもあり
+    - 修正内容:
+      - `CreateReservation` のオプションループ内に `!option.IsActive` チェックを追加し `ErrOptionInactive` を返す
+      - `CreateGuestReservation` にも `optionRepo.FindByID` ループと IsActive チェックを追加 (バッファタイムチェック直後、ゲストトークン生成前)
+      - `backend/cmd/reservation-create/main.go` および `backend/cmd/reservation-guest-create/main.go` のハンドラー switch に `case apierror.ErrOptionInactive:` を追加 (これが無いと 500 INTERNAL_ERROR にマップされる)
+    - 検証: CUSTOMER-014 で 409 OPTION_INACTIVE が返ることを確認 (PASS)
+
+19. **Bug 19: Option entity に dynamodbav 構造体タグが無く、PutItem が "Missing the key studio_id" で ValidationException を返す**  ✅ **修正済み (2026-05-13)**
+    - `backend/internal/domain/entity/option.go` は `Option` 構造体に `json:"..."` も `dynamodbav:"..."` も付与されていなかった
+    - `attributevalue.MarshalMap` は構造体タグが無いと Go フィールド名 (`StudioID`, `OptionID`, ...) で属性名を生成するため、DynamoDB テーブル側のキー (`studio_id`, `option_id`, snake_case) と一致せず PutItem が ValidationException (400) を返していた
+    - 同パッケージの `Plan` entity (`plan.go`) には完全な dynamodbav タグが付与されていたため、対称性が失われていた
+    - 影響: POST /options が永続的に 500 を返す。ADMIN-701〜704 (4 件) + CUSTOMER-014 が連鎖的に失敗 (option 作成段階で setup error)
+    - 検出経路: ADMIN-701 初回実行時の 500、CloudWatch Logs `dev-option-create` で `"failed to put option: ... ValidationException: One or more parameter values were invalid: Missing the key studio_id in the item"` を確認
+    - 修正内容: `option.go` に Plan と対称な `json:` + `dynamodbav:` タグを 9 フィールド全てに付与 (`studio_id`, `option_id`, `option_name`, `price`, `tax_rate`, `is_active`, `display_order`, `created_at`, `updated_at`)
+    - 検証: ADMIN-701〜704 が全件 PASS、options-list 公開一覧でも当該 option が見えることを確認
+
+20. **Bug 20: API Gateway terraform state と AWS 側 stage.deployment_id の drift により、terraform apply で stage が古い deployment にロールバックされる**  ✅ **修正済み (2026-05-13)** (仕組み改善)
+    - `aws_api_gateway_deployment.main` の `triggers.redeployment` は `sha1(jsonencode([rest_api.body, lambda_integration]))` だが、`rest_api.body` は REST 構築 (resource ごと定義) では常に `null`、`lambda_integration` は Lambda の ARN ベース。Resource/Method の追加/削除では trigger が発火せず deployment が再生成されない
+    - 結果、terraform state の `deployment.main.id = ryqn7k` (2026-04-27 の初期) と、AWS 側で手動 console / 別経路で生成された最新 `vjilp9` (2026-05-08) との間で drift が発生
+    - 影響: 本セッションの最初の terraform apply (Bug 18 デプロイ) で `stage.deployment_id` が `ryqn7k` に戻され、`/reservations/me` / `/reservations/guest` 等 5/8 以降に追加されたルートが API Gateway stage で提供されなくなった (CUSTOMER-101 で 404 RESERVATION_NOT_FOUND、GUEST-201 で 403 Missing Authentication Token として顕在化)
+    - 修正内容:
+      - `terraform/modules/api-gateway/variables.tf` に `redeploy_nonce` 変数を追加 (default `"2026-05-13-bug20-fix"`)
+      - `terraform/modules/api-gateway/main.tf` の `aws_api_gateway_deployment.main` の triggers に `var.redeploy_nonce` を含める
+      - terraform apply で deployment が再生成され (`create_before_destroy`)、stage が新 deployment (`1533i9`) を指すよう更新された
+    - 検証: 再 apply 後に `/reservations/me` が 401 Unauthorized (route 存在の確認)、リグレッションスイート (admin/customer/guest 99 件中 73 PASS / 26 SKIP / 0 FAIL) が PASS
+    - 残課題: 今後 API Gateway の route 追加時には `redeploy_nonce` を bump するか、`triggers` を resource/method の ID も含む形に改良することが望ましい
 
 ---
 

@@ -156,6 +156,124 @@ export const updateReservationApi = (
     data: body,
   });
 
+// プラン/オプション管理 API ラッパ (ADMIN-601..704, CUSTOMER-012/014 用, 2026-05-13 追加)
+
+export type CreatePlanBody = {
+  plan_name: string;
+  description?: string;
+  price: number;
+  tax_rate: number;
+  display_order?: number;
+};
+
+export type UpdatePlanBody = {
+  plan_name?: string;
+  description?: string;
+  price?: number;
+  tax_rate?: number;
+  is_active?: boolean;
+  display_order?: number;
+};
+
+export type PlanResponse = {
+  plan_id: string;
+  studio_id: string;
+  plan_name: string;
+  description?: string;
+  price: number;
+  tax_rate: number;
+  is_active: boolean;
+  display_order?: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PublicPlanItem = {
+  plan_id: string;
+  plan_name: string;
+  description: string;
+  price: number;
+  tax_rate: number;
+  display_order: number;
+};
+
+export type PublicPlansResponse = { plans: PublicPlanItem[] };
+
+export const createPlanApi = (
+  request: APIRequestContext,
+  token: string,
+  body: CreatePlanBody
+) => request.post('plans', { headers: authHeaders(token), data: body });
+
+export const updatePlanApi = (
+  request: APIRequestContext,
+  token: string,
+  planId: string,
+  body: UpdatePlanBody
+) => request.patch(`plans/${planId}`, { headers: authHeaders(token), data: body });
+
+export const getPlanApi = (request: APIRequestContext, token: string, planId: string) =>
+  request.get(`plans/${planId}`, { headers: authHeaders(token) });
+
+export const listPublicPlansApi = (request: APIRequestContext, studioId: string) =>
+  request.get(`studios/${studioId}/plans`);
+
+export type CreateOptionBody = {
+  option_name: string;
+  price: number;
+  tax_rate: number;
+  display_order?: number;
+};
+
+export type UpdateOptionBody = {
+  option_name?: string;
+  price?: number;
+  tax_rate?: number;
+  is_active?: boolean;
+  display_order?: number;
+};
+
+export type OptionResponse = {
+  option_id: string;
+  studio_id: string;
+  option_name: string;
+  price: number;
+  tax_rate: number;
+  is_active: boolean;
+  display_order?: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PublicOptionItem = {
+  option_id: string;
+  option_name: string;
+  price: number;
+  tax_rate: number;
+  display_order: number;
+};
+
+export type PublicOptionsResponse = { options: PublicOptionItem[] };
+
+export const createOptionApi = (
+  request: APIRequestContext,
+  token: string,
+  body: CreateOptionBody
+) => request.post('options', { headers: authHeaders(token), data: body });
+
+export const updateOptionApi = (
+  request: APIRequestContext,
+  token: string,
+  optionId: string,
+  body: UpdateOptionBody
+) => request.patch(`options/${optionId}`, { headers: authHeaders(token), data: body });
+
+export const getOptionApi = (request: APIRequestContext, token: string, optionId: string) =>
+  request.get(`options/${optionId}`, { headers: authHeaders(token) });
+
+export const listPublicOptionsApi = (request: APIRequestContext, studioId: string) =>
+  request.get(`studios/${studioId}/options`);
+
 export const signupAndLogin = async (
   request: APIRequestContext,
   payload: SignupPayload
