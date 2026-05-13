@@ -287,7 +287,7 @@ module "lambda_integration" {
     "option_update" = { resource = aws_api_gateway_resource.options_id.id, method = "PATCH", invoke_arn = var.lambda_functions.option_update.invoke_arn, auth = true }
     "option_delete" = { resource = aws_api_gateway_resource.options_id.id, method = "DELETE", invoke_arn = var.lambda_functions.option_delete.invoke_arn, auth = true }
     # ブロック枠
-    "blocked_slots_list"   = { resource = aws_api_gateway_resource.blocked_slots.id, method = "GET", invoke_arn = var.lambda_functions.blocked_slots_list.invoke_arn, auth = false }
+    "blocked_slots_list"   = { resource = aws_api_gateway_resource.blocked_slots.id, method = "GET", invoke_arn = var.lambda_functions.blocked_slots_list.invoke_arn, auth = true }
     "blocked_slot_create"  = { resource = aws_api_gateway_resource.blocked_slots.id, method = "POST", invoke_arn = var.lambda_functions.blocked_slot_create.invoke_arn, auth = true }
     "blocked_slot_delete"  = { resource = aws_api_gateway_resource.blocked_slots_id.id, method = "DELETE", invoke_arn = var.lambda_functions.blocked_slot_delete.invoke_arn, auth = true }
     # 問い合わせ

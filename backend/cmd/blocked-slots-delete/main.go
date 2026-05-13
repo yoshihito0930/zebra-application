@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"net/url"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -42,10 +43,16 @@ type DeleteBlockedSlotResponse struct {
 }
 
 func deleteBlockedSlotHandler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// パスパラメータから取得
-	blockedSlotID := request.PathParameters["id"]
-	if blockedSlotID == "" {
+	// パスパラメータから取得。API Gateway はパスパラメータを URL デコードしないため、
+	// composite SK "YYYY-MM-DD#{uuid}" に含まれる '#' を含む値を受け取るためにここでデコードする。
+	rawID := request.PathParameters["id"]
+	if rawID == "" {
 		return response.ErrorWithCORS(apierror.ErrBlockedSlotNotFound), nil
+	}
+	blockedSlotID, err := url.PathUnescape(rawID)
+	if err != nil {
+		log.Printf("Failed to URL-decode blocked slot id: %v", err)
+		return response.ErrorWithCORS(apierror.ErrBadRequest), nil
 	}
 
 	// クエリパラメータからstudio_idを取得
@@ -56,7 +63,7 @@ func deleteBlockedSlotHandler(ctx context.Context, request events.APIGatewayProx
 	}
 
 	// ブロック枠を削除
-	err := blockedSlotUsecase.DeleteBlockedSlot(ctx, studioID, blockedSlotID)
+	err = blockedSlotUsecase.DeleteBlockedSlot(ctx, studioID, blockedSlotID)
 	if err != nil {
 		switch err {
 		case apierror.ErrBlockedSlotNotFound:

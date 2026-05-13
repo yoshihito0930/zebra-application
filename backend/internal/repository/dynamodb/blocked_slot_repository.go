@@ -33,6 +33,10 @@ func (r *BlockedSlotRepositoryImpl) Create(ctx context.Context, blockedSlot *ent
 	if err != nil {
 		return fmt.Errorf("failed to marshal blocked slot: %w", err)
 	}
+	// SK (date_blocked_slot_id) はエンティティに存在しないため明示的に追加
+	item["date_blocked_slot_id"] = &types.AttributeValueMemberS{
+		Value: fmt.Sprintf("%s#%s", blockedSlot.Date.Format("2006-01-02"), blockedSlot.BlockedSlotID),
+	}
 
 	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{
 		TableName: aws.String(r.tableName),
@@ -45,13 +49,13 @@ func (r *BlockedSlotRepositoryImpl) Create(ctx context.Context, blockedSlot *ent
 	return nil
 }
 
-// FindByID はブロック枠IDでブロック枠を取得する
-func (r *BlockedSlotRepositoryImpl) FindByID(ctx context.Context, studioID, blockedSlotID string) (*entity.BlockedSlot, error) {
+// FindByID は SK (date_blocked_slot_id, 形式: "YYYY-MM-DD#{uuid}") でブロック枠を取得する
+func (r *BlockedSlotRepositoryImpl) FindByID(ctx context.Context, studioID, dateBlockedSlotID string) (*entity.BlockedSlot, error) {
 	result, err := r.client.GetItem(ctx, &dynamodb.GetItemInput{
 		TableName: aws.String(r.tableName),
 		Key: map[string]types.AttributeValue{
-			"studio_id":        &types.AttributeValueMemberS{Value: studioID},
-			"date_blocked_slot_id": &types.AttributeValueMemberS{Value: blockedSlotID},
+			"studio_id":            &types.AttributeValueMemberS{Value: studioID},
+			"date_blocked_slot_id": &types.AttributeValueMemberS{Value: dateBlockedSlotID},
 		},
 	})
 	if err != nil {
@@ -59,7 +63,7 @@ func (r *BlockedSlotRepositoryImpl) FindByID(ctx context.Context, studioID, bloc
 	}
 
 	if result.Item == nil {
-		return nil, fmt.Errorf("blocked slot not found: %s/%s", studioID, blockedSlotID)
+		return nil, fmt.Errorf("blocked slot not found: %s/%s", studioID, dateBlockedSlotID)
 	}
 
 	var blockedSlot entity.BlockedSlot
@@ -143,6 +147,10 @@ func (r *BlockedSlotRepositoryImpl) Update(ctx context.Context, blockedSlot *ent
 	if err != nil {
 		return fmt.Errorf("failed to marshal blocked slot: %w", err)
 	}
+	// SK (date_blocked_slot_id) はエンティティに存在しないため明示的に追加
+	item["date_blocked_slot_id"] = &types.AttributeValueMemberS{
+		Value: fmt.Sprintf("%s#%s", blockedSlot.Date.Format("2006-01-02"), blockedSlot.BlockedSlotID),
+	}
 
 	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{
 		TableName: aws.String(r.tableName),
@@ -155,13 +163,13 @@ func (r *BlockedSlotRepositoryImpl) Update(ctx context.Context, blockedSlot *ent
 	return nil
 }
 
-// Delete はブロック枠を削除する（物理削除）
-func (r *BlockedSlotRepositoryImpl) Delete(ctx context.Context, studioID, blockedSlotID string) error {
+// Delete は SK (date_blocked_slot_id, 形式: "YYYY-MM-DD#{uuid}") でブロック枠を削除する
+func (r *BlockedSlotRepositoryImpl) Delete(ctx context.Context, studioID, dateBlockedSlotID string) error {
 	_, err := r.client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
 		TableName: aws.String(r.tableName),
 		Key: map[string]types.AttributeValue{
-			"studio_id":        &types.AttributeValueMemberS{Value: studioID},
-			"date_blocked_slot_id": &types.AttributeValueMemberS{Value: blockedSlotID},
+			"studio_id":            &types.AttributeValueMemberS{Value: studioID},
+			"date_blocked_slot_id": &types.AttributeValueMemberS{Value: dateBlockedSlotID},
 		},
 	})
 	if err != nil {

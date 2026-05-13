@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -103,8 +104,10 @@ func listBlockedSlotsHandler(ctx context.Context, request events.APIGatewayProxy
 	// レスポンスを構築
 	items := make([]BlockedSlotItem, 0, len(blockedSlots))
 	for _, bs := range blockedSlots {
+		// blocked_slot_id は SK (date_blocked_slot_id) と同じ複合形式 "YYYY-MM-DD#{uuid}" を返す。
+		// DELETE エンドポイントでこの値をそのまま使えるようにする。
 		items = append(items, BlockedSlotItem{
-			BlockedSlotID: bs.BlockedSlotID,
+			BlockedSlotID: fmt.Sprintf("%s#%s", bs.Date.Format("2006-01-02"), bs.BlockedSlotID),
 			StudioID:      bs.StudioID,
 			Date:          bs.Date.Format("2006-01-02"),
 			IsAllDay:      bs.IsAllDay,

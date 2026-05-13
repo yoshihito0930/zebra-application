@@ -274,6 +274,80 @@ export const getOptionApi = (request: APIRequestContext, token: string, optionId
 export const listPublicOptionsApi = (request: APIRequestContext, studioId: string) =>
   request.get(`studios/${studioId}/options`);
 
+// ブロック枠 API ラッパ (ADMIN-801..903 用, 2026-05-13 追加)
+
+export type CreateBlockedSlotBody = {
+  studio_id: string;
+  date: string; // YYYY-MM-DD
+  is_all_day: boolean;
+  start_time?: string;
+  end_time?: string;
+  reason: string;
+};
+
+export type BlockedSlotResponse = {
+  blocked_slot_id: string;
+  studio_id: string;
+  date: string;
+  is_all_day: boolean;
+  start_time?: string;
+  end_time?: string;
+  reason: string;
+  created_at: string;
+};
+
+export type BlockedSlotListItem = {
+  blocked_slot_id: string;
+  date: string;
+  is_all_day: boolean;
+  start_time?: string;
+  end_time?: string;
+  reason: string;
+};
+
+export type BlockedSlotListResponse = {
+  blocked_slots: BlockedSlotListItem[];
+  total?: number;
+};
+
+export const createBlockedSlotApi = (
+  request: APIRequestContext,
+  token: string,
+  body: CreateBlockedSlotBody
+) => request.post('blocked-slots', { headers: authHeaders(token), data: body });
+
+export type ListBlockedSlotsParams = {
+  studio_id: string;
+  start_date: string;
+  end_date: string;
+};
+
+export const listBlockedSlotsApi = (
+  request: APIRequestContext,
+  token: string,
+  params: ListBlockedSlotsParams
+) => {
+  const qs = new URLSearchParams({
+    studio_id: params.studio_id,
+    start_date: params.start_date,
+    end_date: params.end_date,
+  });
+  return request.get(`blocked-slots?${qs.toString()}`, { headers: authHeaders(token) });
+};
+
+export const deleteBlockedSlotApi = (
+  request: APIRequestContext,
+  token: string,
+  blockedSlotID: string,
+  studioID: string
+) => {
+  const qs = new URLSearchParams({ studio_id: studioID });
+  // blocked_slot_id は SK 形式 "YYYY-MM-DD#{uuid}" を含むため URL パス中の '#' を必ずエンコード
+  return request.delete(`blocked-slots/${encodeURIComponent(blockedSlotID)}?${qs.toString()}`, {
+    headers: authHeaders(token),
+  });
+};
+
 export const signupAndLogin = async (
   request: APIRequestContext,
   payload: SignupPayload

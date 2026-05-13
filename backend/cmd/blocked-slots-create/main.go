@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
@@ -103,8 +104,11 @@ func createBlockedSlotHandler(ctx context.Context, request events.APIGatewayProx
 		}
 	}
 
+	// blocked_slot_id は SK (date_blocked_slot_id) と同じ複合形式 "YYYY-MM-DD#{uuid}" を返す。
+	// 以降の GET/DELETE は API クライアントがこの値をそのまま渡せばよい。
+	compositeID := fmt.Sprintf("%s#%s", blockedSlot.Date.Format("2006-01-02"), blockedSlot.BlockedSlotID)
 	resp := CreateBlockedSlotResponse{
-		BlockedSlotID: blockedSlot.BlockedSlotID,
+		BlockedSlotID: compositeID,
 		StudioID:      blockedSlot.StudioID,
 		Date:          blockedSlot.Date.Format("2006-01-02"),
 		IsAllDay:      blockedSlot.IsAllDay,
