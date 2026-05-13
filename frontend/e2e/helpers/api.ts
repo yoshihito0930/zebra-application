@@ -97,6 +97,65 @@ export const promoteReservationApi = (
   reservationID: string
 ) => request.patch(`reservations/${reservationID}/promote`, { headers: authHeaders(token) });
 
+// 管理者 API ラッパ (ADMIN-001..402 用, 2026-05-12 追加)
+
+export type AdminReservationListParams = {
+  studio_id: string;
+  start_date: string; // YYYY-MM-DD
+  end_date: string; // YYYY-MM-DD
+  status?: string;
+};
+
+export const listAdminReservationsApi = (
+  request: APIRequestContext,
+  token: string,
+  params: AdminReservationListParams
+) => {
+  const qs = new URLSearchParams({
+    studio_id: params.studio_id,
+    start_date: params.start_date,
+    end_date: params.end_date,
+    ...(params.status ? { status: params.status } : {}),
+  });
+  return request.get(`reservations?${qs.toString()}`, { headers: authHeaders(token) });
+};
+
+export const approveReservationApi = (
+  request: APIRequestContext,
+  token: string,
+  reservationID: string
+) => request.patch(`reservations/${reservationID}/approve`, { headers: authHeaders(token) });
+
+export const rejectReservationApi = (
+  request: APIRequestContext,
+  token: string,
+  reservationID: string,
+  body?: { reason?: string }
+) =>
+  request.patch(`reservations/${reservationID}/reject`, {
+    headers: authHeaders(token),
+    data: body ?? {},
+  });
+
+export type UpdateReservationBody = {
+  date?: string;
+  start_time?: string;
+  end_time?: string;
+  note?: string;
+  shooting_details?: string;
+};
+
+export const updateReservationApi = (
+  request: APIRequestContext,
+  token: string,
+  reservationID: string,
+  body: UpdateReservationBody
+) =>
+  request.patch(`reservations/${reservationID}`, {
+    headers: authHeaders(token),
+    data: body,
+  });
+
 export const signupAndLogin = async (
   request: APIRequestContext,
   payload: SignupPayload

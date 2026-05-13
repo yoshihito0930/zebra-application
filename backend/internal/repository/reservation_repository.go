@@ -147,4 +147,9 @@ type ReservationRepository interface {
 	// reservationID: 削除する予約ID
 	// 戻り値: エラーが発生した場合はエラー、成功した場合はnil
 	Delete(ctx context.Context, reservationID string) error
+
+	// DeleteByKey は (studio_id, date, reservation_id) で予約アイテムを物理削除する。
+	// Update で date が変わるケースのみ使用: 旧 SK のアイテムを明示的に消すために必要。
+	// PK=studio_id, SK=date#reservation_id 形式の composite key を直接指定する。
+	DeleteByKey(ctx context.Context, studioID string, date time.Time, reservationID string) error
 }

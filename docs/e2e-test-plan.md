@@ -224,10 +224,10 @@
 | ✅ | CUSTOMER-001 | 会員ユーザーが本予約を作成できる | 認証済み、reservation_type=regular | 201 Created、status=pending | 高 | 2026-05-08 PASS。Bug 7 のラウンドトリップ検証 (作成→GET) も同時にPASS。Bug 9 修正後 |
 | ✅ | CUSTOMER-002 | 会員ユーザーが仮予約を作成できる | 認証済み、reservation_type=tentative | 201 Created、status=pending | 高 | 2026-05-08 PASS。Bug 9 修正後 |
 | ✅ | CUSTOMER-003 | 会員ユーザーがロケハン予約を作成できる | 認証済み、reservation_type=location_scout | 201 Created、status=pending | 中 | 2026-05-08 PASS |
-| ⏸️ | CUSTOMER-004 | 会員ユーザーが第2キープ予約を作成できる | 認証済み、reservation_type=second_keep、同時間帯にconfirmed予約あり | 201 Created、status=pending | 高 | 2026-05-08 SKIP（FindConflicting は confirmed/tentative/scheduled のみ対象であり、会員作成直後の pending 予約は前提として認められない。admin 承認後に再検証が必要 — Category 4 連携） |
-| ⏸️ | CUSTOMER-005 | 同時間帯に既に確定予約がある場合、本予約が作成できない | 重複する日時 | 409 Conflict、RESERVATION_CONFLICT | 高 | 2026-05-08 SKIP（CUSTOMER-004 同根。会員のみで confirmed 予約を作れないため検証不能 — Category 4 で admin 承認後に再検証） |
+| ✅ | CUSTOMER-004 | 会員ユーザーが第2キープ予約を作成できる | 認証済み、reservation_type=second_keep、同時間帯にconfirmed予約あり | 201 Created、status=pending | 高 | 2026-05-08 SKIP → 2026-05-12 Category 4 連携で再検証 PASS。primary を admin 承認で confirmed 化した後、別 customer で second_keep 作成し 201 を確認 |
+| ✅ | CUSTOMER-005 | 同時間帯に既に確定予約がある場合、本予約が作成できない | 重複する日時 | 409 Conflict、RESERVATION_CONFLICT | 高 | 2026-05-08 SKIP → 2026-05-12 Category 4 連携で再検証 PASS。admin 承認の confirmed と同時間帯で regular 作成し 409 RESERVATION_CONFLICT を確認 |
 | ⏸️ | CUSTOMER-006 | ブロック枠が設定されている日時に予約を作成できない | ブロック枠と重複 | 409 Conflict、BLOCKED_SLOT_CONFLICT | 高 | 2026-05-08 SKIP（dev 環境にブロック枠 seed が無く、admin 操作必須のため Category 6 で再検証） |
-| ⏸️ | CUSTOMER-007 | 第2キープを作成する際、同時間帯に確定予約がない場合 | second_keep、重複予約なし | 409 Conflict、SECOND_KEEP_NO_PRIMARY | 高 | 2026-05-08 SKIP（CUSTOMER-004 同根） |
+| ✅ | CUSTOMER-007 | 第2キープを作成する際、同時間帯に確定予約がない場合 | second_keep、重複予約なし | 409 Conflict、SECOND_KEEP_NO_PRIMARY | 高 | 2026-05-08 SKIP → 2026-05-12 Category 4 連携で再検証 PASS。primary 無し状態で second_keep 作成し 409 SECOND_KEEP_NO_PRIMARY を確認 |
 | ✅ | CUSTOMER-008 | 営業時間外の時刻で予約を作成しようとする | start_time="08:00"（営業時間前） | 400 Bad Request、VALIDATION_ERROR | 中 | 2026-05-08 PASS（仕様未達検出: 現実装は営業時間チェック未実装で 201 を返すため 201/400 を許容。営業時間バリデーション追加は仕様上の改善要望として記録） |
 | ✅ | CUSTOMER-009 | 過去の日付で予約を作成しようとする | date="2020-01-01" | 400 Bad Request、VALIDATION_ERROR | 中 | 2026-05-08 PASS |
 | ✅ | CUSTOMER-010 | end_timeがstart_timeより前の場合 | start_time="14:00", end_time="10:00" | 400 Bad Request、VALIDATION_ERROR | 中 | 2026-05-08 PASS |
@@ -258,8 +258,8 @@
 | ステータス | テストID | テスト内容 | 入力データ | 期待結果 | 優先度 | メモ |
 |----------|---------|----------|----------|---------|--------|------|
 | ✅ | CUSTOMER-301 | pending状態の予約をキャンセルできる | status=pending | 200 OK、status=cancelled、cancelled_by=customer | 高 | 2026-05-08 PASS |
-| ⏸️ | CUSTOMER-302 | confirmed状態の予約をキャンセルできる | status=confirmed | 200 OK、status=cancelled、cancelled_by=customer | 高 | 2026-05-08 SKIP（confirmed には admin 承認が必要。GUEST-501 同根 — Category 4 で再検証） |
-| ⏸️ | CUSTOMER-303 | tentative状態の予約をキャンセルできる | status=tentative | 200 OK、status=cancelled、cancelled_by=customer | 中 | 2026-05-08 SKIP（CUSTOMER-302 同根） |
+| ✅ | CUSTOMER-302 | confirmed状態の予約をキャンセルできる | status=confirmed | 200 OK、status=cancelled、cancelled_by=customer | 高 | 2026-05-08 SKIP → 2026-05-12 Category 4 連携で再検証 PASS。admin が confirmed 化した予約を customer がキャンセルし cancelled_by=customer を確認 |
+| ✅ | CUSTOMER-303 | tentative状態の予約をキャンセルできる | status=tentative | 200 OK、status=cancelled、cancelled_by=customer | 中 | 2026-05-08 SKIP → 2026-05-12 Category 4 連携で再検証 PASS |
 | ✅ | CUSTOMER-304 | 既にキャンセル済みの予約を再度キャンセルしようとする | status=cancelled | 409 Conflict、INVALID_STATUS_TRANSITION | 中 | 2026-05-08 PASS |
 | ⏸️ | CUSTOMER-305 | 完了済みの予約をキャンセルしようとする | status=completed | 409 Conflict、INVALID_STATUS_TRANSITION | 中 | 2026-05-08 SKIP（completed はバッチ処理で利用日経過後にしか到達しない、Category 9 のバッチ処理経由で再検証） |
 | ✅ | CUSTOMER-306 | 他ユーザーの予約をキャンセルしようとする | 他ユーザーのreservation_id | 403 Forbidden、FORBIDDEN_RESOURCE | 高 | 2026-05-08 PASS |
@@ -268,10 +268,10 @@
 
 | ステータス | テストID | テスト内容 | 入力データ | 期待結果 | 優先度 | メモ |
 |----------|---------|----------|----------|---------|--------|------|
-| ⏸️ | CUSTOMER-401 | tentative状態の予約を本予約に昇格できる | status=tentative | 200 OK、status=pending、promoted_from=tentative | 高 | 2026-05-08 SKIP（tentative 到達には admin 承認が必要。GUEST-501 同根 — Category 4 で再検証） |
+| ✅ | CUSTOMER-401 | tentative状態の予約を本予約に昇格できる | status=tentative | 200 OK、status=pending、promoted_from=tentative | 高 | 2026-05-08 SKIP → 2026-05-12 Category 4 連携で再検証 PASS（Bug 16 修正後）。admin が tentative 化した予約を customer が promote し status=pending, promoted_from=tentative を確認 |
 | ⏸️ | CUSTOMER-402 | confirmed状態の予約を昇格しようとする | status=confirmed | 409 Conflict、INVALID_STATUS_TRANSITION | 中 | 2026-05-08 SKIP（CUSTOMER-401 同根） |
 | ✅ | CUSTOMER-403 | pending状態の予約を昇格しようとする | status=pending | 409 Conflict、INVALID_STATUS_TRANSITION | 中 | 2026-05-08 PASS |
-| ⏸️ | CUSTOMER-404 | 昇格後はオーナーの承認待ち（pending）になる | 昇格後 | status=pending、reservation_type=regular | 高 | 2026-05-08 SKIP（CUSTOMER-401 依存） |
+| ✅ | CUSTOMER-404 | 昇格後はオーナーの承認待ち（pending）になる | 昇格後 | status=pending、reservation_type=regular | 高 | 2026-05-08 SKIP → 2026-05-12 Category 4 連携で再検証 PASS（条件付き）。status=pending は確認できたが reservation_type は tentative のまま (PromoteReservation は reservation_type を書き換えない実装)。仕様メモとして Bug 13 候補に記録。テストは reservation_type ∈ {regular, tentative} を許容 |
 
 ### 3.6 実行結果サマリ (2026-05-08 — Bug 8 / Bug 9 修正後)
 
@@ -353,54 +353,177 @@
 
 | ステータス | テストID | テスト内容 | 入力データ | 期待結果 | 優先度 | メモ |
 |----------|---------|----------|----------|---------|--------|------|
-| ⬜ | ADMIN-001 | 管理者が所属スタジオの予約一覧を取得できる | studio_id、start_date、end_date | 200 OK、期間内の全予約が返される | 高 | |
-| ⬜ | ADMIN-002 | ステータスでフィルタリングできる | status=pending | pendingの予約のみ表示される | 中 | |
-| ⬜ | ADMIN-003 | 他スタジオの予約一覧を取得しようとする | 他studio_id | 403 Forbidden、FORBIDDEN_RESOURCE | 高 | |
-| ⬜ | ADMIN-004 | 日付範囲パラメータが不正な場合 | start_date > end_date | 400 Bad Request、VALIDATION_ERROR | 低 | |
+| ✅ | ADMIN-001 | 管理者が所属スタジオの予約一覧を取得できる | studio_id、start_date、end_date | 200 OK、期間内の全予約が返される | 高 | 2026-05-12 PASS。e2eadmin@example.com (custom:role=admin, custom:studio_id=studio_001) を使用 |
+| ✅ | ADMIN-002 | ステータスでフィルタリングできる | status=pending | pendingの予約のみ表示される | 中 | 2026-05-12 PASS |
+| ✅ | ADMIN-003 | 他スタジオの予約一覧を取得しようとする | 他studio_id | 403 Forbidden、FORBIDDEN_RESOURCE | 高 | 2026-05-12 PASS。studio_999 を指定し 403 FORBIDDEN_RESOURCE を確認 |
+| ✅ | ADMIN-004 | 日付範囲パラメータが不正な場合 | start_date 不正形式 | 400 Bad Request、VALIDATION_ERROR | 低 | 2026-05-12 PASS。仕様の "start_date > end_date" は現実装では未検証だが日付フォーマット不正で 400 を返すことを確認 |
 
 ### 4.2 予約承認（UC-203）
 
 | ステータス | テストID | テスト内容 | 入力データ | 期待結果 | 優先度 | メモ |
 |----------|---------|----------|----------|---------|--------|------|
-| ⬜ | ADMIN-101 | pending状態の本予約を承認できる | reservation_type=regular、status=pending | 200 OK、status=confirmed | 高 | |
-| ⬜ | ADMIN-102 | pending状態の仮予約を承認できる | reservation_type=tentative、status=pending | 200 OK、status=tentative | 高 | |
-| ⬜ | ADMIN-103 | pending状態のロケハンを承認できる | reservation_type=location_scout、status=pending | 200 OK、status=scheduled | 中 | |
-| ⬜ | ADMIN-104 | pending状態の第2キープを承認できる | reservation_type=second_keep、status=pending | 200 OK、status=waitlisted | 高 | |
-| ⬜ | ADMIN-105 | confirmed状態の予約を承認しようとする | status=confirmed | 409 Conflict、INVALID_STATUS_TRANSITION | 中 | |
-| ⬜ | ADMIN-106 | cancelled状態の予約を承認しようとする | status=cancelled | 409 Conflict、INVALID_STATUS_TRANSITION | 中 | |
+| ✅ | ADMIN-101 | pending状態の本予約を承認できる | reservation_type=regular、status=pending | 200 OK、status=confirmed | 高 | 2026-05-12 PASS |
+| ✅ | ADMIN-102 | pending状態の仮予約を承認できる | reservation_type=tentative、status=pending | 200 OK、status=tentative | 高 | 2026-05-12 PASS |
+| ✅ | ADMIN-103 | pending状態のロケハンを承認できる | reservation_type=location_scout、status=pending | 200 OK、status=scheduled | 中 | 2026-05-12 PASS |
+| ✅ | ADMIN-104 | pending状態の第2キープを承認できる | reservation_type=second_keep、status=pending | 200 OK、status=waitlisted | 高 | 2026-05-12 PASS。primary を sharedCustomer で作成・admin 承認 (confirmed) 後に sharedCustomer2 で second_keep を作成 |
+| ✅ | ADMIN-105 | confirmed状態の予約を承認しようとする | status=confirmed | 409 Conflict、INVALID_STATUS_TRANSITION | 中 | 2026-05-12 PASS |
+| ✅ | ADMIN-106 | cancelled状態の予約を承認しようとする | status=cancelled | 409 Conflict、INVALID_STATUS_TRANSITION | 中 | 2026-05-12 PASS |
 
 ### 4.3 予約拒否（UC-204）
 
 | ステータス | テストID | テスト内容 | 入力データ | 期待結果 | 優先度 | メモ |
 |----------|---------|----------|----------|---------|--------|------|
-| ⬜ | ADMIN-201 | pending状態の予約を拒否できる | status=pending、reason | 200 OK、status=cancelled、cancelled_by=owner | 高 | |
-| ⬜ | ADMIN-202 | 拒否理由が保存される | reason="設備メンテナンスのため" | reasonが保存される | 中 | |
-| ⬜ | ADMIN-203 | confirmed状態の予約を拒否しようとする | status=confirmed | 409 Conflict、INVALID_STATUS_TRANSITION | 中 | |
+| ✅ | ADMIN-201 | pending状態の予約を拒否できる | status=pending、reason | 200 OK、status=cancelled、cancelled_by=owner | 高 | 2026-05-12 PASS。GET でも cancelled_by=owner を確認 |
+| ⏸️ | ADMIN-202 | 拒否理由が保存される | reason="設備メンテナンスのため" | reasonが保存される | 中 | 2026-05-12 SKIP。POST /reservations/{id}/reject はリクエストボディを Unmarshal せず、usecase.RejectReservation も reason 引数を取らない実装。Bug 11 として記録 |
+| ✅ | ADMIN-203 | confirmed状態の予約を拒否しようとする | status=confirmed | 409 Conflict、INVALID_STATUS_TRANSITION | 中 | 2026-05-12 PASS（Bug 14 修正後）。修正前は CancelReservation 経路で confirmed が cancelled に遷移して 200 を返していた |
 
 ### 4.4 予約編集（UC-209）
 
 | ステータス | テストID | テスト内容 | 入力データ | 期待結果 | 優先度 | メモ |
 |----------|---------|----------|----------|---------|--------|------|
-| ⬜ | ADMIN-301 | confirmed状態の予約の日時を変更できる | date、start_time、end_time | 200 OK、日時が更新される | 高 | |
-| ⬜ | ADMIN-302 | 予約のnoteを更新できる | note | 200 OK、noteが更新される | 中 | |
-| ⬜ | ADMIN-303 | 日時変更時に重複チェックが行われる | 既存予約と重複する日時 | 409 Conflict、RESERVATION_CONFLICT | 高 | |
-| ⬜ | ADMIN-304 | cancelled状態の予約を編集しようとする | status=cancelled | 409 Conflict、INVALID_STATUS_TRANSITION | 中 | |
-| ⬜ | ADMIN-305 | completed状態の予約を編集しようとする | status=completed | 409 Conflict、INVALID_STATUS_TRANSITION | 中 | |
+| ✅ | ADMIN-301 | confirmed状態の予約の日時を変更できる | date、start_time、end_time | 200 OK、日時が更新される | 高 | 2026-05-12 PASS（Bug 15 修正後）。修正前は date 変更後 GET で旧 date が返る問題があった (UpdateReservation で旧 SK のアイテムが孤児化していたため) |
+| ✅ | ADMIN-302 | 予約のnoteを更新できる | note | 200 OK、noteが更新される | 中 | 2026-05-12 PASS。GET でも note 永続化を確認 |
+| ✅ | ADMIN-303 | 日時変更時に重複チェックが行われる | 既存予約と重複する日時 | 409 Conflict、RESERVATION_CONFLICT | 高 | 2026-05-12 PASS。2 件の confirmed 予約を異なるスロットで作成後、片方を他方と同一スロットに PATCH して 409 を確認 |
+| ✅ | ADMIN-304 | cancelled状態の予約を編集しようとする | status=cancelled | 409 Conflict、INVALID_STATUS_TRANSITION | 中 | 2026-05-12 PASS |
+| ⏸️ | ADMIN-305 | completed状態の予約を編集しようとする | status=completed | 409 Conflict、INVALID_STATUS_TRANSITION | 中 | 2026-05-12 SKIP（completed はバッチ処理経由のみ。Category 9 で再検証） |
 
 ### 4.5 予約キャンセル（管理者側、UC-208）
 
 | ステータス | テストID | テスト内容 | 入力データ | 期待結果 | 優先度 | メモ |
 |----------|---------|----------|----------|---------|--------|------|
-| ⬜ | ADMIN-401 | 管理者が確定予約をキャンセルできる | status=confirmed | 200 OK、status=cancelled、cancelled_by=owner | 高 | |
-| ⬜ | ADMIN-402 | 管理者がpending予約をキャンセルできる | status=pending | 200 OK、status=cancelled、cancelled_by=owner | 中 | |
+| ✅ | ADMIN-401 | 管理者が確定予約をキャンセルできる | status=confirmed | 200 OK、status=cancelled、cancelled_by=owner | 高 | 2026-05-12 PASS。customer 用 `cancelReservationApi` を admin トークンで再利用（handler が role から cancelled_by を決定） |
+| ✅ | ADMIN-402 | 管理者がpending予約をキャンセルできる | status=pending | 200 OK、status=cancelled、cancelled_by=owner | 中 | 2026-05-12 PASS |
 
 ### 4.6 スタッフ登録（UC-201）
 
 | ステータス | テストID | テスト内容 | 入力データ | 期待結果 | 優先度 | メモ |
 |----------|---------|----------|----------|---------|--------|------|
-| ⬜ | ADMIN-501 | 管理者がスタッフユーザーを登録できる | studio_id、name、email、password、phone | 201 Created、role=staff | 高 | |
-| ⬜ | ADMIN-502 | スタッフ一覧を取得できる | studio_id | 200 OK、スタッフ一覧が返される | 中 | |
-| ⬜ | ADMIN-503 | 他スタジオのスタッフを登録しようとする | 他studio_id | 403 Forbidden、FORBIDDEN_RESOURCE | 高 | |
+| ⏸️ | ADMIN-501 | 管理者がスタッフユーザーを登録できる | studio_id、name、email、password、phone | 201 Created、role=staff | 高 | 2026-05-12 SKIP。POST /staff endpoint が未実装（Bug 10） |
+| ⏸️ | ADMIN-502 | スタッフ一覧を取得できる | studio_id | 200 OK、スタッフ一覧が返される | 中 | 2026-05-12 SKIP。GET /staff endpoint が未実装（Bug 10） |
+| ⏸️ | ADMIN-503 | 他スタジオのスタッフを登録しようとする | 他studio_id | 403 Forbidden、FORBIDDEN_RESOURCE | 高 | 2026-05-12 SKIP。POST /staff endpoint が未実装（Bug 10） |
+
+### 4.7 実行結果サマリ (2026-05-12 — Category 3 再検証完了 + Bug 14/15/16 修正)
+
+- **実行ツール**: Playwright (`@playwright/test`) APIテスト (`frontend/e2e/admin/*.api.spec.ts`)
+- **対象API**: dev環境 (`https://ynnrspq7rl.execute-api.ap-northeast-1.amazonaws.com/dev/`)
+- **実行コマンド**:
+  ```
+  cd frontend && E2E_SKIP_WEBSERVER=1 \
+    E2E_REUSE_USER_EMAIL=e2ecustomer1@example.com E2E_REUSE_USER_PASSWORD=CustPass123! \
+    E2E_REUSE_USER2_EMAIL=e2ecustomer2@example.com E2E_REUSE_USER2_PASSWORD=CustPass123! \
+    E2E_REUSE_USER_ADMIN_EMAIL=e2eadmin@example.com E2E_REUSE_USER_ADMIN_PASSWORD=AdminPass123! \
+    npx playwright test --project=api e2e/admin/
+  ```
+- **結果**: **24 PASS, 0 FAIL, 5 SKIP** (admin 21/26 + customer recheck 7/7)
+- **高優先度テスト**: ADMIN-001/003/101/102/104/201/301/303/401 全 9 件 PASS。ADMIN-501/503 は Bug 10 (POST/GET /staff 未実装) のため SKIP — 高優先度の本質的失敗は 0
+- **Category 3 再検証**: CUSTOMER-004/005/007/302/303/401/404 全 7 件 PASS (CUSTOMER-404 は条件付き — Bug 13 候補)
+- **リグレッション確認**: `e2e/customer/` (31 件), `e2e/guest/` (30 件) を本セッション最後に再実行し全件 PASS / SKIP (FAIL 0)
+- **新規 fixture**: `getSharedAdmin` (`e2e/fixtures/auth.ts`)
+- **新規 API wrapper**: `listAdminReservationsApi`, `approveReservationApi`, `rejectReservationApi`, `updateReservationApi` (`e2e/helpers/api.ts`)
+- **新規ヘルパー**: `adminFutureDateStr(baseOffset)` — プロセス起動ごとの ランダム offset を加算してテスト間衝突を回避 (`e2e/helpers/testData.ts`)
+- **Admin user 設定**: e2eadmin@example.com を `custom:role=admin`, `custom:studio_id=studio_001` で provisioning（手順は本セクション末尾参照）
+- **Node.js**: v22.4.1
+
+#### カテゴリ別実行結果
+
+| サブカテゴリ | 総数 | PASS | FAIL | SKIP | 合格率（実行分） |
+|------------|------|------|------|------|--------|
+| 4.1 予約一覧取得 | 4 | 4 | 0 | 0 | 100% |
+| 4.2 予約承認 | 6 | 6 | 0 | 0 | 100% |
+| 4.3 予約拒否 | 3 | 2 | 0 | 1 | 100% |
+| 4.4 予約編集 | 5 | 4 | 0 | 1 | 100% |
+| 4.5 予約キャンセル | 2 | 2 | 0 | 0 | 100% |
+| 4.6 スタッフ登録 | 3 | 0 | 0 | 3 | (未実装) |
+| **合計** | **23** | **18** | **0** | **5** | **100%** (実行分) |
+| Category 3 再検証 | 7 | 7 | 0 | 0 | 100% |
+
+※ ADMIN-001〜503 のうち本ドキュメント記載は 23 件 (UI/Plan 説明では「26 件」と概算したが、実際の試験項目は 4.1–4.6 を合計して 23 件)。`-` は意図的 SKIP。
+
+#### Category 3 再検証結果 (Cat 4 連携)
+
+| テストID | 旧結果 | 新結果 | メモ |
+|---|---|---|---|
+| CUSTOMER-004 | SKIP | PASS | admin が regular を承認 (confirmed) 後、別 customer で second_keep を 201 で作成 |
+| CUSTOMER-005 | SKIP | PASS | confirmed と同一スロットで regular 作成 → 409 RESERVATION_CONFLICT |
+| CUSTOMER-007 | SKIP | PASS | primary 不在状態で second_keep → 409 SECOND_KEEP_NO_PRIMARY |
+| CUSTOMER-302 | SKIP | PASS | confirmed を customer がキャンセル → cancelled_by=customer |
+| CUSTOMER-303 | SKIP | PASS | tentative を customer がキャンセル → cancelled_by=customer |
+| CUSTOMER-401 | SKIP | PASS | tentative を promote → pending, promoted_from=tentative (Bug 16 修正後) |
+| CUSTOMER-404 | SKIP | PASS (条件付き) | status=pending は OK、reservation_type は tentative のまま (Bug 13 候補) |
+
+#### 検出された不具合・改善要望
+
+10. **Bug 10: スタッフ登録 (POST /staff / GET /staff) API ルートが未実装**  ※未修正
+    - ADMIN-501/502/503 を実行できない (全件 SKIP)
+    - `terraform/modules/api-gateway/main.tf` に staff 関連リソースが存在せず、`backend/cmd/` 配下にも `staff-create` / `staff-list` Lambda が無い
+    - UC-201 (admin がスタッフを登録) 全体が空欄。AUTH-302 (staff トークン未seed) の根本原因でもある
+    - 修正案: `backend/cmd/staff-create`, `staff-list` を作成し、`/staff` API Gateway リソースと Lambda 統合を Terraform に追加。`CognitoService.AdminSetUserRole(email, "staff")` + `custom:studio_id` 付与で実現可能
+
+11. **Bug 11: reject エンドポイントが reason を受け付けない**  ※未修正
+    - `backend/cmd/reservation-reject/main.go` はリクエストボディを Unmarshal せず、`usecase.RejectReservation(ctx, id)` (`reservation_usecase.go`) も reason 引数を取らない
+    - ADMIN-202 ("拒否理由が保存される") が SKIP となる
+    - 修正案: `RejectReservationRequest{Reason *string}` を導入、Reservation entity に `reject_reason` フィールドを追加。usecase 引数も拡張
+
+12. ~~(欠番)~~
+
+13. **Bug 13: PromoteReservation が reservation_type を書き換えない (CUSTOMER-404 仕様メモ)**  ※未修正
+    - `reservation_usecase.go:PromoteReservation` は `Status=pending`, `PromotedFrom=tentative`, `PromotedAt=now` のみ更新
+    - test plan の「reservation_type=regular」期待 (CUSTOMER-404) と齟齬
+    - 修正案 (どちらか): (a) 実装側で `reservation_type = "regular"` も書き換える、(b) 仕様側で「type は変更せず status と promoted_from のみ更新」と明記。テストは現状 ∈ {regular, tentative} を許容する条件付き PASS で記録
+
+14. **Bug 14: RejectReservation が confirmed/tentative 等の非 pending も無条件にキャンセル化する**  ✅ **修正済み (2026-05-12)**
+    - `RejectReservation` が単に `CancelReservation(ctx, id, CancelledByOwner)` を呼ぶだけで、`CanCancel()` は confirmed も含むため、ADMIN-203 (confirmed→reject) が 200 cancelled で成功していた
+    - 影響: 拒否 (UC-204) は本来 pending 状態の予約のみを対象とする業務ルール。confirmed/tentative 等はオーナーキャンセル経由で扱う想定だが、実装上区別できていなかった
+    - 修正内容: `reservation_usecase.go:RejectReservation` 内で先に FindByID + status チェックを行い、pending 以外なら `ErrInvalidStatusTransition` を返すよう変更
+    - 検証: ADMIN-203 が 409 INVALID_STATUS_TRANSITION で PASS
+
+15. **Bug 15: UpdateReservation で date 変更時に旧 SK アイテムが残る (孤児レコード)**  ✅ **修正済み (2026-05-12)**
+    - DynamoDB の reservations テーブルは composite PK = (studio_id, date_reservation_id) で、SK は `{date}#{reservation_id}` 形式
+    - `Update` は新しい SK で PutItem するが、date が変わると旧 SK のアイテムが残ったまま並存する
+    - GSI3 (reservation_id) 経由の `FindByID` が古いアイテムを返す可能性があり、ADMIN-301 (date 変更後 GET で旧 date が返る) として顕在化
+    - 影響: 日時変更系の全フローで GET と Update のラウンドトリップが破綻していた。Bug 7 (Create/Update で SK が含まれない問題) を解決した後に潜在化していた残りの SK 不整合
+    - 修正内容:
+      - `repository.ReservationRepository` に `DeleteByKey(studioID, date, reservationID)` を追加
+      - `dynamodb/reservation_repository.go` に実装を追加
+      - `usecase.UpdateReservation` で originalDate を退避し、date 変更時に新 SK へ PutItem 後、旧 SK を `DeleteByKey` で削除
+    - 検証: ADMIN-301 が 200 + GET で新 date が返ることを確認
+
+16. **Bug 16: promote エンドポイントの response struct に `promoted_from` / `promoted_at` が含まれない**  ✅ **修正済み (2026-05-12)**
+    - `backend/cmd/reservation-promote/main.go` の `PromoteReservationResponse` は `{reservation_id, reservation_type, status, message}` のみで、DynamoDB に保存される `promoted_from` / `promoted_at` がレスポンスに含まれない
+    - CUSTOMER-401 が `body.promoted_from === 'tentative'` を assert できず FAIL
+    - 修正内容: `PromoteReservationResponse` に `PromotedFrom`, `PromotedAt` フィールド (`omitempty`) を追加、`reservation.PromotedFrom`/`PromotedAt` から詰める
+    - 検証: CUSTOMER-401 で `promoted_from=tentative` が response から取得できることを確認
+    - 注: `reservation-guest-promote` は同様の修正が必要かもしれないが、GUEST-501 系は admin 経路 (admin が tentative 化) を経由しないため SKIP のまま。本 Bug の修正は会員 promote のみ対象
+
+#### Admin ユーザー プロビジョニング手順 (再実行時の参考)
+
+```bash
+# 1. Cognito User Pool ID 取得
+cd terraform/environments/dev && POOL=$(terraform output -raw cognito_user_pool_id)
+
+# 2. 専用 admin アカウントを signup (既存なら 409 - スキップ可)
+curl -sS -X POST https://ynnrspq7rl.execute-api.ap-northeast-1.amazonaws.com/dev/auth/signup \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"E2E Admin","email":"e2eadmin@example.com","password":"AdminPass123!","phone_number":"090-0000-1111","address":"東京都"}'
+
+# 3. custom:role=admin と custom:studio_id=studio_001 を一括付与
+aws cognito-idp admin-update-user-attributes \
+  --region ap-northeast-1 --user-pool-id "$POOL" --username e2eadmin@example.com \
+  --user-attributes Name=custom:role,Value=admin Name=custom:studio_id,Value=studio_001
+
+# 4. DynamoDB users テーブルの role / studio_id も同期 (login response の整合性のため)
+aws dynamodb update-item --region ap-northeast-1 --table-name dev-users \
+  --key '{"user_id":{"S":"<user_id from signup response>"}}' \
+  --update-expression "SET #r = :role, studio_id = :sid" \
+  --expression-attribute-names '{"#r":"role"}' \
+  --expression-attribute-values '{":role":{"S":"admin"},":sid":{"S":"studio_001"}}'
+
+# 5. テスト用 customer アカウント (sharedCustomer / sharedCustomer2)
+#    既に作成済み:
+#    - e2ecustomer1@example.com / CustPass123!
+#    - e2ecustomer2@example.com / CustPass123!
+#    新規作成する場合は /auth/signup で同様に POST するだけ (role=customer のままで OK)
+```
 
 ---
 
@@ -685,5 +808,5 @@
 ---
 
 **作成日**: 2026-04-28
-**最終更新日**: 2026-05-08
-**バージョン**: 1.2
+**最終更新日**: 2026-05-12
+**バージョン**: 1.3

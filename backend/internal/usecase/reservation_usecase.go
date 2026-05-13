@@ -431,7 +431,8 @@ func (u *ReservationUsecase) UpdateReservation(ctx context.Context, input Update
 		}
 	}
 
-	// 4. フィールド更新
+	// 4. フィールド更新（date 変更時は旧 SK のアイテム削除が必要なため originalDate を退避）
+	originalDate := reservation.Date
 	if input.Date != nil {
 		reservation.Date = *input.Date
 	}
@@ -449,9 +450,17 @@ func (u *ReservationUsecase) UpdateReservation(ctx context.Context, input Update
 	}
 	reservation.UpdatedAt = time.Now()
 
-	// 5. リポジトリに保存
+	// 5. リポジトリに保存（新 SK に PutItem）
 	if err := u.reservationRepo.Update(ctx, reservation); err != nil {
 		return nil, fmt.Errorf("failed to update reservation: %w", err)
+	}
+
+	// 6. date 変更時は旧 SK の孤児アイテムを削除する
+	// PK=(studio_id, date#reservation_id) のため、date が変わると新旧 2 件が並存してしまう
+	if dateChanged {
+		if err := u.reservationRepo.DeleteByKey(ctx, reservation.StudioID, originalDate, reservation.ReservationID); err != nil {
+			return nil, fmt.Errorf("failed to delete old reservation item: %w", err)
+		}
 	}
 
 	return reservation, nil
@@ -557,8 +566,18 @@ func (u *ReservationUsecase) ApproveReservation(ctx context.Context, reservation
 
 // RejectReservation は予約を拒否する（キャンセル扱い）
 // アクセスパターン: AP-20（予約拒否）
+//
+// ビジネスルール:
+// - 拒否可能なのは pending ステータスの予約のみ。
+//   既に confirmed/tentative/scheduled/waitlisted に遷移したものはキャンセル経路で扱う。
 func (u *ReservationUsecase) RejectReservation(ctx context.Context, reservationID string) (*entity.Reservation, error) {
-	// 拒否はオーナーによるキャンセル扱い
+	reservation, err := u.reservationRepo.FindByID(ctx, reservationID)
+	if err != nil {
+		return nil, apierror.ErrReservationNotFound
+	}
+	if reservation.Status != entity.ReservationStatusPending {
+		return nil, apierror.ErrInvalidStatusTransition
+	}
 	return u.CancelReservation(ctx, reservationID, entity.CancelledByOwner)
 }
 

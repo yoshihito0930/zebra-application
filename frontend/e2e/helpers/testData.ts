@@ -36,6 +36,13 @@ export const futureDateStr = (offsetDays: number): string => {
   return d.toISOString().slice(0, 10);
 };
 
+// Admin / category 4 のテストで使用する suite ごとのランダム offset。
+// 同じ日付に過去の実行から残ったレコードが衝突しないよう、
+// プロセス起動ごとに 0..999 のずらしを加算する。
+const ADMIN_RUN_OFFSET = Math.floor(Math.random() * 1000);
+export const adminFutureDateStr = (baseOffset: number): string =>
+  futureDateStr(baseOffset + ADMIN_RUN_OFFSET);
+
 export type GuestReservationPayload = {
   studio_id: string;
   reservation_type: string;

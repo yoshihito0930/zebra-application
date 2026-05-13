@@ -49,6 +49,8 @@ type PromoteReservationResponse struct {
 	ReservationID   string `json:"reservation_id"`
 	ReservationType string `json:"reservation_type"`
 	Status          string `json:"status"`
+	PromotedFrom    string `json:"promoted_from,omitempty"`
+	PromotedAt      string `json:"promoted_at,omitempty"`
 	Message         string `json:"message"`
 }
 
@@ -77,6 +79,12 @@ func promoteReservationHandler(ctx context.Context, request events.APIGatewayPro
 		ReservationType: string(reservation.ReservationType),
 		Status:          string(reservation.Status),
 		Message:         "仮予約を本予約に切り替えました。管理者の承認をお待ちください。",
+	}
+	if reservation.PromotedFrom != nil {
+		resp.PromotedFrom = string(*reservation.PromotedFrom)
+	}
+	if reservation.PromotedAt != nil {
+		resp.PromotedAt = reservation.PromotedAt.Format("2006-01-02T15:04:05Z07:00")
 	}
 
 	return response.OKWithCORS(resp), nil

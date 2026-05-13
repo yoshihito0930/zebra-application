@@ -405,3 +405,19 @@ func (r *ReservationRepositoryImpl) Delete(ctx context.Context, reservationID st
 
 	return nil
 }
+
+// DeleteByKey は (studio_id, date, reservation_id) の組で予約アイテムを物理削除する。
+// Update で date が変わった場合に、旧 SK アイテムを明示的に消すために使用する。
+func (r *ReservationRepositoryImpl) DeleteByKey(ctx context.Context, studioID string, date time.Time, reservationID string) error {
+	_, err := r.client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
+		TableName: aws.String(r.tableName),
+		Key: map[string]types.AttributeValue{
+			"studio_id":           &types.AttributeValueMemberS{Value: studioID},
+			"date_reservation_id": &types.AttributeValueMemberS{Value: fmt.Sprintf("%s#%s", date.Format("2006-01-02"), reservationID)},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete reservation by key: %w", err)
+	}
+	return nil
+}
