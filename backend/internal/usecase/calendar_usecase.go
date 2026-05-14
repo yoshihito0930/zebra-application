@@ -56,18 +56,22 @@ func (u *CalendarUsecase) GetCalendar(ctx context.Context, studioID string, mont
 	startDate := time.Date(month.Year(), month.Month(), 1, 0, 0, 0, 0, month.Location())
 	endDate := startDate.AddDate(0, 1, 0).Add(-time.Second) // 翌月の0時0分0秒 - 1秒 = 月末の23:59:59
 
-	// 3. 予約一覧を取得（confirmed, tentative, scheduled のみ）
+	// 3. 予約一覧を取得（cancelled / expired / completed を除く、枠を占有している予約のみ）
 	allReservations, err := u.reservationRepo.FindByStudioAndDateRange(ctx, studioID, startDate, endDate)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find reservations: %w", err)
 	}
 
-	// カレンダー表示用にフィルタ（confirmed/tentative/scheduled のみ）
+	// 表示: pending / tentative / confirmed / waitlisted / scheduled
+	// 除外: cancelled / expired / completed （枠を占有していない）
 	var reservations []*entity.Reservation
 	for _, r := range allReservations {
-		if r.Status == entity.ReservationStatusConfirmed ||
-			r.Status == entity.ReservationStatusTentative ||
-			r.Status == entity.ReservationStatusScheduled {
+		switch r.Status {
+		case entity.ReservationStatusCancelled,
+			entity.ReservationStatusExpired,
+			entity.ReservationStatusCompleted:
+			// skip
+		default:
 			reservations = append(reservations, r)
 		}
 	}
