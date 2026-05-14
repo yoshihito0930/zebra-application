@@ -148,5 +148,5 @@ variable "api_gateway_cloudwatch_role_arn" {
 variable "redeploy_nonce" {
   description = "API Gateway deployment 再作成用のノンス。値を変更すると terraform apply 時に deployment が再生成される"
   type        = string
-  default     = "2026-05-14-bug21-fix"
+  default     = "2026-05-14-bug30-cors-options"
 }

@@ -389,24 +389,39 @@ resource "aws_api_gateway_account" "main" {
   cloudwatch_role_arn = var.api_gateway_cloudwatch_role_arn
 }
 
-# CORS設定のためのOPTIONSメソッド（すべてのリソースに適用）
-# 簡略化のため、主要なリソースのみ設定
+# CORS設定のためのOPTIONSメソッド（全リソースに適用）
+# Bug 30 (2026-05-14): 元々は主要リソースのみだったため、
+# /reservations/{id}/approve など status 変更系サブパスの preflight が
+# 403 を返し、ブラウザからの PATCH リクエストが CORS でブロックされた。
 resource "aws_api_gateway_method" "options" {
   for_each = {
     auth_signup                           = aws_api_gateway_resource.auth_signup.id
     auth_login                            = aws_api_gateway_resource.auth_login.id
     users_me                              = aws_api_gateway_resource.users_me.id
     studios_id_calendar                   = aws_api_gateway_resource.studios_id_calendar.id
+    studios_id_plans                      = aws_api_gateway_resource.studios_id_plans.id
+    studios_id_options                    = aws_api_gateway_resource.studios_id_options.id
     reservations                          = aws_api_gateway_resource.reservations.id
+    reservations_me                       = aws_api_gateway_resource.reservations_me.id
     reservations_id                       = aws_api_gateway_resource.reservations_id.id
+    reservations_id_approve               = aws_api_gateway_resource.reservations_id_approve.id
+    reservations_id_reject                = aws_api_gateway_resource.reservations_id_reject.id
+    reservations_id_promote               = aws_api_gateway_resource.reservations_id_promote.id
+    reservations_id_cancel                = aws_api_gateway_resource.reservations_id_cancel.id
     reservations_guest                    = aws_api_gateway_resource.reservations_guest.id
     reservations_guest_token              = aws_api_gateway_resource.reservations_guest_token.id
     reservations_guest_token_cancel       = aws_api_gateway_resource.reservations_guest_token_cancel.id
     reservations_guest_token_promote      = aws_api_gateway_resource.reservations_guest_token_promote.id
     plans                                 = aws_api_gateway_resource.plans.id
+    plans_id                              = aws_api_gateway_resource.plans_id.id
     options                               = aws_api_gateway_resource.options.id
+    options_id                            = aws_api_gateway_resource.options_id.id
     blocked_slots                         = aws_api_gateway_resource.blocked_slots.id
+    blocked_slots_id                      = aws_api_gateway_resource.blocked_slots_id.id
     inquiries                             = aws_api_gateway_resource.inquiries.id
+    inquiries_id                          = aws_api_gateway_resource.inquiries_id.id
+    inquiries_id_reply                    = aws_api_gateway_resource.inquiries_id_reply.id
+    inquiries_id_close                    = aws_api_gateway_resource.inquiries_id_close.id
   }
 
   rest_api_id   = aws_api_gateway_rest_api.main.id

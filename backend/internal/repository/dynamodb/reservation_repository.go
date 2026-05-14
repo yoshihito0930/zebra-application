@@ -33,10 +33,7 @@ func (r *ReservationRepositoryImpl) Create(ctx context.Context, reservation *ent
 	if err != nil {
 		return fmt.Errorf("failed to marshal reservation: %w", err)
 	}
-	// SK (date_reservation_id) はエンティティに存在しないため明示的に追加
-	item["date_reservation_id"] = &types.AttributeValueMemberS{
-		Value: fmt.Sprintf("%s#%s", reservation.Date.Format("2006-01-02"), reservation.ReservationID),
-	}
+	addReservationCompositeKeys(item, reservation)
 
 	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{
 		TableName: aws.String(r.tableName),
@@ -47,6 +44,18 @@ func (r *ReservationRepositoryImpl) Create(ctx context.Context, reservation *ent
 	}
 
 	return nil
+}
+
+// addReservationCompositeKeys はエンティティに存在しない合成キー属性を item に追加する。
+// SK (date_reservation_id) と GSI1 PK (studio_id_status) は entity 構造体に無いため、
+// PutItem 前に明示的に書き込む必要がある (Bug 29)。
+func addReservationCompositeKeys(item map[string]types.AttributeValue, reservation *entity.Reservation) {
+	item["date_reservation_id"] = &types.AttributeValueMemberS{
+		Value: fmt.Sprintf("%s#%s", reservation.Date.Format("2006-01-02"), reservation.ReservationID),
+	}
+	item["studio_id_status"] = &types.AttributeValueMemberS{
+		Value: fmt.Sprintf("%s#%s", reservation.StudioID, reservation.Status),
+	}
 }
 
 // FindByID は予約IDで予約を取得する（GSI3を使用）
@@ -368,10 +377,7 @@ func (r *ReservationRepositoryImpl) Update(ctx context.Context, reservation *ent
 	if err != nil {
 		return fmt.Errorf("failed to marshal reservation: %w", err)
 	}
-	// SK (date_reservation_id) はエンティティに存在しないため明示的に追加
-	item["date_reservation_id"] = &types.AttributeValueMemberS{
-		Value: fmt.Sprintf("%s#%s", reservation.Date.Format("2006-01-02"), reservation.ReservationID),
-	}
+	addReservationCompositeKeys(item, reservation)
 
 	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{
 		TableName: aws.String(r.tableName),

@@ -1034,17 +1034,73 @@ E2E_SKIP_WEBSERVER=1 \
     - 修正内容 (frontend のみ): `reservationService.ts` に `normalizeReservation` ヘルパーを追加し、`getReservation` / `getMyReservations` / `getAllReservations` / `createReservation` / `cancelReservation` / `approveReservation` / `rejectReservation` / `promoteReservation` / `updateReservation` / `getGuestReservation` / `cancelGuestReservation` の全レスポンスを通すよう変更
     - 残課題: backend 側で flat フィールドを追加するか、frontend `Reservation` 型を nested に変更する設計判断が必要。本セッションは UI 表示優先で frontend 側に normalizer を置く方針を採用
 
+29. **Bug 29: `reservations` テーブルの GSI1 PK (`studio_id_status`) が Create/Update で書き込まれず、admin の status 別予約一覧が常に 0 件を返す**  ✅ **修正済み (2026-05-14)**
+    - `backend/internal/repository/dynamodb/reservation_repository.go` の `Create` / `Update` は `attributevalue.MarshalMap(reservation)` の結果に `date_reservation_id` (SK) のみ手で追加していたが、GSI1 PK の `studio_id_status` は entity 構造体に無いため一切書き込まれていなかった
+    - 結果として `FindByStudioAndStatus` (GSI1 Query) が空配列を返し、admin UI `/admin/reservations` の status フィルタ (pending/confirmed/tentative/...) で常に「0件の予約」表示
+    - 影響: admin の予約承認フロー (UI-ADMIN-001) がブロック。バッチ処理「仮予約期限切れ」「リマインド通知」も同じ GSI1 を使用するため波及リスクあり
+    - 修正内容: `addReservationCompositeKeys` ヘルパーを新設し、Create/Update 両方で `date_reservation_id` と `studio_id_status` を明示的に AttributeValue として item に追加。Bug 21 (date_blocked_slot_id) と同型の不具合
+    - デプロイ: `./scripts/build-lambdas.sh` で 41 関数を再ビルド → `terraform apply` で 39 Lambda の source_code_hash を更新
+    - 既存 376 件の予約は studio_id_status を持たないため GSI1 検索の対象外。新規作成・更新された予約のみ正しく GSI1 に乗る。既存レコードのバックフィルは未実施 (新規ユーザーシナリオの実行には影響しない)
+
+30. **Bug 30: API Gateway の OPTIONS preflight が `/reservations/{id}/approve` 等のサブパスに未設定で、ブラウザからの PATCH リクエストが CORS でブロックされる**  ✅ **修正済み (2026-05-14)**
+    - `terraform/modules/api-gateway/main.tf` の `aws_api_gateway_method.options` の `for_each` キーには主要リソース (auth, users_me, reservations, plans, options, blocked_slots, inquiries 等の親リソース) のみが列挙されており、`reservations_id_approve`, `reservations_id_reject`, `reservations_id_promote`, `reservations_id_cancel`, `inquiries_id_reply`, `inquiries_id_close`, `plans_id`, `options_id`, `blocked_slots_id`, `reservations_me`, `studios_id_plans`, `studios_id_options`, `inquiries_id` などのサブパスが抜けていた
+    - その結果、ブラウザが PATCH /reservations/{id}/approve を実行するときの OPTIONS preflight が 403 `MissingAuthenticationTokenException` を返し、`Access-Control-Allow-Origin` ヘッダが無いため XHR がブロック
+    - 影響: admin UI からの承認・拒否・予約更新・キャンセル等の全 PATCH 系操作、問い合わせ返信、プラン/オプション/ブロック枠の更新と削除がブラウザから不可能 (curl 直叩きは preflight 不要なので影響しない)
+    - 修正内容: 上記 13 個のサブパス resource を `for_each` に追加。`redeploy_nonce` を `2026-05-14-bug30-cors-options` に bump して API Gateway deployment を再生成
+    - 検出経緯: UI-ADMIN-001 で「承認」ボタンクリック後、ブラウザコンソールに `CORS policy: Response to preflight request doesn't pass access control check` が出ていた
+
+31. **Bug 31: frontend admin の status フィルタで「すべて (`all`)」を選ぶと `?status=all` がクエリに付与され、backend が `entity.ReservationStatus("all")` で GSI1 を引いて 0 件を返す**  ⚠️ **未修正 (回避策あり、UI 動作には軽い支障)**
+    - `frontend/src/hooks/useReservations.ts:117` で `(status ? { status } : {})` と書かれており `'all'` は truthy のため API に `status=all` が送られる
+    - backend `reservation-list/main.go` は status 文字列をそのまま `entity.ReservationStatus` にキャストし `FindByStudioAndStatus` を呼ぶため空配列が返る
+    - 影響: admin UI の「すべて (status)」フィルタで予約が一切表示されない。回避策として個別 status (pending/confirmed/...) フィルタを使えば見える
+    - 推奨修正: frontend で `status === 'all'` の場合は status をクエリに付けない (`status && status !== 'all' ? { status } : {}`) に変更。bigfix 1 行
+    - 検出経緯: UI-ADMIN-001 の承認後の status バッジ検証で「すべて」に戻すと 0 件になり気づいた
+
 #### 残課題 (Phase 2 で対応)
 
-- UI E2E テスト (Playwright UI mode) は未着手。本セッションは API レベルの smoke test と bundle 検査のみ
 - 新規 admin UI (プラン / オプション / ブロック枠管理) は未実装。`/admin/dashboard` から該当画面への遷移は無し
 - ゲスト予約の作成フォーム (`/reservations/guest/create` 相当) は未実装
 - 問い合わせ機能 (Category 8) は UI/backend 共に未実装
 - 通知センター (Category 9 系) は未実装
 - `Reservation` 型の `is_guest` / `guest_*` / `user_*` フィールドは backend response に含まれないため admin 画面でゲスト予約をハイライトできない可能性。BuildReservationResponse の拡張で対応すべき改善要望として記録
+- Bug 31 (frontend で `status='all'` を送らない 1 行修正) は未対応
+- Bug 29 で導入された `studio_id_status` 属性は新規/更新予約にのみ付与される。既存 376 件は GSI1 検索の対象外なので、運用上必要であればバックフィル script (`UpdateItem` で `studio_id_status` を SET) を実施する
+
+### 12.2 UI E2E テスト (Playwright UI, 2026-05-14)
+
+| status | id | description | result |
+|--------|-----|-------------|--------|
+| ✅ | UI-CUSTOMER-001 | customer ログイン → /customer/calendar → /customer/reservations → 予約詳細 | PASS (1 try) |
+| ✅ | UI-ADMIN-001 | admin ログイン → /admin/reservations → 承認ダイアログ操作 → status=confirmed 反映 | PASS (Bug 29 + Bug 30 修正後) |
+| ✅ | UI-STAFF-001 | staff ログイン → /staff/calendar 描画 / 承認 UI が無いこと | PASS (1 try) |
+| ✅ | UI-GUEST-001 | API でゲスト予約作成 → /reservations/guest/verify → /reservations/guest/{token} 詳細表示 | PASS (1 try) |
+
+**実装ファイル**: `frontend/e2e/ui/{customer-happy-path,admin-approval,staff-readonly,guest-verify}.ui.spec.ts` + `frontend/e2e/ui/helpers/{ui-login,api-context}.ts`
+
+**実行コマンド** (dev 環境向け):
+```bash
+cd frontend
+E2E_FRONTEND_BASE_URL=https://dy4lretixtouu.cloudfront.net \
+E2E_API_BASE_URL=https://ynnrspq7rl.execute-api.ap-northeast-1.amazonaws.com/dev/ \
+E2E_SKIP_WEBSERVER=1 \
+E2E_REUSE_USER_EMAIL=e2ecustomer1@example.com E2E_REUSE_USER_PASSWORD='CustPass123!' \
+E2E_REUSE_USER_ADMIN_EMAIL=e2eadmin@example.com E2E_REUSE_USER_ADMIN_PASSWORD='AdminPass123!' \
+E2E_REUSE_USER_STAFF_EMAIL=e2estaff@example.com E2E_REUSE_USER_STAFF_PASSWORD='StaffPass123!' \
+npx playwright test --project=ui
+```
+
+**所要時間**: ~30 秒で 4 件全 PASS。Playwright UI mode で確認する場合は末尾に `--ui` を追加。
+
+**設計メモ**:
+- `playwright.config.ts` の `ui` project は内部で `devices['Desktop Chrome']` を使用 = Chromium。`--project=chromium` は存在しないため `--project=ui` を使う
+- ui project では `use.baseURL` が FRONTEND_BASE_URL (CloudFront) に固定されるため、API を叩く際は `helpers/api-context.ts` の `getApiRequest()` で API_BASE_URL を持つ別 APIRequestContext を生成して使う
+- セレクタは `data-testid` を追加せず、Chakra UI が提供する `FormLabel` (`getByLabel`) と heading text + aria-label のみで安定化
+- 各テスト前に pending 予約 / guest token を API helper で動的作成。テスト後の後始末は不要 (毎回新規予約)
+
+**検出 Bug**: Bug 29 (GSI1 PK 未書込), Bug 30 (CORS preflight サブパス未設定), Bug 31 (status=all クエリ)。29/30 は本セッションで修正し再実行で全 PASS。
 
 ---
 
 **作成日**: 2026-04-28
 **最終更新日**: 2026-05-14
-**バージョン**: 1.4
+**バージョン**: 1.5
