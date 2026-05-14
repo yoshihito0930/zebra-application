@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -25,82 +24,65 @@ import {
   ModalCloseButton,
 } from '@chakra-ui/react';
 import { Calendar, Clock, User, Mail, Phone, Building, AlertCircle } from 'lucide-react';
-import { mockGetGuestReservation, mockCancelGuestReservation } from '../../services/reservationService';
+import {
+  useGuestReservation,
+  useCancelGuestReservation,
+} from '../../hooks/useGuestReservations';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import StatusBadge from '../../components/common/StatusBadge';
-import type { Reservation } from '../../types';
 
 export default function GuestReservationDetailPage() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const toast = useToast();
-  const [reservation, setReservation] = useState<Reservation | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isCancelling, setIsCancelling] = useState(false);
+
+  const {
+    data: reservation,
+    isLoading,
+    error: queryError,
+  } = useGuestReservation(token);
+  const cancelMutation = useCancelGuestReservation();
 
   const { isOpen: isCancelModalOpen, onOpen: onCancelModalOpen, onClose: onCancelModalClose } = useDisclosure();
 
-  const fetchReservation = async () => {
-    if (!token) return;
-
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await mockGetGuestReservation(token);
-      setReservation(data);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '予約の取得に失敗しました';
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // 予約データ取得
-  useEffect(() => {
-    if (!token) {
-      setError('トークンが指定されていません');
-      setIsLoading(false);
-      return;
-    }
-
-    fetchReservation();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  const error = !token
+    ? 'トークンが指定されていません'
+    : queryError instanceof Error
+      ? queryError.message
+      : queryError
+        ? '予約の取得に失敗しました'
+        : null;
 
   // キャンセル処理
-  const handleCancel = async () => {
+  const handleCancel = () => {
     if (!token) return;
 
-    setIsCancelling(true);
-    try {
-      await mockCancelGuestReservation(token);
-
-      toast({
-        title: '予約をキャンセルしました',
-        description: 'キャンセル確認のメールをお送りしました',
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      });
-
-      onCancelModalClose();
-      fetchReservation(); // 再取得
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '予約のキャンセルに失敗しました';
-      toast({
-        title: 'エラー',
-        description: errorMessage,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    } finally {
-      setIsCancelling(false);
-    }
+    cancelMutation.mutate(token, {
+      onSuccess: () => {
+        toast({
+          title: '予約をキャンセルしました',
+          description: 'キャンセル確認のメールをお送りしました',
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+        onCancelModalClose();
+      },
+      onError: (err) => {
+        const errorMessage = err instanceof Error ? err.message : '予約のキャンセルに失敗しました';
+        toast({
+          title: 'エラー',
+          description: errorMessage,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      },
+    });
   };
+
+  const isCancelling = cancelMutation.isPending;
 
   if (isLoading) {
     return (

@@ -31,6 +31,9 @@ export const ReservationApprovalDialog = ({
   onSuccess,
 }: ReservationApprovalDialogProps) => {
   const [action, setAction] = useState<'approve' | 'reject'>('approve');
+  // NOTE: backend は predicate ステータスを reservation_type から自動決定するため
+  //       approvedStatus / rejectNote はリクエストに含めても無視される (Bug 11)。
+  //       UI は表示のためだけに残す。
   const [approvedStatus, setApprovedStatus] = useState<'confirmed' | 'tentative' | 'scheduled'>(
     reservation.reservation_type === 'location_scout' ? 'scheduled' : 'confirmed'
   );
@@ -44,7 +47,7 @@ export const ReservationApprovalDialog = ({
   const handleSubmit = async () => {
     if (action === 'approve') {
       approveMutation.mutate(
-        { id: reservation.reservation_id, approvedStatus },
+        { id: reservation.reservation_id },
         {
           onSuccess: () => {
             toast({
@@ -67,7 +70,7 @@ export const ReservationApprovalDialog = ({
       );
     } else {
       rejectMutation.mutate(
-        { id: reservation.reservation_id, note: rejectNote },
+        { id: reservation.reservation_id },
         {
           onSuccess: () => {
             toast({

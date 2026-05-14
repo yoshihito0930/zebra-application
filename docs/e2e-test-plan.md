@@ -989,6 +989,62 @@ E2E_SKIP_WEBSERVER=1 \
 
 ---
 
+## 12. フロントエンド／バックエンド統合
+
+### 12.1 統合作業 (2026-05-14)
+
+これまでの Category 1〜7 は Playwright API テスト (`frontend/e2e/**/*.api.spec.ts`) による API レイヤ検証で、frontend UI 自体は `const USE_MOCK = true` のハードコードによりモックモード固定で稼働していた。本セクションでは UI を実 API に接続する作業と、その過程で検出された frontend/backend 契約の食い違いを記録する。
+
+#### 作業内容サマリ
+
+- 全 data-fetching hook (`useCalendar` / `useReservations` / `usePlans` / `useGuestReservations`) から `USE_MOCK` 定数を完全削除
+- `services/reservationService.ts` / `services/planService.ts` の mock 関数および mock データを完全削除
+- 不足していた実 API 関数を追加 (`getAllReservations` / `approveReservation` / `rejectReservation` / `promoteReservation` / `updateReservation` / `getGuestReservation` / `cancelGuestReservation`)
+- `frontend/dist` を再ビルドし `scripts/deploy-frontend.sh dev` で CloudFront (https://dy4lretixtouu.cloudfront.net) に配信
+- 新 bundle `index-2GLr3Qkz.js` から mock 文字列が消えていること、`ynnrspq7rl.execute-api` を含むことを `grep` で確認
+
+#### 検出された不具合・改善要望
+
+24. **Bug 24: GET /studios/{id}/calendar のクエリパラメータが API 設計と乖離**  ✅ **修正済み (2026-05-14, frontend)**
+    - backend (`calendar-get/main.go:78,90,96`) は `month=YYYY-MM` を必須パラメータとして要求するが、frontend `reservationService.getCalendar` は `params: { year, month }` (数値) を送信していた
+    - 影響: USE_MOCK を外した瞬間、すべてのカレンダー API 呼び出しが 400 VALIDATION_ERROR で失敗する
+    - 修正内容 (frontend のみ): `month` を `${year}-${MM}` 形式に組み立てて送信するよう `getCalendar` を修正
+
+25. **Bug 25: GET /reservations/me / GET /reservations / GET /plans / GET /options のレスポンスが wrapper オブジェクト ({reservations:[]}, {plans:[]} 等) なのに frontend は配列前提だった**  ✅ **修正済み (2026-05-14, frontend)**
+    - backend (`reservation-list-me/main.go:69`, `reservation-list/main.go`, `plans-list/main.go:53`, `options-list/main.go:52`) は `{ reservations: [...] }` / `{ plans: [...] }` / `{ options: [...] }` で wrap してレスポンスする
+    - frontend の service 関数は `Promise<Reservation[]>` 等の生配列型でレスポンスを扱っており、`resp.reservations` ではなく `resp` 自体を配列として使っていた
+    - 影響: 予約一覧・プラン一覧・オプション一覧の hook がすべて undefined を配列として扱い `.map is not a function` が発生していた可能性が高い (mock モードで未検出)
+    - 修正内容 (frontend のみ): 該当 service 関数で wrapper を unwrap (`return resp.reservations ?? []` 等) するよう書き換え
+
+26. **Bug 26: PATCH /reservations/{id}/approve|reject|promote が body を受け取らないのに frontend が `{ approvedStatus }` / `{ note }` を含めて送っていた**  ✅ **修正済み (2026-05-14, frontend)**
+    - backend ハンドラ (`reservation-approve/main.go:54-81` 等) は `PathParameters["id"]` のみ参照し、リクエストボディを Unmarshal しない
+    - frontend の `useApproveReservation` / `useRejectReservation` は mock 時代に作られた `approvedStatus`/`note` パラメータを送っていた (backend には届かない)
+    - 影響: UI 上の「本予約として確定 / 仮予約として承認」ラジオの選択結果は backend に到達せず、`reservation_type` に基づき自動決定される。仕様メモとして UI に NOTE コメントを残した
+    - 修正内容 (frontend のみ): mutation input を `{ id: string }` のみに簡略化。Reject ダイアログの reason textbox は UI 上残置するが API には送信しない (Bug 11 と同根 — 将来 backend で reason を受け取るときに復活させる)
+
+27. **Bug 27: backend に `today` / `monthly-stats` 系のダッシュボード集計エンドポイントが存在しない**  ※未修正 (要件確認待ち)
+    - admin/staff の `DashboardPage` が `useTodayReservations` / `useMonthlyStatsRange` を呼ぶが、対応する Lambda が `backend/cmd/` 配下に無い
+    - 暫定対応 (frontend): hook の queryFn を `async () => []` に短絡。dashboard は empty state で描画される
+    - 要望: `GET /reservations?studio_id=...&start_date=today&end_date=today` で代替するか、専用集計エンドポイントを追加するか仕様確認が必要
+
+28. **Bug 28: backend `/reservations/me` 等の予約レスポンス shape が frontend の型と乖離 (nested `plan: {...}` vs flat `plan_id`/`plan_name`/`plan_price`/`plan_tax_rate`)**  ✅ **修正済み (2026-05-14, frontend service-layer normalizer)**
+    - backend `helper.BuildReservationResponse` は `Plan PlanInfo` (nested) で返すが、frontend `Reservation` 型は `plan_id` / `plan_name` / `plan_price` / `plan_tax_rate` を平坦に持つ
+    - 同様に `options` の各要素も backend は `{option_id, option_name, price, tax_rate}` の構造体配列、frontend は `ReservationOption` 型
+    - 影響: 既存 UI コード (`ProfilePage`, `ReservationDetailPage`, `ReservationsPage` 等の admin/staff/customer) が `reservation.plan_name` を参照しており、normalizer 無しでは undefined を表示してしまう
+    - 修正内容 (frontend のみ): `reservationService.ts` に `normalizeReservation` ヘルパーを追加し、`getReservation` / `getMyReservations` / `getAllReservations` / `createReservation` / `cancelReservation` / `approveReservation` / `rejectReservation` / `promoteReservation` / `updateReservation` / `getGuestReservation` / `cancelGuestReservation` の全レスポンスを通すよう変更
+    - 残課題: backend 側で flat フィールドを追加するか、frontend `Reservation` 型を nested に変更する設計判断が必要。本セッションは UI 表示優先で frontend 側に normalizer を置く方針を採用
+
+#### 残課題 (Phase 2 で対応)
+
+- UI E2E テスト (Playwright UI mode) は未着手。本セッションは API レベルの smoke test と bundle 検査のみ
+- 新規 admin UI (プラン / オプション / ブロック枠管理) は未実装。`/admin/dashboard` から該当画面への遷移は無し
+- ゲスト予約の作成フォーム (`/reservations/guest/create` 相当) は未実装
+- 問い合わせ機能 (Category 8) は UI/backend 共に未実装
+- 通知センター (Category 9 系) は未実装
+- `Reservation` 型の `is_guest` / `guest_*` / `user_*` フィールドは backend response に含まれないため admin 画面でゲスト予約をハイライトできない可能性。BuildReservationResponse の拡張で対応すべき改善要望として記録
+
+---
+
 **作成日**: 2026-04-28
-**最終更新日**: 2026-05-12
-**バージョン**: 1.3
+**最終更新日**: 2026-05-14
+**バージョン**: 1.4

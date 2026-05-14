@@ -17,7 +17,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Reservation } from '../../types';
-import { mockUpdateReservation, type UpdateReservationRequest } from '../../services/reservationService';
+import { updateReservation, type UpdateReservationRequest } from '../../services/reservationService';
 
 interface ReservationEditModalProps {
   isOpen: boolean;
@@ -54,9 +54,7 @@ export const ReservationEditModal = ({ isOpen, onClose, reservation }: Reservati
 
   // 予約更新ミューテーション
   const updateMutation = useMutation({
-    mutationFn: async (data: UpdateReservationRequest) => {
-      return mockUpdateReservation(reservation.reservation_id, data);
-    },
+    mutationFn: (data: UpdateReservationRequest) => updateReservation(reservation.reservation_id, data),
     onSuccess: () => {
       // キャッシュを無効化して再取得
       queryClient.invalidateQueries({ queryKey: ['reservation', reservation.reservation_id] });

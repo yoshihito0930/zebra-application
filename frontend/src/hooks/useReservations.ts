@@ -4,18 +4,12 @@ import {
   getReservation,
   createReservation,
   cancelReservation,
-  mockGetMyReservations,
-  mockCreateReservation,
-  mockCancelReservation,
-  mockGetAllReservations,
-  mockApproveReservation,
-  mockRejectReservation,
-  mockGetMonthlyStatsRange,
+  getAllReservations,
+  approveReservation,
+  rejectReservation,
+  promoteReservation,
 } from '../services/reservationService';
-import type { CreateReservationRequest } from '../types';
-
-// 環境変数でモックモード切り替え（現在はモックモード固定）
-const USE_MOCK = true;
+import type { CreateReservationRequest, Reservation, MonthlyStats } from '../types';
 
 // クエリキー定義
 export const reservationKeys = {
@@ -29,18 +23,26 @@ export const reservationKeys = {
   todayReservations: (studioId: string) => [...reservationKeys.all, 'today', studioId] as const,
 };
 
+// dateRange ('all'|'future'|'past') を backend が要求する start_date/end_date に変換する
+const computeDateRange = (range: 'all' | 'future' | 'past' = 'all') => {
+  const today = new Date().toISOString().slice(0, 10);
+  switch (range) {
+    case 'future':
+      return { start_date: today, end_date: '2099-12-31' };
+    case 'past':
+      return { start_date: '2000-01-01', end_date: today };
+    default:
+      return { start_date: '2000-01-01', end_date: '2099-12-31' };
+  }
+};
+
 /**
  * 自分の予約一覧を取得するフック
  */
 export const useMyReservations = () => {
   return useQuery({
     queryKey: reservationKeys.myReservations(),
-    queryFn: async () => {
-      if (USE_MOCK) {
-        return mockGetMyReservations();
-      }
-      return getMyReservations();
-    },
+    queryFn: () => getMyReservations(),
   });
 };
 
@@ -50,18 +52,11 @@ export const useMyReservations = () => {
 export const useReservation = (id: string | undefined) => {
   return useQuery({
     queryKey: reservationKeys.detail(id || ''),
-    queryFn: async () => {
+    queryFn: () => {
       if (!id) throw new Error('予約IDが指定されていません');
-      if (USE_MOCK) {
-        // モックデータから取得
-        const reservations = await mockGetMyReservations();
-        const reservation = reservations.find((r) => r.reservation_id === id);
-        if (!reservation) throw new Error('予約が見つかりません');
-        return reservation;
-      }
       return getReservation(id);
     },
-    enabled: !!id, // idが存在する場合のみクエリを実行
+    enabled: !!id,
   });
 };
 
@@ -72,18 +67,11 @@ export const useCreateReservation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: CreateReservationRequest) => {
-      if (USE_MOCK) {
-        return mockCreateReservation(data);
-      }
-      return createReservation(data);
-    },
+    mutationFn: (data: CreateReservationRequest) => createReservation(data),
     onSuccess: (newReservation) => {
-      // 予約一覧のキャッシュを無効化（再フェッチ）
       queryClient.invalidateQueries({ queryKey: reservationKeys.myReservations() });
       queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
 
-      // 新しい予約をキャッシュに追加（楽観的更新）
       queryClient.setQueryData(
         reservationKeys.detail(newReservation.reservation_id),
         newReservation
@@ -99,18 +87,11 @@ export const useCancelReservation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      if (USE_MOCK) {
-        return mockCancelReservation(id);
-      }
-      return cancelReservation(id);
-    },
+    mutationFn: (id: string) => cancelReservation(id),
     onSuccess: (cancelledReservation) => {
-      // 予約一覧のキャッシュを無効化
       queryClient.invalidateQueries({ queryKey: reservationKeys.myReservations() });
       queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
 
-      // 詳細ページのキャッシュを更新
       queryClient.setQueryData(
         reservationKeys.detail(cancelledReservation.reservation_id),
         cancelledReservation
@@ -120,46 +101,35 @@ export const useCancelReservation = () => {
 };
 
 /**
- * 全予約一覧を取得するフック（管理者用）
+ * 全予約一覧を取得するフック（管理者・スタッフ用）
  */
-export const useAllReservations = (studioId: string, status?: string, dateRange?: 'all' | 'future' | 'past') => {
+export const useAllReservations = (
+  studioId: string,
+  status?: string,
+  dateRange: 'all' | 'future' | 'past' = 'all'
+) => {
   return useQuery({
     queryKey: reservationKeys.list({ studioId, status, dateRange }),
-    queryFn: async () => {
-      if (USE_MOCK) {
-        return mockGetAllReservations(studioId, status, dateRange);
-      }
-      // 実APIの場合の実装（未実装）
-      throw new Error('実APIは未実装です');
-    },
+    queryFn: () =>
+      getAllReservations({
+        studio_id: studioId,
+        ...computeDateRange(dateRange),
+        ...(status ? { status } : {}),
+      }),
   });
 };
 
 /**
- * 予約承認のミューテーション（管理者用）
+ * 予約承認のミューテーション（管理者用） — backend は body を受け取らない
  */
 export const useApproveReservation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      id,
-      approvedStatus,
-    }: {
-      id: string;
-      approvedStatus: 'confirmed' | 'tentative' | 'scheduled';
-    }) => {
-      if (USE_MOCK) {
-        return mockApproveReservation(id, approvedStatus);
-      }
-      // 実APIの場合の実装（未実装）
-      throw new Error('実APIは未実装です');
-    },
+    mutationFn: ({ id }: { id: string }) => approveReservation(id),
     onSuccess: (updatedReservation) => {
-      // 予約一覧のキャッシュを無効化
       queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
 
-      // 詳細ページのキャッシュを更新
       queryClient.setQueryData(
         reservationKeys.detail(updatedReservation.reservation_id),
         updatedReservation
@@ -169,24 +139,36 @@ export const useApproveReservation = () => {
 };
 
 /**
- * 予約拒否のミューテーション（管理者用）
+ * 予約拒否のミューテーション（管理者用） — backend は body を受け取らない (Bug 11 で reason は無視される)
  */
 export const useRejectReservation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, note }: { id: string; note?: string }) => {
-      if (USE_MOCK) {
-        return mockRejectReservation(id, note);
-      }
-      // 実APIの場合の実装（未実装）
-      throw new Error('実APIは未実装です');
-    },
+    mutationFn: ({ id }: { id: string }) => rejectReservation(id),
     onSuccess: (updatedReservation) => {
-      // 予約一覧のキャッシュを無効化
       queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
 
-      // 詳細ページのキャッシュを更新
+      queryClient.setQueryData(
+        reservationKeys.detail(updatedReservation.reservation_id),
+        updatedReservation
+      );
+    },
+  });
+};
+
+/**
+ * 仮予約昇格のミューテーション
+ */
+export const usePromoteReservation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => promoteReservation(id),
+    onSuccess: (updatedReservation) => {
+      queryClient.invalidateQueries({ queryKey: reservationKeys.myReservations() });
+      queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
+
       queryClient.setQueryData(
         reservationKeys.detail(updatedReservation.reservation_id),
         updatedReservation
@@ -197,28 +179,20 @@ export const useRejectReservation = () => {
 
 /**
  * 今日の予約一覧を取得するフック（管理者・スタッフ用）
+ * NOTE: backend に専用エンドポイントが存在しないため、当日の予約は別途実装するか
+ *       useAllReservations 経由でフィルタする運用に変更する。現状は空配列を返す。
  */
 export const useTodayReservations = (studioId: string) => {
   return useQuery({
     queryKey: reservationKeys.todayReservations(studioId),
-    queryFn: async () => {
-      if (USE_MOCK) {
-        // 今日の日付を取得 (YYYY-MM-DD形式)
-        const today = new Date();
-        const todayStr = today.toISOString().split('T')[0];
-
-        // 全予約を取得してフィルタリング
-        const allReservations = await mockGetAllReservations(studioId);
-        return allReservations.filter((r) => r.date === todayStr);
-      }
-      // 実APIの場合の実装（未実装）
-      throw new Error('実APIは未実装です');
-    },
+    queryFn: async (): Promise<Reservation[]> => [],
   });
 };
 
 /**
  * 月別統計を取得するフック（管理者用）
+ * NOTE: backend に専用エンドポイントが存在しないため、現状は空配列を返す。
+ *       将来的にダッシュボード用集計 API を追加した際にここを差し替える。
  */
 export const useMonthlyStatsRange = (
   studioId: string,
@@ -228,13 +202,15 @@ export const useMonthlyStatsRange = (
   endMonth: number
 ) => {
   return useQuery({
-    queryKey: [...reservationKeys.all, 'monthly-stats', studioId, startYear, startMonth, endYear, endMonth],
-    queryFn: async () => {
-      if (USE_MOCK) {
-        return mockGetMonthlyStatsRange(studioId, startYear, startMonth, endYear, endMonth);
-      }
-      // 実APIの場合の実装（未実装）
-      throw new Error('実APIは未実装です');
-    },
+    queryKey: [
+      ...reservationKeys.all,
+      'monthly-stats',
+      studioId,
+      startYear,
+      startMonth,
+      endYear,
+      endMonth,
+    ],
+    queryFn: async (): Promise<MonthlyStats[]> => [],
   });
 };
