@@ -133,10 +133,55 @@ export const getSharedAdmin = async (
   return _sharedAdmin;
 };
 
+// 共有 staff。Category 7 の staff endpoint テスト用。
+// admin と同じく signup 経路は持たず、E2E_REUSE_USER_STAFF_EMAIL/PASSWORD で
+// 事前に Cognito 上で custom:role=staff, custom:studio_id=studio_001 を
+// 設定された専用ユーザーを再利用する。
+// プロビジョニング手順は docs/e2e-test-plan.md §7 末尾を参照。
+export type SharedStaff = {
+  payload: SignupPayload;
+  accessToken: string;
+  studioID: string;
+};
+
+let _sharedStaff: SharedStaff | null = null;
+
+export const getSharedStaff = async (
+  request: APIRequestContext
+): Promise<SharedStaff> => {
+  if (_sharedStaff) return _sharedStaff;
+
+  const reuseEmail = process.env.E2E_REUSE_USER_STAFF_EMAIL;
+  const reusePassword = process.env.E2E_REUSE_USER_STAFF_PASSWORD;
+  if (!reuseEmail || !reusePassword) {
+    throw new Error(
+      'E2E_REUSE_USER_STAFF_EMAIL / E2E_REUSE_USER_STAFF_PASSWORD must be set. ' +
+        'See docs/e2e-test-plan.md §7 for provisioning steps.'
+    );
+  }
+  const loginRes = await loginApi(request, { email: reuseEmail, password: reusePassword });
+  expect(loginRes.status(), `staff login must succeed: ${await loginRes.text()}`).toBe(200);
+  const body = await loginRes.json();
+  expect(body.user?.role, 'staff user must have role=staff in login response').toBe('staff');
+  _sharedStaff = {
+    payload: {
+      name: body.user?.name ?? 'e2e staff',
+      email: reuseEmail,
+      password: reusePassword,
+      phone_number: '090-0000-2222',
+      address: '東京都',
+    },
+    accessToken: body.access_token,
+    studioID: body.user?.studio_id ?? 'studio_001',
+  };
+  return _sharedStaff;
+};
+
 export const test = base.extend<{
   sharedCustomer: SharedCustomer;
   sharedCustomer2: SharedCustomer;
   sharedAdmin: SharedAdmin;
+  sharedStaff: SharedStaff;
 }>({
   sharedCustomer: async ({ request }, use) => {
     const sc = await getSharedCustomer(request);
@@ -149,5 +194,9 @@ export const test = base.extend<{
   sharedAdmin: async ({ request }, use) => {
     const a = await getSharedAdmin(request);
     await use(a);
+  },
+  sharedStaff: async ({ request }, use) => {
+    const s = await getSharedStaff(request);
+    await use(s);
   },
 });

@@ -706,11 +706,64 @@ aws dynamodb update-item --region ap-northeast-1 --table-name dev-users \
 
 | ステータス | テストID | テスト内容 | 入力データ | 期待結果 | 優先度 | メモ |
 |----------|---------|----------|----------|---------|--------|------|
-| ⬜ | STAFF-001 | スタッフが所属スタジオの予約一覧を取得できる | studio_id、start_date、end_date | 200 OK、予約一覧が返される | 高 | |
-| ⬜ | STAFF-002 | スタッフが予約詳細を取得できる | reservation_id | 200 OK、予約詳細が返される | 中 | |
-| ⬜ | STAFF-003 | スタッフが予約を承認しようとする | reservation_id | 403 Forbidden、FORBIDDEN_ROLE | 高 | |
-| ⬜ | STAFF-004 | スタッフが予約を編集しようとする | reservation_id | 403 Forbidden、FORBIDDEN_ROLE | 高 | |
-| ⬜ | STAFF-005 | スタッフがプランを作成しようとする | studio_id、plan_name | 403 Forbidden、FORBIDDEN_ROLE | 中 | |
+| ✅ | STAFF-001 | スタッフが所属スタジオの予約一覧を取得できる | studio_id、start_date、end_date | 200 OK、予約一覧が返される | 高 | 2026-05-14 PASS。customer が seed した予約 (offset 600) が `GET /reservations?studio_id=studio_001` の結果に含まれることを確認 |
+| ✅ | STAFF-002 | スタッフが予約詳細を取得できる | reservation_id | 200 OK、予約詳細が返される | 中 | 2026-05-14 PASS。customer 作成の予約を staff トークンで `GET /reservations/{id}` 取得、`reservation_id`/`date` 一致を確認 |
+| ✅ | STAFF-003 | スタッフが予約を承認しようとする | reservation_id | 403 Forbidden、FORBIDDEN_ROLE | 高 | 2026-05-14 PASS。`PATCH /reservations/{id}/approve` が 403 FORBIDDEN_ROLE を返すことを確認 |
+| ✅ | STAFF-004 | スタッフが予約を編集しようとする | reservation_id | 403 Forbidden、FORBIDDEN_ROLE | 高 | 2026-05-14 PASS。`PATCH /reservations/{id}` (note 更新) が 403 FORBIDDEN_ROLE を返すことを確認 |
+| ✅ | STAFF-005 | スタッフがプランを作成しようとする | studio_id、plan_name | 403 Forbidden、FORBIDDEN_ROLE | 中 | 2026-05-14 PASS。`POST /plans` (有効な body) が 403 FORBIDDEN_ROLE を返すことを確認 |
+
+### 7.2 Category 7 実行サマリー (2026-05-14)
+
+- **実行環境**: Node.js v22.4.1 / Playwright `--project=api` / API base `https://ynnrspq7rl.execute-api.ap-northeast-1.amazonaws.com/dev/`
+- **新規 fixture**: `getSharedStaff` (`e2e/fixtures/auth.ts`) — `E2E_REUSE_USER_STAFF_EMAIL` / `E2E_REUSE_USER_STAFF_PASSWORD` の事前 provisioning が前提
+- **新規 spec**: `e2e/staff/reservation-readonly.api.spec.ts` (`adminFutureDateStr` の baseOffset は 600..603)
+- **API wrapper の新規追加**: なし (既存の `listAdminReservationsApi`, `getReservationApi`, `approveReservationApi`, `updateReservationApi`, `createPlanApi`, `createReservationApi` を流用)
+- **Backend 修正**: なし (Category 7 は認可境界テストのみ。`backend/internal/middleware/authz.go` の `RoleStaff` 定義と handler 側の `middleware.Compose(..., middleware.RoleStaff)` が既に揃っており、追加実装は不要だった)
+- **検出された不具合**: なし (本セッションで実施した STAFF-001〜005 はすべて期待通りの結果を返した)
+
+#### カテゴリ別実行結果
+
+| サブカテゴリ | 総数 | PASS | FAIL | SKIP | 合格率（実行分） |
+|------------|------|------|------|------|--------|
+| 7.1 予約閲覧 / 認可境界 | 5 | 5 | 0 | 0 | 100% |
+| **合計** | **5** | **5** | **0** | **0** | **100%** |
+
+#### リグレッション確認
+
+- `e2e/customer/` (31 件) + `e2e/guest/` (30 件) = 60 件中 40 PASS / 20 SKIP / 0 FAIL
+- `e2e/admin/` (48 件): 41 PASS / 6 SKIP / 0 FAIL (※ ADMIN-103 が `BLOCKED_SLOT_CONFLICT` で 1 回 FAIL したが、再実行で PASS。日付 random offset が過去セッションのブロック枠と衝突した一時的事象で、本変更とは無関係)
+
+#### Staff ユーザー プロビジョニング手順 (再実行時の参考)
+
+```bash
+# 1. Cognito User Pool ID 取得 (admin と共通)
+cd terraform/environments/dev && POOL=$(terraform output -raw cognito_user_pool_id)
+
+# 2. 専用 staff アカウントを signup (既存なら 409 - スキップ可)
+curl -sS -X POST https://ynnrspq7rl.execute-api.ap-northeast-1.amazonaws.com/dev/auth/signup \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"E2E Staff","email":"e2estaff@example.com","password":"StaffPass123!","phone_number":"090-0000-2222","address":"東京都"}'
+
+# 3. custom:role=staff と custom:studio_id=studio_001 を一括付与
+aws cognito-idp admin-update-user-attributes \
+  --region ap-northeast-1 --user-pool-id "$POOL" --username e2estaff@example.com \
+  --user-attributes Name=custom:role,Value=staff Name=custom:studio_id,Value=studio_001
+
+# 4. DynamoDB users テーブルの role / studio_id も同期 (login response の整合性のため)
+aws dynamodb update-item --region ap-northeast-1 --table-name dev-users \
+  --key '{"user_id":{"S":"<user_id from signup response>"}}' \
+  --update-expression "SET #r = :role, studio_id = :sid" \
+  --expression-attribute-names '{"#r":"role"}' \
+  --expression-attribute-values '{":role":{"S":"staff"},":sid":{"S":"studio_001"}}'
+
+# 5. テスト実行 (admin / customer の env と併用)
+E2E_SKIP_WEBSERVER=1 \
+  E2E_REUSE_USER_EMAIL=e2ecustomer1@example.com E2E_REUSE_USER_PASSWORD=CustPass123! \
+  E2E_REUSE_USER2_EMAIL=e2ecustomer2@example.com E2E_REUSE_USER2_PASSWORD=CustPass123! \
+  E2E_REUSE_USER_ADMIN_EMAIL=e2eadmin@example.com E2E_REUSE_USER_ADMIN_PASSWORD=AdminPass123! \
+  E2E_REUSE_USER_STAFF_EMAIL=e2estaff@example.com E2E_REUSE_USER_STAFF_PASSWORD=StaffPass123! \
+  npx playwright test --project=api e2e/staff/
+```
 
 ---
 
