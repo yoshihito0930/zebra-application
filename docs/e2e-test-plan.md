@@ -1049,11 +1049,12 @@ E2E_SKIP_WEBSERVER=1 \
     - 修正内容: 上記 13 個のサブパス resource を `for_each` に追加。`redeploy_nonce` を `2026-05-14-bug30-cors-options` に bump して API Gateway deployment を再生成
     - 検出経緯: UI-ADMIN-001 で「承認」ボタンクリック後、ブラウザコンソールに `CORS policy: Response to preflight request doesn't pass access control check` が出ていた
 
-31. **Bug 31: frontend admin の status フィルタで「すべて (`all`)」を選ぶと `?status=all` がクエリに付与され、backend が `entity.ReservationStatus("all")` で GSI1 を引いて 0 件を返す**  ⚠️ **未修正 (回避策あり、UI 動作には軽い支障)**
+31. **Bug 31: frontend admin の status フィルタで「すべて (`all`)」を選ぶと `?status=all` がクエリに付与され、backend が `entity.ReservationStatus("all")` で GSI1 を引いて 0 件を返す**  ✅ **修正済み (2026-05-14)**
     - `frontend/src/hooks/useReservations.ts:117` で `(status ? { status } : {})` と書かれており `'all'` は truthy のため API に `status=all` が送られる
     - backend `reservation-list/main.go` は status 文字列をそのまま `entity.ReservationStatus` にキャストし `FindByStudioAndStatus` を呼ぶため空配列が返る
     - 影響: admin UI の「すべて (status)」フィルタで予約が一切表示されない。回避策として個別 status (pending/confirmed/...) フィルタを使えば見える
-    - 推奨修正: frontend で `status === 'all'` の場合は status をクエリに付けない (`status && status !== 'all' ? { status } : {}`) に変更。bigfix 1 行
+    - 修正内容 (frontend のみ): `useAllReservations` の status クエリ組み立てを `(status && status !== 'all' ? { status } : {})` に変更。'all' の場合は status パラメータを付けず backend は dateRange 範囲の全 status を返す
+    - 検証: UI-ADMIN-001 末尾に「すべて」フィルタで承認済み予約行が見えることを確認するステップ (g) を追加。既存 UI E2E 4 件は引き続き PASS
     - 検出経緯: UI-ADMIN-001 の承認後の status バッジ検証で「すべて」に戻すと 0 件になり気づいた
 
 #### 残課題 (Phase 2 で対応)
@@ -1063,7 +1064,6 @@ E2E_SKIP_WEBSERVER=1 \
 - 問い合わせ機能 (Category 8) は UI/backend 共に未実装
 - 通知センター (Category 9 系) は未実装
 - `Reservation` 型の `is_guest` / `guest_*` / `user_*` フィールドは backend response に含まれないため admin 画面でゲスト予約をハイライトできない可能性。BuildReservationResponse の拡張で対応すべき改善要望として記録
-- Bug 31 (frontend で `status='all'` を送らない 1 行修正) は未対応
 - Bug 29 で導入された `studio_id_status` 属性は新規/更新予約にのみ付与される。既存 376 件は GSI1 検索の対象外なので、運用上必要であればバックフィル script (`UpdateItem` で `studio_id_status` を SET) を実施する
 
 ### 12.2 UI E2E テスト (Playwright UI, 2026-05-14)

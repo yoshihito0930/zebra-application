@@ -114,7 +114,7 @@ export const useAllReservations = (
       getAllReservations({
         studio_id: studioId,
         ...computeDateRange(dateRange),
-        ...(status ? { status } : {}),
+        ...(status && status !== 'all' ? { status } : {}),
       }),
   });
 };

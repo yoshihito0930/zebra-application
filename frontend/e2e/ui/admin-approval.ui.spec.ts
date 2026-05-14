@@ -58,8 +58,6 @@ test.describe('UI-ADMIN approval flow', () => {
     await expect(page.getByText('予約を承認しました')).toBeVisible({ timeout: 15_000 });
 
     // (f) フィルタを「本予約」(confirmed) に変更し、承認済みの該当予約が status=confirmed で見えることを確認。
-    // 注: status フィルタを「すべて (all)」に戻すと frontend が status=all をクエリに付けてしまい
-    // backend が 0 件を返すため (Bug 31, 別 issue)、ここでは confirmed フィルタで確認する。
     await page.getByRole('combobox').first().selectOption('confirmed');
 
     // status バッジが「本予約」に変化したことを行内で確認 (React Query 再取得待ち)
@@ -69,6 +67,14 @@ test.describe('UI-ADMIN approval flow', () => {
       const refreshedRow = page.locator('tr', { hasText: reservationId });
       await expect(refreshedRow).toBeVisible();
       await expect(refreshedRow.getByText('本予約').first()).toBeVisible();
+    }).toPass({ timeout: 30_000 });
+
+    // (g) Bug 31 修正検証: status フィルタを「すべて (all)」に戻しても該当行が表示されること。
+    // useAllReservations が status='all' をクエリに付けないようになったため backend は全 status を返す。
+    await page.getByRole('combobox').first().selectOption('all');
+    await expect(async () => {
+      const allRow = page.locator('tr', { hasText: reservationId });
+      await expect(allRow).toBeVisible();
     }).toPass({ timeout: 30_000 });
   });
 });
