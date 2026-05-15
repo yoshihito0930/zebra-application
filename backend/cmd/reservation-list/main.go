@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -10,19 +11,21 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/yoshihito0930/zebra-application/internal/domain/entity"
+	"github.com/yoshihito0930/zebra-application/internal/helper"
 	"github.com/yoshihito0930/zebra-application/internal/middleware"
+	"github.com/yoshihito0930/zebra-application/internal/repository"
 	dynamodbRepo "github.com/yoshihito0930/zebra-application/internal/repository/dynamodb"
 	"github.com/yoshihito0930/zebra-application/internal/usecase"
 	"github.com/yoshihito0930/zebra-application/internal/validator"
 	"github.com/yoshihito0930/zebra-application/pkg/apierror"
 	"github.com/yoshihito0930/zebra-application/pkg/response"
-	"github.com/yoshihito0930/zebra-application/internal/repository"
 )
+
+const userFetchConcurrency = 10
 
 var (
 	reservationUsecase *usecase.ReservationUsecase
-	planRepo           repository.PlanRepository
-	optionRepo         repository.OptionRepository
+	userRepo           repository.UserRepository
 )
 
 func init() {
@@ -33,9 +36,9 @@ func init() {
 
 	dynamoClient := dynamodb.NewFromConfig(cfg)
 	reservationRepo := dynamodbRepo.NewReservationRepository(dynamoClient)
-	userRepo := dynamodbRepo.NewUserRepository(dynamoClient)
-	planRepo = dynamodbRepo.NewPlanRepository(dynamoClient)
-	optionRepo = dynamodbRepo.NewOptionRepository(dynamoClient)
+	userRepo = dynamodbRepo.NewUserRepository(dynamoClient)
+	planRepo := dynamodbRepo.NewPlanRepository(dynamoClient)
+	optionRepo := dynamodbRepo.NewOptionRepository(dynamoClient)
 	blockedSlotRepo := dynamodbRepo.NewBlockedSlotRepository(dynamoClient)
 	studioRepo := dynamodbRepo.NewStudioRepository(dynamoClient)
 
@@ -50,16 +53,23 @@ func init() {
 }
 
 type ReservationSummary struct {
-	ReservationID    string `json:"reservation_id"`
-	UserID           string `json:"user_id"`
-	ReservationType  string `json:"reservation_type"`
-	Status           string `json:"status"`
-	PlanName         string `json:"plan_name"`
-	Date             string `json:"date"`
-	StartTime        string `json:"start_time"`
-	EndTime          string `json:"end_time"`
-	PhotographerName string `json:"photographer_name"`
-	NumberOfPeople   int    `json:"number_of_people"`
+	ReservationID    string              `json:"reservation_id"`
+	StudioID         string              `json:"studio_id"`
+	UserID           string              `json:"user_id"`
+	UserName         string              `json:"user_name,omitempty"`
+	UserEmail        string              `json:"user_email,omitempty"`
+	IsGuest          bool                `json:"is_guest"`
+	GuestName        string              `json:"guest_name,omitempty"`
+	GuestEmail       string              `json:"guest_email,omitempty"`
+	ReservationType  string              `json:"reservation_type"`
+	Status           string              `json:"status"`
+	Plan             helper.PlanInfo     `json:"plan"`
+	Options          []helper.OptionInfo `json:"options"`
+	Date             string              `json:"date"`
+	StartTime        string              `json:"start_time"`
+	EndTime          string              `json:"end_time"`
+	PhotographerName string              `json:"photographer_name"`
+	NumberOfPeople   int                 `json:"number_of_people"`
 }
 
 type ReservationListResponse struct {
@@ -124,34 +134,13 @@ func listReservationsHandler(ctx context.Context, request events.APIGatewayProxy
 		return response.ErrorWithCORS(apierror.ErrInternalServer), nil
 	}
 
-	// レスポンスを作成（管理用なので簡略化、Plan名は取得する）
+	// 会員予約の user_id を重複排除して並列で取得
+	users := fetchUsersForReservations(ctx, reservations)
+
+	// レスポンスを作成（プラン・オプションは予約に保存済みのスナップショットを利用）
 	summaries := make([]ReservationSummary, len(reservations))
 	for i, r := range reservations {
-		// Plan名を取得
-		planName := ""
-		plan, err := planRepo.FindByID(ctx, r.StudioID, r.PlanID)
-		if err == nil && plan != nil {
-			planName = plan.PlanName
-		}
-
-		// UserIDの型変換（*string → string）
-		var userID string
-		if r.UserID != nil {
-			userID = *r.UserID
-		}
-
-		summaries[i] = ReservationSummary{
-			ReservationID:    r.ReservationID,
-			UserID:           userID,
-			ReservationType:  string(r.ReservationType),
-			Status:           string(r.Status),
-			PlanName:         planName,
-			Date:             r.Date.Format("2006-01-02"),
-			StartTime:        r.StartTime,
-			EndTime:          r.EndTime,
-			PhotographerName: r.PhotographerName,
-			NumberOfPeople:   r.NumberOfPeople,
-		}
+		summaries[i] = buildReservationSummary(r, users)
 	}
 
 	resp := ReservationListResponse{
@@ -159,6 +148,105 @@ func listReservationsHandler(ctx context.Context, request events.APIGatewayProxy
 	}
 
 	return response.OKWithCORS(resp), nil
+}
+
+// fetchUsersForReservations は会員予約の予約者ユーザーを並列で取得する。
+// ゲスト予約と user_id が無い予約は除外する。取得失敗時は警告ログのみ出力し、
+// マップに含めない（フロント側で user_id へのフォールバック表示が動く）。
+func fetchUsersForReservations(ctx context.Context, reservations []*entity.Reservation) map[string]*entity.User {
+	uniqueUserIDs := make(map[string]struct{})
+	for _, r := range reservations {
+		if r.IsGuest || r.UserID == nil || *r.UserID == "" {
+			continue
+		}
+		uniqueUserIDs[*r.UserID] = struct{}{}
+	}
+
+	users := make(map[string]*entity.User, len(uniqueUserIDs))
+	if len(uniqueUserIDs) == 0 {
+		return users
+	}
+
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, userFetchConcurrency)
+
+	for userID := range uniqueUserIDs {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(uid string) {
+			defer wg.Done()
+			defer func() { <-sem }()
+
+			user, err := userRepo.FindByID(ctx, uid)
+			if err != nil {
+				log.Printf("Warning: Failed to fetch user %s: %v", uid, err)
+				return
+			}
+			if user == nil {
+				return
+			}
+			mu.Lock()
+			users[uid] = user
+			mu.Unlock()
+		}(userID)
+	}
+	wg.Wait()
+
+	return users
+}
+
+// buildReservationSummary は予約エンティティから一覧用サマリを組み立てる。
+// プラン・オプションは予約作成時のスナップショットを使う（料金改定の影響を受けない）。
+func buildReservationSummary(r *entity.Reservation, users map[string]*entity.User) ReservationSummary {
+	options := make([]helper.OptionInfo, 0, len(r.OptionSnapshots))
+	for _, opt := range r.OptionSnapshots {
+		options = append(options, helper.OptionInfo{
+			OptionID:   opt.OptionID,
+			OptionName: opt.OptionName,
+			Price:      opt.Price,
+			TaxRate:    opt.TaxRate,
+		})
+	}
+
+	summary := ReservationSummary{
+		ReservationID:   r.ReservationID,
+		StudioID:        r.StudioID,
+		ReservationType: string(r.ReservationType),
+		Status:          string(r.Status),
+		Plan: helper.PlanInfo{
+			PlanID:   r.PlanID,
+			PlanName: r.PlanName,
+			Price:    r.PlanPrice,
+			TaxRate:  r.PlanTaxRate,
+		},
+		Options:          options,
+		Date:             r.Date.Format("2006-01-02"),
+		StartTime:        r.StartTime,
+		EndTime:          r.EndTime,
+		PhotographerName: r.PhotographerName,
+		NumberOfPeople:   r.NumberOfPeople,
+		IsGuest:          r.IsGuest,
+	}
+
+	if r.UserID != nil {
+		summary.UserID = *r.UserID
+		if user, ok := users[*r.UserID]; ok && user != nil {
+			summary.UserName = user.Name
+			summary.UserEmail = user.Email
+		}
+	}
+
+	if r.IsGuest {
+		if r.GuestName != nil {
+			summary.GuestName = *r.GuestName
+		}
+		if r.GuestEmail != nil {
+			summary.GuestEmail = *r.GuestEmail
+		}
+	}
+
+	return summary
 }
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
