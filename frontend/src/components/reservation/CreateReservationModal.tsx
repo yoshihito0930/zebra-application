@@ -662,11 +662,23 @@ export default function CreateReservationModal({
                 {/* 参加人数 */}
                 <FormControl isInvalid={!!errors.number_of_people}>
                   <FormLabel>参加人数</FormLabel>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={100}
-                    {...register('number_of_people', { valueAsNumber: true })}
+                  <Controller
+                    name="number_of_people"
+                    control={control}
+                    render={({ field: { value, onChange, onBlur, ref } }) => (
+                      <Input
+                        type="number"
+                        min={1}
+                        max={100}
+                        ref={ref}
+                        onBlur={onBlur}
+                        value={value ?? ''}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          onChange(raw === '' ? undefined : Number(raw));
+                        }}
+                      />
+                    )}
                   />
                   <FormErrorMessage>{String(errors.number_of_people?.message || '')}</FormErrorMessage>
                 </FormControl>
@@ -1000,11 +1012,23 @@ export default function CreateReservationModal({
                       {/* 参加人数 */}
                       <FormControl isInvalid={!!errors.number_of_people}>
                         <FormLabel>参加人数</FormLabel>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={100}
-                          {...register('number_of_people', { valueAsNumber: true })}
+                        <Controller
+                          name="number_of_people"
+                          control={control}
+                          render={({ field: { value, onChange, onBlur, ref } }) => (
+                            <Input
+                              type="number"
+                              min={1}
+                              max={100}
+                              ref={ref}
+                              onBlur={onBlur}
+                              value={value ?? ''}
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                onChange(raw === '' ? undefined : Number(raw));
+                              }}
+                            />
+                          )}
                         />
                         <FormErrorMessage>{String(errors.number_of_people?.message || '')}</FormErrorMessage>
                       </FormControl>
