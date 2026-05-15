@@ -460,7 +460,7 @@ export default function CreateReservationModal({
             )}
 
             {!isLoadingData && !dataError && (
-              <Tabs index={tabIndex} onChange={handleTabChange} variant="enclosed" colorScheme="brand">
+              <Tabs index={tabIndex} onChange={handleTabChange} variant="enclosed" colorScheme="brand" isLazy>
                 <TabList>
                   {isAuthenticated && <Tab>会員として予約</Tab>}
                   <Tab>ゲストとして予約</Tab>
