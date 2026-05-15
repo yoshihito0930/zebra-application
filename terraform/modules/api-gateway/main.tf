@@ -321,10 +321,15 @@ resource "aws_api_gateway_deployment" "main" {
 
   # デプロイメントを強制的に更新
   # 2026-05-13: drift 復旧のため redeploy_nonce を追加。手動で bump することで強制再デプロイ可能。
+  # 2026-05-15: GatewayResponse を triggers に含め、401/403 への CORS ヘッダー追加がデプロイされるようにする。
   triggers = {
     redeployment = sha1(jsonencode([
       aws_api_gateway_rest_api.main.body,
       module.lambda_integration,
+      aws_api_gateway_gateway_response.unauthorized,
+      aws_api_gateway_gateway_response.access_denied,
+      aws_api_gateway_gateway_response.default_4xx,
+      aws_api_gateway_gateway_response.default_5xx,
       var.redeploy_nonce,
     ]))
   }
@@ -474,5 +479,51 @@ resource "aws_api_gateway_integration_response" "options" {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,PATCH,DELETE,OPTIONS'"
     "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
+# GatewayResponse: Authorizer 拒否などで API Gateway 自身が返すエラー応答にも CORS ヘッダーを乗せる。
+# これが無いと、トークン期限切れ時のブラウザ側 fetch が CORS error として失敗し、
+# axios の interceptor は error.response が undefined になるため 401 を検出できず、
+# 自動ログアウト導線が機能しない。
+resource "aws_api_gateway_gateway_response" "unauthorized" {
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  response_type = "UNAUTHORIZED"
+  status_code   = "401"
+
+  response_parameters = {
+    "gatewayresponse.header.Access-Control-Allow-Origin"  = "'*'"
+    "gatewayresponse.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization'"
+  }
+}
+
+resource "aws_api_gateway_gateway_response" "access_denied" {
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  response_type = "ACCESS_DENIED"
+  status_code   = "403"
+
+  response_parameters = {
+    "gatewayresponse.header.Access-Control-Allow-Origin"  = "'*'"
+    "gatewayresponse.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization'"
+  }
+}
+
+resource "aws_api_gateway_gateway_response" "default_4xx" {
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  response_type = "DEFAULT_4XX"
+
+  response_parameters = {
+    "gatewayresponse.header.Access-Control-Allow-Origin"  = "'*'"
+    "gatewayresponse.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization'"
+  }
+}
+
+resource "aws_api_gateway_gateway_response" "default_5xx" {
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  response_type = "DEFAULT_5XX"
+
+  response_parameters = {
+    "gatewayresponse.header.Access-Control-Allow-Origin"  = "'*'"
+    "gatewayresponse.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization'"
   }
 }

@@ -1,6 +1,7 @@
 import axios, { AxiosError } from 'axios';
 import type { AxiosInstance, AxiosRequestConfig } from 'axios';
 import type { APIError } from '../types';
+import { useAuthStore } from '../stores/authStore';
 
 // API Base URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
@@ -30,18 +31,32 @@ apiClient.interceptors.request.use(
   }
 );
 
+// 401 検出時にリダイレクトしないページ。ログイン処理自体の 401（パスワード誤りなど）や、
+// ゲストでも閲覧する画面で誤ってログイン画面に飛ばさないようにする。
+const SESSION_EXPIRY_EXEMPT_PATHS = [
+  '/login',
+  '/signup',
+  '/forgot-password',
+  '/reset-password',
+  '/verify-email',
+  '/reservations/guest',
+];
+
 // レスポンスインターセプター（エラーハンドリング）
 apiClient.interceptors.response.use(
   (response) => {
     return response;
   },
   (error: AxiosError<APIError>) => {
-    // 401エラー（未認証）の場合、ログイン画面へリダイレクト
+    // 401エラー（トークン期限切れ・無効）の場合、認証状態をクリアしてログイン画面へ
     if (error.response?.status === 401) {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      const path = window.location.pathname;
+      const onExemptPage = SESSION_EXPIRY_EXEMPT_PATHS.some((p) => path.startsWith(p));
+      if (!onExemptPage) {
+        // Zustand store ごとクリア（localStorage 直消しだと isAuthenticated が残る）
+        useAuthStore.getState().clearAuth();
+        window.location.href = '/login?session_expired=1';
+      }
     }
 
     // エラーメッセージの整形

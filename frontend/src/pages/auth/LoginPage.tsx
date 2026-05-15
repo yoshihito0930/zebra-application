@@ -38,7 +38,7 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
-  // メール検証完了/パスワードリセット完了時の通知
+  // メール検証完了/パスワードリセット完了/セッション切れ時の通知
   useEffect(() => {
     if (searchParams.get('verified') === 'true') {
       toast({
@@ -57,6 +57,17 @@ export default function LoginPage() {
         duration: 5000,
         isClosable: true,
       });
+    }
+    if (searchParams.get('session_expired') === '1') {
+      toast({
+        title: 'セッションが切れました',
+        description: '再度ログインしてください',
+        status: 'warning',
+        duration: 6000,
+        isClosable: true,
+      });
+      // URL からクエリを除去（リロードや戻る操作で再通知されないように）
+      window.history.replaceState({}, '', '/login');
     }
   }, [searchParams, toast]);
 
