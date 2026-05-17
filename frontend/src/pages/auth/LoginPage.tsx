@@ -112,9 +112,9 @@ export default function LoginPage() {
             <AlertIcon />
             <VStack align="flex-start" spacing={1} fontSize="xs">
               <Text fontWeight="bold">テストユーザー:</Text>
-              <Text>顧客: customer@example.com / password</Text>
-              <Text>管理者: admin@example.com / password</Text>
-              <Text>スタッフ: staff@example.com / password</Text>
+              <Text>顧客: e2ecustomer1@example.com / CustPass123!</Text>
+              <Text>管理者: e2eadmin@example.com / AdminPass123!</Text>
+              <Text>スタッフ: e2estaff@example.com / StaffPass123!</Text>
             </VStack>
           </Alert>
 
