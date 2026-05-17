@@ -14,6 +14,7 @@ import {
   useToast,
 } from '@chakra-ui/react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { Reservation } from '../../types';
 import { useApproveReservation, useRejectReservation } from '../../hooks/useReservations';
 
@@ -39,6 +40,7 @@ export const ReservationApprovalDialog = ({
   );
   const [rejectNote, setRejectNote] = useState('');
   const toast = useToast();
+  const navigate = useNavigate();
 
   // React Queryで承認・拒否処理
   const approveMutation = useApproveReservation();
@@ -57,6 +59,7 @@ export const ReservationApprovalDialog = ({
             });
             onSuccess();
             onClose();
+            navigate('/admin/calendar');
           },
           onError: (error) => {
             toast({
@@ -80,6 +83,7 @@ export const ReservationApprovalDialog = ({
             });
             onSuccess();
             onClose();
+            navigate('/admin/calendar');
           },
           onError: (error) => {
             toast({
