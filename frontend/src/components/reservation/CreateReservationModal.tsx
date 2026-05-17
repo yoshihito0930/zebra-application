@@ -306,8 +306,60 @@ export default function CreateReservationModal({
     });
   };
 
+  // 「時」全ての分(0/15/30/45)がブロックされているか
+  const isHourFullyBlocked = (
+    hour: number,
+    blockedRanges: Array<{ startMin: number; endMin: number }>
+  ) =>
+    blockedRanges.length > 0 &&
+    minuteOptions.every((m) => isTimeSlotDisabled(hour, m, blockedRanges));
+
+  // [startMin, endMin) がブロック範囲と交差するか
+  const rangeIntersectsBlocked = (
+    startMin: number,
+    endMin: number,
+    blockedRanges: Array<{ startMin: number; endMin: number }>
+  ) => blockedRanges.some((r) => startMin < r.endMin && endMin > r.startMin);
+
+  // 終了時刻スロットが無効か（exclusive end）
+  const isEndTimeSlotDisabled = (
+    hour: number,
+    minute: number,
+    blockedRanges: Array<{ startMin: number; endMin: number }>
+  ) => {
+    const endTotalMin = hour * 60 + minute;
+    // 終了時刻自体がブロック範囲の内側に着地する場合 (startMin < e <= endMin)
+    if (blockedRanges.some((r) => endTotalMin > r.startMin && endTotalMin <= r.endMin)) {
+      return true;
+    }
+    if (startHour === null || startMinute === null) return false;
+    const startTotalMin = startHour * 60 + startMinute;
+    if (endTotalMin <= startTotalMin) return false; // 日跨ぎ扱いは別途
+    return rangeIntersectsBlocked(startTotalMin, endTotalMin, blockedRanges);
+  };
+
   // 現在の予約種別と日付に基づいてブロックされた時間帯を取得
   const blockedTimeRanges = getBlockedTimeRanges(selectedDate || '', selectedReservationType);
+
+  // バナー表示用: 既存予約とバッファ込みのブロック範囲をメッセージ化
+  const fmtMin = (totalMin: number) => {
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  };
+
+  const blockedRangeMessages = (() => {
+    if (!selectedDate || blockedTimeRanges.length === 0) return [];
+    const dateRes = reservations.filter(
+      (r) => r.date === selectedDate &&
+        (r.status === 'confirmed' || r.status === 'tentative')
+    );
+    return dateRes.map((r) => {
+      const s = timeToMinutes(r.start_time);
+      const e = timeToMinutes(r.end_time);
+      return `${r.start_time}〜${r.end_time}の予約があります（前後1時間を含め${fmtMin(Math.max(0, s - 60))}〜${fmtMin(Math.min(24 * 60, e + 60))}は予約不可）`;
+    });
+  })();
 
   // タブ変更時の処理
   const handleTabChange = (index: number) => {
@@ -541,6 +593,19 @@ export default function CreateReservationModal({
                 </FormControl>
 
                 <VStack spacing={4} align="stretch">
+                  {blockedRangeMessages.length > 0 && (
+                    <Alert status="warning" variant="left-accent" borderRadius="md" alignItems="flex-start">
+                      <AlertIcon />
+                      <Box>
+                        <Text fontWeight="bold" mb={1}>選択された日付に予約不可の時間帯があります</Text>
+                        <VStack align="start" spacing={0}>
+                          {blockedRangeMessages.map((msg, i) => (
+                            <Text key={i} fontSize="sm">{msg}</Text>
+                          ))}
+                        </VStack>
+                      </Box>
+                    </Alert>
+                  )}
                   <FormControl isInvalid={!!errors.start_time}>
                     <FormLabel>開始時刻</FormLabel>
                     <HStack>
@@ -550,11 +615,14 @@ export default function CreateReservationModal({
                         onChange={(e) => setStartHour(e.target.value ? parseInt(e.target.value) : null)}
                         flex={1}
                       >
-                        {startHourOptions.map((hour) => (
-                          <option key={hour} value={hour}>
-                            {String(hour).padStart(2, '0')}時
-                          </option>
-                        ))}
+                        {startHourOptions.map((hour) => {
+                          const disabled = isHourFullyBlocked(hour, blockedTimeRanges);
+                          return (
+                            <option key={hour} value={hour} disabled={disabled}>
+                              {String(hour).padStart(2, '0')}時{disabled && ' (予約不可)'}
+                            </option>
+                          );
+                        })}
                       </Select>
                       <Select
                         placeholder="分"
@@ -586,10 +654,13 @@ export default function CreateReservationModal({
                       >
                         {endHourOptions.map((hour) => {
                           const isOvernight = isOvernightTime(hour);
+                          const disabled = !isOvernight && minuteOptions.every((m) =>
+                            isEndTimeSlotDisabled(hour, m, blockedTimeRanges)
+                          );
                           return (
-                            <option key={hour} value={hour}>
+                            <option key={hour} value={hour} disabled={disabled}>
                               {isOvernight && '翌 '}
-                              {String(hour).padStart(2, '0')}時
+                              {String(hour).padStart(2, '0')}時{disabled && ' (予約不可)'}
                             </option>
                           );
                         })}
@@ -600,11 +671,15 @@ export default function CreateReservationModal({
                         onChange={(e) => setEndMinute(e.target.value ? parseInt(e.target.value) : null)}
                         flex={1}
                       >
-                        {minuteOptions.map((minute) => (
-                          <option key={minute} value={minute}>
-                            {String(minute).padStart(2, '0')}分
-                          </option>
-                        ))}
+                        {minuteOptions.map((minute) => {
+                          const disabled = endHour !== null && !isOvernightTime(endHour) &&
+                            isEndTimeSlotDisabled(endHour, minute, blockedTimeRanges);
+                          return (
+                            <option key={minute} value={minute} disabled={disabled}>
+                              {String(minute).padStart(2, '0')}分{disabled && ' (予約不可)'}
+                            </option>
+                          );
+                        })}
                       </Select>
                     </HStack>
                     <FormErrorMessage>{String(errors.end_time?.message || '')}</FormErrorMessage>
@@ -891,6 +966,19 @@ export default function CreateReservationModal({
                       </FormControl>
 
                       <VStack spacing={4} align="stretch">
+                        {blockedRangeMessages.length > 0 && (
+                          <Alert status="warning" variant="left-accent" borderRadius="md" alignItems="flex-start">
+                            <AlertIcon />
+                            <Box>
+                              <Text fontWeight="bold" mb={1}>選択された日付に予約不可の時間帯があります</Text>
+                              <VStack align="start" spacing={0}>
+                                {blockedRangeMessages.map((msg, i) => (
+                                  <Text key={i} fontSize="sm">{msg}</Text>
+                                ))}
+                              </VStack>
+                            </Box>
+                          </Alert>
+                        )}
                         <FormControl isInvalid={!!errors.start_time}>
                           <FormLabel>開始時刻</FormLabel>
                           <HStack>
@@ -900,11 +988,14 @@ export default function CreateReservationModal({
                               onChange={(e) => setStartHour(e.target.value ? parseInt(e.target.value) : null)}
                               flex={1}
                             >
-                              {startHourOptions.map((hour) => (
-                                <option key={hour} value={hour}>
-                                  {String(hour).padStart(2, '0')}時
-                                </option>
-                              ))}
+                              {startHourOptions.map((hour) => {
+                                const disabled = isHourFullyBlocked(hour, blockedTimeRanges);
+                                return (
+                                  <option key={hour} value={hour} disabled={disabled}>
+                                    {String(hour).padStart(2, '0')}時{disabled && ' (予約不可)'}
+                                  </option>
+                                );
+                              })}
                             </Select>
                             <Select
                               placeholder="分"
@@ -936,10 +1027,13 @@ export default function CreateReservationModal({
                             >
                               {endHourOptions.map((hour) => {
                                 const isOvernight = isOvernightTime(hour);
+                                const disabled = !isOvernight && minuteOptions.every((m) =>
+                                  isEndTimeSlotDisabled(hour, m, blockedTimeRanges)
+                                );
                                 return (
-                                  <option key={hour} value={hour}>
+                                  <option key={hour} value={hour} disabled={disabled}>
                                     {isOvernight && '翌 '}
-                                    {String(hour).padStart(2, '0')}時
+                                    {String(hour).padStart(2, '0')}時{disabled && ' (予約不可)'}
                                   </option>
                                 );
                               })}
@@ -950,11 +1044,15 @@ export default function CreateReservationModal({
                               onChange={(e) => setEndMinute(e.target.value ? parseInt(e.target.value) : null)}
                               flex={1}
                             >
-                              {minuteOptions.map((minute) => (
-                                <option key={minute} value={minute}>
-                                  {String(minute).padStart(2, '0')}分
-                                </option>
-                              ))}
+                              {minuteOptions.map((minute) => {
+                                const disabled = endHour !== null && !isOvernightTime(endHour) &&
+                                  isEndTimeSlotDisabled(endHour, minute, blockedTimeRanges);
+                                return (
+                                  <option key={minute} value={minute} disabled={disabled}>
+                                    {String(minute).padStart(2, '0')}分{disabled && ' (予約不可)'}
+                                  </option>
+                                );
+                              })}
                             </Select>
                           </HStack>
                           <FormErrorMessage>{String(errors.end_time?.message || '')}</FormErrorMessage>
