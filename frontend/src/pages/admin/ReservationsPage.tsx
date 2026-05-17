@@ -22,6 +22,7 @@ import { Eye, CheckCircle } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAllReservations } from '../../hooks/useReservations';
 import type { Reservation } from '../../types';
+import { calculateReservationTotal } from '../../utils/reservationPrice';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { ReservationApprovalDialog } from '../../components/admin/ReservationApprovalDialog';
 import { format } from 'date-fns';
@@ -57,12 +58,7 @@ export const ReservationsPage = () => {
   };
 
   const calculateTotal = (reservation: Reservation): number => {
-    const planTotal = reservation.plan_price * (1 + reservation.plan_tax_rate);
-    const optionsTotal = reservation.options.reduce(
-      (sum, opt) => sum + opt.price * (1 + opt.tax_rate),
-      0
-    );
-    return Math.floor(planTotal + optionsTotal);
+    return Math.floor(calculateReservationTotal(reservation).total);
   };
 
   if (isLoading) {
