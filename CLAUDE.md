@@ -318,6 +318,24 @@ Authorization: Bearer <access_token>
 
 ## Claude Code利用時の注意点
 
+### 実行環境（Node.js）
+
+**フロントエンドの型チェック・ビルド・dev サーバ起動には Node.js v22 系を使用すること。**
+
+- 本プロジェクト (TypeScript 6 / Vite 5 / React 19) は Node.js 18 以上が必須
+- システムには `/usr/bin/node` (v12 系) と `/usr/local/bin/node` (v22.4.1) の両方が存在し、デフォルト PATH では古い v12 が優先されることがある
+- v12 で `npx tsc` などを実行すると `Unexpected token '?'` 等の構文エラーで失敗するため注意
+- **推奨**: コマンド実行前に PATH を切り替える、もしくは絶対パスで実行する
+
+```bash
+# 推奨1: PATH を切り替えてから実行
+export PATH=/usr/local/bin:$PATH
+cd frontend && npx tsc -b --noEmit
+
+# 推奨2: 絶対パスで直接実行
+/usr/local/bin/node --version  # v22.4.1
+```
+
 ### コード生成時に参照すべきドキュメント
 
 - **新しいAPIエンドポイントを作成する場合**: [docs/api-design.md](docs/api-design.md) でリクエスト/レスポンス形式、バリデーションルール、エラー定義を確認
