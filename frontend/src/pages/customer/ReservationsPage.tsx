@@ -20,6 +20,8 @@ import {
 import { Eye, Calendar as CalendarIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useMyReservations } from '../../hooks/useReservations';
+import type { Reservation } from '../../types';
+import { calculateReservationTotal } from '../../utils/reservationPrice';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import StatusBadge from '../../components/common/StatusBadge';
@@ -44,6 +46,10 @@ export default function ReservationsPage() {
   // 予約詳細へ遷移
   const handleViewDetail = (reservationId: string) => {
     navigate(`/customer/reservations/${reservationId}`);
+  };
+
+  const calculateTotal = (reservation: Reservation): number => {
+    return Math.floor(calculateReservationTotal(reservation).total);
   };
 
   // 日付フォーマット
@@ -143,11 +149,7 @@ export default function ReservationsPage() {
                             <StatusBadge status={reservation.status} />
                           </Td>
                           <Td fontWeight="medium">
-                            ¥
-                            {(
-                              reservation.plan_price +
-                              reservation.options.reduce((sum, opt) => sum + opt.price, 0)
-                            ).toLocaleString()}
+                            ¥{calculateTotal(reservation).toLocaleString()}
                           </Td>
                           <Td>
                             <HStack spacing={2}>
@@ -206,11 +208,7 @@ export default function ReservationsPage() {
                             <StatusBadge status={reservation.status} />
                           </Td>
                           <Td color="gray.500">
-                            ¥
-                            {(
-                              reservation.plan_price +
-                              reservation.options.reduce((sum, opt) => sum + opt.price, 0)
-                            ).toLocaleString()}
+                            ¥{calculateTotal(reservation).toLocaleString()}
                           </Td>
                           <Td>
                             <Tooltip label="詳細を見る" placement="top">
