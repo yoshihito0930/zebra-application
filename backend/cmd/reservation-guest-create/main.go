@@ -26,6 +26,7 @@ import (
 var (
 	reservationUsecase *usecase.ReservationUsecase
 	emailService       *notification.EmailService
+	userRepo           repository.UserRepository
 	planRepo           repository.PlanRepository
 	optionRepo         repository.OptionRepository
 )
@@ -41,7 +42,7 @@ func init() {
 	emailService = notification.NewEmailService(sesClient)
 
 	reservationRepo := dynamodbRepo.NewReservationRepository(dynamoClient)
-	userRepo := dynamodbRepo.NewUserRepository(dynamoClient)
+	userRepo = dynamodbRepo.NewUserRepository(dynamoClient)
 	planRepo = dynamodbRepo.NewPlanRepository(dynamoClient)
 	optionRepo = dynamodbRepo.NewOptionRepository(dynamoClient)
 	blockedSlotRepo := dynamodbRepo.NewBlockedSlotRepository(dynamoClient)
@@ -212,6 +213,25 @@ func createGuestReservationHandler(ctx context.Context, request events.APIGatewa
 	// 確認メールを送信（エラーはログのみ、処理は継続）
 	if err := emailService.SendGuestReservationConfirmation(ctx, reservation, guestToken); err != nil {
 		log.Printf("Failed to send guest reservation confirmation email: %v", err)
+	}
+
+	// 管理者宛にも新規予約通知を送信（エラーはログのみ）
+	admins, adminErr := userRepo.FindAdminsByStudioID(ctx, reservation.StudioID)
+	if adminErr != nil {
+		log.Printf("failed to find admins for studio %s: %v", reservation.StudioID, adminErr)
+	}
+	adminEmails := make([]string, 0, len(admins))
+	for _, a := range admins {
+		if a.Email != "" {
+			adminEmails = append(adminEmails, a.Email)
+		}
+	}
+	if len(adminEmails) > 0 {
+		if err := emailService.SendAdminReservationNotification(ctx, reservation, nil, adminEmails); err != nil {
+			log.Printf("failed to send admin reservation notification: %v", err)
+		}
+	} else {
+		log.Printf("no admin found for studio %s, skipping admin notification", reservation.StudioID)
 	}
 
 	resp := CreateGuestReservationResponse{

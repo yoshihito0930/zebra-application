@@ -380,6 +380,296 @@ Email: info@studio-zebra.com
 	return nil
 }
 
+// SendCustomerReservationConfirmation は会員予約の確認メールを送信する
+//
+// 送信内容:
+//   - 予約内容の確認
+//   - マイページからの確認・キャンセル案内
+//
+// 引数:
+//   - ctx: コンテキスト
+//   - reservation: 予約情報
+//   - user: 予約者ユーザー
+//
+// 戻り値:
+//   - error: 送信エラー（送信成功時はnil）
+func (s *EmailService) SendCustomerReservationConfirmation(ctx context.Context, reservation *entity.Reservation, user *entity.User) error {
+	if user == nil || user.Email == "" {
+		return fmt.Errorf("user email is required")
+	}
+
+	recipientEmail := user.Email
+	customerName := user.Name
+
+	dateStr := reservation.Date.Format("2006年01月02日")
+
+	subject := "【スタジオゼブラ】ご予約ありがとうございます"
+	bodyHTML := fmt.Sprintf(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+</head>
+<body style="font-family: sans-serif; line-height: 1.6;">
+    <h2>ご予約ありがとうございます</h2>
+
+    <p>%s 様</p>
+
+    <p>スタジオゼブラのご予約を承りました。<br>
+    以下の内容で予約を受け付けております。管理者の承認をお待ちください。</p>
+
+    <h3>予約内容</h3>
+    <ul>
+        <li><strong>予約ID:</strong> %s</li>
+        <li><strong>予約種別:</strong> %s</li>
+        <li><strong>利用日:</strong> %s</li>
+        <li><strong>利用時間:</strong> %s - %s</li>
+        <li><strong>撮影タイプ:</strong> %s</li>
+        <li><strong>撮影人数:</strong> %d名</li>
+    </ul>
+
+    <h3>予約の確認・変更・キャンセル</h3>
+    <p>マイページから予約の詳細確認・キャンセルが可能です。</p>
+
+    <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+
+    <p style="color: #666; font-size: 12px;">
+    このメールに心当たりがない場合は、削除していただいて構いません。<br>
+    お問い合わせ: スタジオゼブラ<br>
+    Email: info@studio-zebra.com
+    </p>
+</body>
+</html>
+`, customerName, reservation.ReservationID, formatReservationType(reservation.ReservationType), dateStr,
+		reservation.StartTime, reservation.EndTime,
+		formatShootingTypes(reservation.ShootingType), reservation.NumberOfPeople)
+
+	bodyText := fmt.Sprintf(`
+ご予約ありがとうございます
+
+%s 様
+
+スタジオゼブラのご予約を承りました。
+以下の内容で予約を受け付けております。管理者の承認をお待ちください。
+
+【予約内容】
+予約ID: %s
+予約種別: %s
+利用日: %s
+利用時間: %s - %s
+撮影タイプ: %s
+撮影人数: %d名
+
+【予約の確認・変更・キャンセル】
+マイページから予約の詳細確認・キャンセルが可能です。
+
+────────────────────────────────────
+このメールに心当たりがない場合は、削除していただいて構いません。
+お問い合わせ: スタジオゼブラ
+Email: info@studio-zebra.com
+`, customerName, reservation.ReservationID, formatReservationType(reservation.ReservationType), dateStr,
+		reservation.StartTime, reservation.EndTime,
+		formatShootingTypes(reservation.ShootingType), reservation.NumberOfPeople)
+
+	input := &sesv2.SendEmailInput{
+		FromEmailAddress: aws.String(s.senderEmail),
+		Destination: &types.Destination{
+			ToAddresses: []string{recipientEmail},
+		},
+		Content: &types.EmailContent{
+			Simple: &types.Message{
+				Subject: &types.Content{
+					Data:    aws.String(subject),
+					Charset: aws.String("UTF-8"),
+				},
+				Body: &types.Body{
+					Html: &types.Content{
+						Data:    aws.String(bodyHTML),
+						Charset: aws.String("UTF-8"),
+					},
+					Text: &types.Content{
+						Data:    aws.String(bodyText),
+						Charset: aws.String("UTF-8"),
+					},
+				},
+			},
+		},
+	}
+
+	_, err := s.sesClient.SendEmail(ctx, input)
+	if err != nil {
+		return fmt.Errorf("failed to send email: %w", err)
+	}
+
+	return nil
+}
+
+// SendAdminReservationNotification はスタジオ管理者宛の予約通知メールを送信する
+// 会員予約の場合は customer を渡し、ゲスト予約の場合は customer に nil を渡す
+//
+// 引数:
+//   - ctx: コンテキスト
+//   - reservation: 予約情報
+//   - customer: 会員予約の予約者ユーザー（ゲスト予約時は nil）
+//   - adminEmails: 管理者メールアドレスのリスト
+//
+// 戻り値:
+//   - error: 送信エラー（送信成功時はnil）。adminEmailsが空の場合はnilを返す（呼び出し側でログ）
+func (s *EmailService) SendAdminReservationNotification(ctx context.Context, reservation *entity.Reservation, customer *entity.User, adminEmails []string) error {
+	if len(adminEmails) == 0 {
+		return nil
+	}
+
+	dateStr := reservation.Date.Format("2006年01月02日")
+
+	// 予約者情報を整形
+	var reserverKind, reserverName, reserverEmail, reserverPhone, reserverCompany string
+	if customer != nil {
+		reserverKind = "会員予約"
+		reserverName = customer.Name
+		reserverEmail = customer.Email
+		reserverPhone = customer.PhoneNumber
+		if customer.CompanyName != nil {
+			reserverCompany = *customer.CompanyName
+		}
+	} else {
+		reserverKind = "ゲスト予約"
+		if reservation.GuestName != nil {
+			reserverName = *reservation.GuestName
+		}
+		if reservation.GuestEmail != nil {
+			reserverEmail = *reservation.GuestEmail
+		}
+		if reservation.GuestPhone != nil {
+			reserverPhone = *reservation.GuestPhone
+		}
+		if reservation.GuestCompany != nil {
+			reserverCompany = *reservation.GuestCompany
+		}
+	}
+	if reserverCompany == "" {
+		reserverCompany = "—"
+	}
+
+	subject := "【スタジオゼブラ管理】新規予約が登録されました"
+	bodyHTML := fmt.Sprintf(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+</head>
+<body style="font-family: sans-serif; line-height: 1.6;">
+    <h2>新規予約が登録されました</h2>
+
+    <p>以下の予約が新規登録されました。管理画面から承認してください。</p>
+
+    <h3>予約内容</h3>
+    <ul>
+        <li><strong>予約ID:</strong> %s</li>
+        <li><strong>予約区分:</strong> %s</li>
+        <li><strong>予約種別:</strong> %s</li>
+        <li><strong>利用日:</strong> %s</li>
+        <li><strong>利用時間:</strong> %s - %s</li>
+        <li><strong>撮影タイプ:</strong> %s</li>
+        <li><strong>撮影人数:</strong> %d名</li>
+    </ul>
+
+    <h3>予約者情報</h3>
+    <ul>
+        <li><strong>お名前:</strong> %s</li>
+        <li><strong>メール:</strong> %s</li>
+        <li><strong>電話:</strong> %s</li>
+        <li><strong>会社名:</strong> %s</li>
+    </ul>
+
+    <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+
+    <p style="color: #666; font-size: 12px;">
+    このメールはスタジオゼブラ予約管理システムからの自動送信です。
+    </p>
+</body>
+</html>
+`, reservation.ReservationID, reserverKind, formatReservationType(reservation.ReservationType), dateStr,
+		reservation.StartTime, reservation.EndTime,
+		formatShootingTypes(reservation.ShootingType), reservation.NumberOfPeople,
+		reserverName, reserverEmail, reserverPhone, reserverCompany)
+
+	bodyText := fmt.Sprintf(`
+新規予約が登録されました
+
+以下の予約が新規登録されました。管理画面から承認してください。
+
+【予約内容】
+予約ID: %s
+予約区分: %s
+予約種別: %s
+利用日: %s
+利用時間: %s - %s
+撮影タイプ: %s
+撮影人数: %d名
+
+【予約者情報】
+お名前: %s
+メール: %s
+電話: %s
+会社名: %s
+
+────────────────────────────────────
+このメールはスタジオゼブラ予約管理システムからの自動送信です。
+`, reservation.ReservationID, reserverKind, formatReservationType(reservation.ReservationType), dateStr,
+		reservation.StartTime, reservation.EndTime,
+		formatShootingTypes(reservation.ShootingType), reservation.NumberOfPeople,
+		reserverName, reserverEmail, reserverPhone, reserverCompany)
+
+	input := &sesv2.SendEmailInput{
+		FromEmailAddress: aws.String(s.senderEmail),
+		Destination: &types.Destination{
+			ToAddresses: adminEmails,
+		},
+		Content: &types.EmailContent{
+			Simple: &types.Message{
+				Subject: &types.Content{
+					Data:    aws.String(subject),
+					Charset: aws.String("UTF-8"),
+				},
+				Body: &types.Body{
+					Html: &types.Content{
+						Data:    aws.String(bodyHTML),
+						Charset: aws.String("UTF-8"),
+					},
+					Text: &types.Content{
+						Data:    aws.String(bodyText),
+						Charset: aws.String("UTF-8"),
+					},
+				},
+			},
+		},
+	}
+
+	_, err := s.sesClient.SendEmail(ctx, input)
+	if err != nil {
+		return fmt.Errorf("failed to send admin notification email: %w", err)
+	}
+
+	return nil
+}
+
+// formatReservationType は予約種別を日本語表記に変換する
+func formatReservationType(t entity.ReservationType) string {
+	switch t {
+	case entity.ReservationTypeRegular:
+		return "本予約"
+	case entity.ReservationTypeTentative:
+		return "仮予約"
+	case entity.ReservationTypeLocationScout:
+		return "ロケハン"
+	case entity.ReservationTypeSecondKeep:
+		return "第2キープ"
+	default:
+		return string(t)
+	}
+}
+
 // formatShootingTypes は撮影タイプの配列を読みやすい文字列に変換する
 func formatShootingTypes(types []string) string {
 	if len(types) == 0 {

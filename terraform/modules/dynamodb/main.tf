@@ -105,9 +105,27 @@ resource "aws_dynamodb_table" "users" {
     type = "S"
   }
 
+  # GSI2: studio_id + role (スタジオの admin 一覧取得など、2026-05-18追加)
+  attribute {
+    name = "studio_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "role"
+    type = "S"
+  }
+
   global_secondary_index {
     name            = "GSI1"
     hash_key        = "email"
+    projection_type = "ALL"
+  }
+
+  global_secondary_index {
+    name            = "GSI2"
+    hash_key        = "studio_id"
+    range_key       = "role"
     projection_type = "ALL"
   }
 

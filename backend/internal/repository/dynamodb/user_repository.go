@@ -108,6 +108,47 @@ func (r *UserRepositoryImpl) FindByEmail(ctx context.Context, email string) (*en
 	return &user, nil
 }
 
+// FindAdminsByStudioID は指定スタジオに所属する admin ロールのユーザーを全件取得する
+// GSI2（PK=studio_id, SK=role）を使用
+func (r *UserRepositoryImpl) FindAdminsByStudioID(ctx context.Context, studioID string) ([]*entity.User, error) {
+	admins := make([]*entity.User, 0)
+
+	var lastKey map[string]types.AttributeValue
+	for {
+		result, err := r.client.Query(ctx, &dynamodb.QueryInput{
+			TableName:              aws.String(r.tableName),
+			IndexName:              aws.String("GSI2"),
+			KeyConditionExpression: aws.String("studio_id = :sid AND #r = :role"),
+			ExpressionAttributeNames: map[string]string{
+				"#r": "role",
+			},
+			ExpressionAttributeValues: map[string]types.AttributeValue{
+				":sid":  &types.AttributeValueMemberS{Value: studioID},
+				":role": &types.AttributeValueMemberS{Value: string(entity.UserRoleAdmin)},
+			},
+			ExclusiveStartKey: lastKey,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to query admins by studio: %w", err)
+		}
+
+		for _, item := range result.Items {
+			var user entity.User
+			if err := attributevalue.UnmarshalMap(item, &user); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal admin user: %w", err)
+			}
+			admins = append(admins, &user)
+		}
+
+		if len(result.LastEvaluatedKey) == 0 {
+			break
+		}
+		lastKey = result.LastEvaluatedKey
+	}
+
+	return admins, nil
+}
+
 // Update はユーザー情報を更新する
 func (r *UserRepositoryImpl) Update(ctx context.Context, user *entity.User) error {
 	// エンティティをDynamoDB属性にマーシャル

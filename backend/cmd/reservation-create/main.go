@@ -10,8 +10,10 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/sesv2"
 	"github.com/yoshihito0930/zebra-application/internal/domain/entity"
 	"github.com/yoshihito0930/zebra-application/internal/middleware"
+	"github.com/yoshihito0930/zebra-application/internal/notification"
 	dynamodbRepo "github.com/yoshihito0930/zebra-application/internal/repository/dynamodb"
 	"github.com/yoshihito0930/zebra-application/internal/usecase"
 	"github.com/yoshihito0930/zebra-application/internal/validator"
@@ -24,8 +26,10 @@ import (
 // グローバル変数（コールドスタート対策）
 var (
 	reservationUsecase *usecase.ReservationUsecase
+	userRepo           repository.UserRepository
 	planRepo           repository.PlanRepository
 	optionRepo         repository.OptionRepository
+	emailService       *notification.EmailService
 )
 
 // init は Lambda 関数の初期化時に1度だけ実行される
@@ -39,9 +43,13 @@ func init() {
 	// DynamoDB クライアントを作成
 	dynamoClient := dynamodb.NewFromConfig(cfg)
 
+	// SES クライアントとメールサービスを初期化
+	sesClient := sesv2.NewFromConfig(cfg)
+	emailService = notification.NewEmailService(sesClient)
+
 	// リポジトリを初期化
 	reservationRepo := dynamodbRepo.NewReservationRepository(dynamoClient)
-	userRepo := dynamodbRepo.NewUserRepository(dynamoClient)
+	userRepo = dynamodbRepo.NewUserRepository(dynamoClient)
 	planRepo = dynamodbRepo.NewPlanRepository(dynamoClient)
 	optionRepo = dynamodbRepo.NewOptionRepository(dynamoClient)
 	blockedSlotRepo := dynamodbRepo.NewBlockedSlotRepository(dynamoClient)
@@ -188,6 +196,35 @@ func createReservationHandler(ctx context.Context, request events.APIGatewayProx
 			log.Printf("Failed to create reservation: %v", err)
 			return response.ErrorWithCORS(apierror.ErrInternalServer), nil
 		}
+	}
+
+	// 予約者と管理者宛にメール送信（失敗時もログのみで予約は成立させる）
+	user, userErr := userRepo.FindByID(ctx, userID)
+	if userErr != nil {
+		log.Printf("failed to find user for reservation email (user_id=%s): %v", userID, userErr)
+	}
+	if user != nil {
+		if err := emailService.SendCustomerReservationConfirmation(ctx, reservation, user); err != nil {
+			log.Printf("failed to send customer reservation confirmation email: %v", err)
+		}
+	}
+
+	admins, adminErr := userRepo.FindAdminsByStudioID(ctx, reservation.StudioID)
+	if adminErr != nil {
+		log.Printf("failed to find admins for studio %s: %v", reservation.StudioID, adminErr)
+	}
+	adminEmails := make([]string, 0, len(admins))
+	for _, a := range admins {
+		if a.Email != "" {
+			adminEmails = append(adminEmails, a.Email)
+		}
+	}
+	if len(adminEmails) > 0 {
+		if err := emailService.SendAdminReservationNotification(ctx, reservation, user, adminEmails); err != nil {
+			log.Printf("failed to send admin reservation notification: %v", err)
+		}
+	} else {
+		log.Printf("no admin found for studio %s, skipping admin notification", reservation.StudioID)
 	}
 
 	// helperを使ってレスポンスを構築（Plan/Optionの詳細を取得）

@@ -37,6 +37,16 @@ type UserRepository interface {
 	// 戻り値: ユーザーエンティティとエラー。ユーザーが存在しない場合はnil, nilを返す（重複チェック用）
 	FindByEmail(ctx context.Context, email string) (*entity.User, error)
 
+	// FindAdminsByStudioID は指定スタジオに所属する admin ロールのユーザーを全件取得する
+	// 予約通知の管理者宛先取得などに利用する
+	//
+	// DynamoDBキー: GSI2（PK=studio_id, SK=role）を使用
+	//
+	// ctx: リクエストコンテキスト
+	// studioID: スタジオID
+	// 戻り値: ユーザーエンティティのスライスとエラー。0件の場合は空スライスとnilを返す
+	FindAdminsByStudioID(ctx context.Context, studioID string) ([]*entity.User, error)
+
 	// Update はユーザー情報を更新する
 	//
 	// ctx: リクエストコンテキスト

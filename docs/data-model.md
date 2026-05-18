@@ -222,6 +222,7 @@ erDiagram
 | AP-47 | UC-905 | ステータスをcompletedに更新 | Reservation | reservation_id | W | 低 |
 | AP-48 | UC-906 | 期限切れの仮予約を取得 | Reservation | status=tentative + 期限日 < 今日 | R | 低（日次バッチ） |
 | AP-49 | UC-906 | ステータスをexpiredに更新 | Reservation | reservation_id | W | 低 |
+| AP-51 | UC-201/UC-207g | スタジオの管理者一覧を取得（予約通知の宛先） | User | studio_id + role=admin | R | 中 |
 
 
 ## その他
