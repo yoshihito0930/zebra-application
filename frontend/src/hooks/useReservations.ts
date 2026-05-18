@@ -91,11 +91,9 @@ export const useCancelReservation = () => {
     onSuccess: (cancelledReservation) => {
       queryClient.invalidateQueries({ queryKey: reservationKeys.myReservations() });
       queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
-
-      queryClient.setQueryData(
-        reservationKeys.detail(cancelledReservation.reservation_id),
-        cancelledReservation
-      );
+      queryClient.invalidateQueries({
+        queryKey: reservationKeys.detail(cancelledReservation.reservation_id),
+      });
     },
   });
 };

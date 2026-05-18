@@ -51,13 +51,14 @@ export default function ReservationDetailPage() {
 
     cancelMutation.mutate(id, {
       onSuccess: () => {
+        onCancelDialogClose();
         toast({
           title: '予約をキャンセルしました',
           status: 'success',
           duration: 5000,
           isClosable: true,
         });
-        onCancelDialogClose();
+        navigate('/customer/reservations');
       },
       onError: (err) => {
         const errorMessage = err instanceof Error ? err.message : 'キャンセルに失敗しました';
