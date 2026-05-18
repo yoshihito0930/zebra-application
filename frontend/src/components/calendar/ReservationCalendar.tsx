@@ -69,9 +69,11 @@ export default function ReservationCalendar({
     return days;
   };
 
-  // 指定日の予約を取得
+  // 指定日の予約を取得（開始時刻の昇順でソート）
   const getReservationsForDate = (dateString: string) => {
-    return reservations.filter((r) => r.date === dateString);
+    return reservations
+      .filter((r) => r.date === dateString)
+      .sort((a, b) => a.start_time.localeCompare(b.start_time));
   };
 
   // 指定日がブロック枠かチェック
