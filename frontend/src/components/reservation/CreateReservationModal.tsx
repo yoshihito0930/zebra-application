@@ -14,6 +14,11 @@ import {
   FormLabel,
   FormErrorMessage,
   Input,
+  NumberInput,
+  NumberInputField,
+  NumberInputStepper,
+  NumberIncrementStepper,
+  NumberDecrementStepper,
   Select,
   Textarea,
   Radio,
@@ -173,7 +178,7 @@ export default function CreateReservationModal({
       shooting_details: '',
       photographer_name: '',
       number_of_people: 1,
-      needs_protection: false,
+      needs_protection: true,
       equipment_insurance: true,
       options: [],
       note: '',
@@ -363,19 +368,21 @@ export default function CreateReservationModal({
   })();
 
   // タブ変更時の処理
+  // 未ログイン時はタブが「ゲスト」のみ（index=0）なので、認証済みのときのみ index でゲスト判定する。
   const handleTabChange = (index: number) => {
     setTabIndex(index);
-    setValue('is_guest', index === 1);
+    setValue('is_guest', !isAuthenticated || index === 1);
   };
 
   // フォーム送信
   const onSubmit = async (data: ReservationFormData) => {
     // デバッグ: 送信データを確認
     console.log('Form submit data:', data);
-    console.log('Tab index:', tabIndex);
+    console.log('Tab index:', tabIndex, 'isAuthenticated:', isAuthenticated);
 
     // バリデーション
-    const isGuest = tabIndex === 1;
+    // 未ログインは常にゲスト扱い。ログイン中はタブ index でゲスト/会員を判定する。
+    const isGuest = !isAuthenticated || tabIndex === 1;
     const schema = isGuest ? guestReservationSchema : memberReservationSchema;
 
     const result = schema.safeParse({
@@ -746,18 +753,20 @@ export default function CreateReservationModal({
                     name="number_of_people"
                     control={control}
                     render={({ field: { value, onChange, onBlur, ref } }) => (
-                      <Input
-                        type="number"
+                      <NumberInput
                         min={1}
                         max={100}
-                        ref={ref}
-                        onBlur={onBlur}
-                        value={value ?? ''}
-                        onChange={(e) => {
-                          const raw = e.target.value;
-                          onChange(raw === '' ? undefined : Number(raw));
-                        }}
-                      />
+                        value={value ?? 1}
+                        onChange={(_, valueAsNumber) =>
+                          onChange(Number.isNaN(valueAsNumber) ? undefined : valueAsNumber)
+                        }
+                      >
+                        <NumberInputField ref={ref} onBlur={onBlur} />
+                        <NumberInputStepper>
+                          <NumberIncrementStepper />
+                          <NumberDecrementStepper />
+                        </NumberInputStepper>
+                      </NumberInput>
                     )}
                   />
                   <FormErrorMessage>{String(errors.number_of_people?.message || '')}</FormErrorMessage>
@@ -779,7 +788,7 @@ export default function CreateReservationModal({
                     control={control}
                     render={({ field: { value, onChange } }) => (
                       <Checkbox isChecked={value} onChange={onChange}>
-                        機材保険に加入している
+                        機材保険を付帯する
                       </Checkbox>
                     )}
                   />
@@ -1119,18 +1128,20 @@ export default function CreateReservationModal({
                           name="number_of_people"
                           control={control}
                           render={({ field: { value, onChange, onBlur, ref } }) => (
-                            <Input
-                              type="number"
+                            <NumberInput
                               min={1}
                               max={100}
-                              ref={ref}
-                              onBlur={onBlur}
-                              value={value ?? ''}
-                              onChange={(e) => {
-                                const raw = e.target.value;
-                                onChange(raw === '' ? undefined : Number(raw));
-                              }}
-                            />
+                              value={value ?? 1}
+                              onChange={(_, valueAsNumber) =>
+                                onChange(Number.isNaN(valueAsNumber) ? undefined : valueAsNumber)
+                              }
+                            >
+                              <NumberInputField ref={ref} onBlur={onBlur} />
+                              <NumberInputStepper>
+                                <NumberIncrementStepper />
+                                <NumberDecrementStepper />
+                              </NumberInputStepper>
+                            </NumberInput>
                           )}
                         />
                         <FormErrorMessage>{String(errors.number_of_people?.message || '')}</FormErrorMessage>
@@ -1152,7 +1163,7 @@ export default function CreateReservationModal({
                           control={control}
                           render={({ field: { value, onChange } }) => (
                             <Checkbox isChecked={value} onChange={onChange}>
-                              機材保険に加入している
+                              機材保険を付帯する
                             </Checkbox>
                           )}
                         />
