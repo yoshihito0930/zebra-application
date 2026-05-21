@@ -3,6 +3,7 @@ import {
   getMyReservations,
   getReservation,
   createReservation,
+  createGuestReservation,
   cancelReservation,
   getAllReservations,
   approveReservation,
@@ -76,6 +77,22 @@ export const useCreateReservation = () => {
         reservationKeys.detail(newReservation.reservation_id),
         newReservation
       );
+    },
+  });
+};
+
+/**
+ * ゲスト予約作成のミューテーション（認証不要）
+ * カレンダー一覧はゲストでも閲覧するため lists のキャッシュは無効化する。
+ * me クエリはゲストでは存在しないため触らない。
+ */
+export const useCreateGuestReservation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateReservationRequest) => createGuestReservation(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
     },
   });
 };

@@ -36,11 +36,11 @@ import {
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { usePlans, useOptions } from '../../hooks/usePlans';
-import { useCreateReservation } from '../../hooks/useReservations';
+import { useCreateReservation, useCreateGuestReservation } from '../../hooks/useReservations';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
 import { useAuthStore } from '../../stores/authStore';
-import type { CreateReservationRequest } from '../../types';
+import type { CreateReservationRequest, Reservation } from '../../types';
 
 // 時刻を分単位に変換するヘルパー
 const timeToMinutes = (timeStr: string): number => {
@@ -145,8 +145,9 @@ export default function CreateReservationModal({
     console.log('Options loaded:', options);
   }, [plans, options]);
 
-  // React Queryで予約作成
+  // React Queryで予約作成（会員 / ゲストで別エンドポイントを使う）
   const createMutation = useCreateReservation();
+  const createGuestMutation = useCreateGuestReservation();
 
   const isLoadingData = isLoadingPlans || isLoadingOptions;
   const dataError = plansError || optionsError;
@@ -403,12 +404,9 @@ export default function CreateReservationModal({
       shooting_type: validatedData.shooting_type,
     };
 
-    createMutation.mutate(reservationData, {
-      onSuccess: (result) => {
-        // ゲスト予約の場合、トークンを保存
+    const mutationOptions = {
+      onSuccess: (result: Reservation) => {
         if (isGuest && result.guest_token) {
-          // setGuestToken(result.guest_token);
-
           toast({
             title: '予約を作成しました',
             description: '予約確認用のリンクをメールで送信しました。メールをご確認ください。',
@@ -430,7 +428,7 @@ export default function CreateReservationModal({
         onClose();
         onSuccess?.();
       },
-      onError: (err) => {
+      onError: (err: unknown) => {
         const errorMessage = err instanceof Error ? err.message : '予約の作成に失敗しました';
         toast({
           title: 'エラー',
@@ -440,7 +438,14 @@ export default function CreateReservationModal({
           isClosable: true,
         });
       },
-    });
+    };
+
+    // ゲストは認証不要の /reservations/guest、会員は /reservations を叩く
+    if (isGuest) {
+      createGuestMutation.mutate(reservationData, mutationOptions);
+    } else {
+      createMutation.mutate(reservationData, mutationOptions);
+    }
   };
 
   // モーダルを閉じる
@@ -1219,13 +1224,13 @@ export default function CreateReservationModal({
           </ModalBody>
 
         <ModalFooter>
-          <Button variant="ghost" mr={3} onClick={handleClose} isDisabled={createMutation.isPending}>
+          <Button variant="ghost" mr={3} onClick={handleClose} isDisabled={(createMutation.isPending || createGuestMutation.isPending)}>
             キャンセル
           </Button>
           <Button
             colorScheme="brand"
             type="submit"
-            isLoading={createMutation.isPending}
+            isLoading={(createMutation.isPending || createGuestMutation.isPending)}
             loadingText="作成中..."
           >
             予約を作成

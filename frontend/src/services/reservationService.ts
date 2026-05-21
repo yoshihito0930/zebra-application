@@ -50,16 +50,42 @@ export const getCalendar = async (
   });
 };
 
-// 予約作成
+// 予約作成（会員用）
+// backend の POST /reservations は認証必須で、ゲスト用フィールドは受け取らない。
+// ゲスト用フィールドを誤って送らないようリクエスト時に除外する。
 export const createReservation = async (
   data: CreateReservationRequest
 ): Promise<Reservation> => {
+  const {
+    is_guest: _isGuest,
+    guest_name: _guestName,
+    guest_email: _guestEmail,
+    guest_phone: _guestPhone,
+    guest_company: _guestCompany,
+    ...memberPayload
+  } = data;
   const raw = await apiRequest<BackendReservation>({
     method: 'POST',
     url: '/reservations',
-    data,
+    data: memberPayload,
   });
   return normalizeReservation(raw);
+};
+
+// ゲスト予約作成（認証不要）
+// backend は POST /reservations/guest を会員用とは別の Lambda で公開しており、
+// レスポンスに guest_token を含む。is_guest フィールドは受け取らないため送らない。
+export const createGuestReservation = async (
+  data: CreateReservationRequest
+): Promise<Reservation> => {
+  const { is_guest: _isGuest, ...payload } = data;
+  const raw = await apiRequest<BackendReservation & { guest_token?: string }>({
+    method: 'POST',
+    url: '/reservations/guest',
+    data: payload,
+  });
+  const normalized = normalizeReservation(raw);
+  return { ...normalized, guest_token: raw.guest_token ?? normalized.guest_token };
 };
 
 // 自分の予約一覧取得 (backend は { reservations: [...] } で wrap)
