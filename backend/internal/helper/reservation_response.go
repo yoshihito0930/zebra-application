@@ -27,6 +27,11 @@ type ReservationResponse struct {
 	NeedsProtection    bool            `json:"needs_protection"`
 	EquipmentInsurance bool            `json:"equipment_insurance"`
 	Note               string          `json:"note,omitempty"`
+	IsGuest            bool            `json:"is_guest"`
+	GuestName          string          `json:"guest_name,omitempty"`
+	GuestEmail         string          `json:"guest_email,omitempty"`
+	GuestPhone         string          `json:"guest_phone,omitempty"`
+	GuestCompany       string          `json:"guest_company,omitempty"`
 	CancelledBy        string          `json:"cancelled_by,omitempty"`
 	CancelledAt        string          `json:"cancelled_at,omitempty"`
 	PromotedFrom       string          `json:"promoted_from,omitempty"`
@@ -107,6 +112,7 @@ func BuildReservationResponse(
 		NumberOfPeople:     r.NumberOfPeople,
 		NeedsProtection:    r.NeedsProtection,
 		EquipmentInsurance: r.EquipmentInsurance,
+		IsGuest:            r.IsGuest,
 		CreatedAt:          r.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		UpdatedAt:          r.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
@@ -114,6 +120,18 @@ func BuildReservationResponse(
 	// オプショナルフィールド
 	if r.Note != nil {
 		resp.Note = *r.Note
+	}
+	if r.GuestName != nil {
+		resp.GuestName = *r.GuestName
+	}
+	if r.GuestEmail != nil {
+		resp.GuestEmail = *r.GuestEmail
+	}
+	if r.GuestPhone != nil {
+		resp.GuestPhone = *r.GuestPhone
+	}
+	if r.GuestCompany != nil {
+		resp.GuestCompany = *r.GuestCompany
 	}
 	if r.CancelledBy != nil {
 		resp.CancelledBy = string(*r.CancelledBy)
