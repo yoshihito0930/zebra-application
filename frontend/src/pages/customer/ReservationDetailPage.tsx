@@ -295,6 +295,12 @@ export default function ReservationDetailPage() {
                           <Text fontWeight="medium">¥{price.optionsTotal.toLocaleString()}</Text>
                         </HStack>
                       )}
+                      {price.insuranceTotal > 0 && (
+                        <HStack justify="space-between">
+                          <Text>機材保険</Text>
+                          <Text fontWeight="medium">¥{price.insuranceTotal.toLocaleString()}</Text>
+                        </HStack>
+                      )}
                       <HStack justify="space-between">
                         <Text>小計</Text>
                         <Text fontWeight="medium">¥{price.subtotal.toLocaleString()}</Text>

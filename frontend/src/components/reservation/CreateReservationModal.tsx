@@ -46,6 +46,7 @@ import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
 import { useAuthStore } from '../../stores/authStore';
 import type { CreateReservationRequest, Reservation } from '../../types';
+import { INSURANCE_PRICE, INSURANCE_TAX } from '../../utils/reservationPrice';
 
 // 時刻を分単位に変換するヘルパー
 const timeToMinutes = (timeStr: string): number => {
@@ -246,10 +247,13 @@ export default function CreateReservationModal({
     return hours;
   };
 
-  // 料金計算（プラン料金×利用時間＋オプション料金）
+  const insuranceEnabled = watch('equipment_insurance');
+
+  // 料金計算（プラン料金×利用時間＋オプション料金＋機材保険）
   const calculateTotalPrice = () => {
     const selectedPlan = plans.find((p) => p.plan_id === selectedPlanId);
-    if (!selectedPlan) return { subtotal: 0, tax: 0, total: 0, hours: 0 };
+    if (!selectedPlan)
+      return { subtotal: 0, tax: 0, total: 0, hours: 0, insuranceTotal: 0 };
 
     const usageHours = calculateUsageHours();
 
@@ -262,11 +266,15 @@ export default function CreateReservationModal({
     const optionsPrice = selectedOptions.reduce((total, o) => total + o.price, 0);
     const optionsTax = selectedOptions.reduce((total, o) => total + Math.floor(o.price * o.tax_rate), 0);
 
-    const subtotal = planPrice + optionsPrice;
-    const tax = planTax + optionsTax;
+    // 機材保険（チェック時のみ加算）
+    const insuranceTotal = insuranceEnabled ? INSURANCE_PRICE : 0;
+    const insuranceTax = insuranceEnabled ? INSURANCE_TAX : 0;
+
+    const subtotal = planPrice + optionsPrice + insuranceTotal;
+    const tax = planTax + optionsTax + insuranceTax;
     const total = subtotal + tax;
 
-    return { subtotal, tax, total, hours: usageHours };
+    return { subtotal, tax, total, hours: usageHours, insuranceTotal };
   };
 
   const priceInfo = calculateTotalPrice();
@@ -826,6 +834,12 @@ export default function CreateReservationModal({
                         <Text fontSize="sm" fontWeight="medium">{priceInfo.hours}時間</Text>
                       </HStack>
                     )}
+                    {priceInfo.insuranceTotal > 0 && (
+                      <HStack justify="space-between">
+                        <Text>機材保険</Text>
+                        <Text fontWeight="medium">¥{priceInfo.insuranceTotal.toLocaleString()}</Text>
+                      </HStack>
+                    )}
                     <HStack justify="space-between">
                       <Text>小計</Text>
                       <Text fontWeight="medium">¥{priceInfo.subtotal.toLocaleString()}</Text>
@@ -1199,6 +1213,12 @@ export default function CreateReservationModal({
                             <HStack justify="space-between">
                               <Text fontSize="sm" color="gray.600">利用時間</Text>
                               <Text fontSize="sm" fontWeight="medium">{priceInfo.hours}時間</Text>
+                            </HStack>
+                          )}
+                          {priceInfo.insuranceTotal > 0 && (
+                            <HStack justify="space-between">
+                              <Text>機材保険</Text>
+                              <Text fontWeight="medium">¥{priceInfo.insuranceTotal.toLocaleString()}</Text>
                             </HStack>
                           )}
                           <HStack justify="space-between">

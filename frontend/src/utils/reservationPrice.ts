@@ -25,10 +25,17 @@ export const calculateUsageHours = (startTime: string, endTime: string): number 
   return (endTotalMin - startTotalMin) / 60;
 };
 
+// 機材保険料金（税抜 ¥1,000 + 消費税 ¥100 = ¥1,100）
+export const INSURANCE_PRICE = 1000;
+export const INSURANCE_TAX_RATE = 0.1;
+export const INSURANCE_TAX = Math.floor(INSURANCE_PRICE * INSURANCE_TAX_RATE);
+
 export interface ReservationPriceBreakdown {
   hours: number;
   planTotal: number;
   optionsTotal: number;
+  insuranceTotal: number;
+  insuranceTax: number;
   subtotal: number;
   tax: number;
   total: number;
@@ -37,6 +44,7 @@ export interface ReservationPriceBreakdown {
 // 予約の料金内訳を計算
 // プラン料金 = plan_price × 利用時間（時間単位）
 // オプション料金 = Σ option.price（時間に依存しない固定料金）
+// 機材保険 = equipment_insurance が true のとき ¥1,000（税抜）＋ ¥100（消費税）
 // 消費税は税抜額にそれぞれの税率を掛けて Math.floor で個別に丸める
 export const calculateReservationTotal = (
   reservation: Reservation
@@ -52,9 +60,21 @@ export const calculateReservationTotal = (
     0
   );
 
-  const subtotal = planTotal + optionsTotal;
-  const tax = planTax + optionsTax;
+  const insuranceTotal = reservation.equipment_insurance ? INSURANCE_PRICE : 0;
+  const insuranceTax = reservation.equipment_insurance ? INSURANCE_TAX : 0;
+
+  const subtotal = planTotal + optionsTotal + insuranceTotal;
+  const tax = planTax + optionsTax + insuranceTax;
   const total = subtotal + tax;
 
-  return { hours, planTotal, optionsTotal, subtotal, tax, total };
+  return {
+    hours,
+    planTotal,
+    optionsTotal,
+    insuranceTotal,
+    insuranceTax,
+    subtotal,
+    tax,
+    total,
+  };
 };
