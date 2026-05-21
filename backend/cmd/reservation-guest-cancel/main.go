@@ -24,6 +24,7 @@ var (
 	emailService       *notification.EmailService
 	planRepo           repository.PlanRepository
 	optionRepo         repository.OptionRepository
+	userRepo           repository.UserRepository
 )
 
 // init は Lambda 関数の初期化時に1度だけ実行される
@@ -43,7 +44,7 @@ func init() {
 
 	// リポジトリを初期化
 	reservationRepo := dynamodbRepo.NewReservationRepository(dynamoClient)
-	userRepo := dynamodbRepo.NewUserRepository(dynamoClient)
+	userRepo = dynamodbRepo.NewUserRepository(dynamoClient)
 	planRepo = dynamodbRepo.NewPlanRepository(dynamoClient)
 	optionRepo = dynamodbRepo.NewOptionRepository(dynamoClient)
 	blockedSlotRepo := dynamodbRepo.NewBlockedSlotRepository(dynamoClient)
@@ -90,6 +91,25 @@ func cancelGuestReservationHandler(ctx context.Context, request events.APIGatewa
 	if err := emailService.SendGuestReservationCancellation(ctx, reservation); err != nil {
 		// メール送信エラーはログに記録するが、処理は継続
 		log.Printf("Failed to send cancellation email: %v", err)
+	}
+
+	// 管理者宛にキャンセル通知メールを送信（失敗時もログのみ）
+	admins, adminErr := userRepo.FindAdminsByStudioID(ctx, reservation.StudioID)
+	if adminErr != nil {
+		log.Printf("failed to find admins for studio %s: %v", reservation.StudioID, adminErr)
+	}
+	adminEmails := make([]string, 0, len(admins))
+	for _, a := range admins {
+		if a.Email != "" {
+			adminEmails = append(adminEmails, a.Email)
+		}
+	}
+	if len(adminEmails) > 0 {
+		if err := emailService.SendAdminReservationCancellationNotification(ctx, reservation, nil, adminEmails); err != nil {
+			log.Printf("failed to send admin reservation cancellation notification: %v", err)
+		}
+	} else {
+		log.Printf("no admin found for studio %s, skipping admin cancellation notification", reservation.StudioID)
 	}
 
 	// helperを使ってレスポンスを構築
