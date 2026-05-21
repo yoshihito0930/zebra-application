@@ -690,3 +690,301 @@ func formatShootingTypes(types []string) string {
 func formatDateTime(t time.Time) string {
 	return t.Format("2006年01月02日 15:04")
 }
+
+// formatReservationStatus は予約ステータスを日本語表記に変換する
+func formatReservationStatus(s entity.ReservationStatus) string {
+	switch s {
+	case entity.ReservationStatusPending:
+		return "承認待ち"
+	case entity.ReservationStatusTentative:
+		return "仮予約"
+	case entity.ReservationStatusConfirmed:
+		return "確定"
+	case entity.ReservationStatusWaitlisted:
+		return "繰り上げ待ち"
+	case entity.ReservationStatusScheduled:
+		return "ロケハン予定"
+	case entity.ReservationStatusCancelled:
+		return "キャンセル済み"
+	case entity.ReservationStatusExpired:
+		return "期限切れ"
+	case entity.ReservationStatusCompleted:
+		return "完了"
+	default:
+		return string(s)
+	}
+}
+
+// SendCustomerReservationApproval は会員予約の承認通知メールを送信する
+//
+// 送信内容:
+//   - 予約が承認された旨
+//   - 予約内容と確定後のステータス
+//   - マイページからの確認案内
+//
+// 引数:
+//   - ctx: コンテキスト
+//   - reservation: 予約情報
+//   - user: 予約者ユーザー
+//
+// 戻り値:
+//   - error: 送信エラー（送信成功時はnil）
+func (s *EmailService) SendCustomerReservationApproval(ctx context.Context, reservation *entity.Reservation, user *entity.User) error {
+	if user == nil || user.Email == "" {
+		return fmt.Errorf("user email is required")
+	}
+
+	recipientEmail := user.Email
+	customerName := user.Name
+
+	dateStr := reservation.Date.Format("2006年01月02日")
+
+	subject := "【スタジオゼブラ】ご予約が承認されました"
+	bodyHTML := fmt.Sprintf(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+</head>
+<body style="font-family: sans-serif; line-height: 1.6;">
+    <h2>ご予約が承認されました</h2>
+
+    <p>%s 様</p>
+
+    <p>スタジオゼブラのご予約が管理者により承認されました。<br>
+    以下の内容でお待ちしております。</p>
+
+    <h3>予約内容</h3>
+    <ul>
+        <li><strong>予約ID:</strong> %s</li>
+        <li><strong>予約種別:</strong> %s</li>
+        <li><strong>ステータス:</strong> %s</li>
+        <li><strong>利用日:</strong> %s</li>
+        <li><strong>利用時間:</strong> %s - %s</li>
+        <li><strong>撮影タイプ:</strong> %s</li>
+        <li><strong>撮影人数:</strong> %d名</li>
+    </ul>
+
+    <h3>予約の確認・変更・キャンセル</h3>
+    <p>マイページから予約の詳細確認・キャンセルが可能です。</p>
+
+    <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+
+    <p style="color: #666; font-size: 12px;">
+    このメールに心当たりがない場合は、削除していただいて構いません。<br>
+    お問い合わせ: スタジオゼブラ<br>
+    Email: info@studio-zebra.com
+    </p>
+</body>
+</html>
+`, customerName, reservation.ReservationID, formatReservationType(reservation.ReservationType),
+		formatReservationStatus(reservation.Status), dateStr,
+		reservation.StartTime, reservation.EndTime,
+		formatShootingTypes(reservation.ShootingType), reservation.NumberOfPeople)
+
+	bodyText := fmt.Sprintf(`
+ご予約が承認されました
+
+%s 様
+
+スタジオゼブラのご予約が管理者により承認されました。
+以下の内容でお待ちしております。
+
+【予約内容】
+予約ID: %s
+予約種別: %s
+ステータス: %s
+利用日: %s
+利用時間: %s - %s
+撮影タイプ: %s
+撮影人数: %d名
+
+【予約の確認・変更・キャンセル】
+マイページから予約の詳細確認・キャンセルが可能です。
+
+────────────────────────────────────
+このメールに心当たりがない場合は、削除していただいて構いません。
+お問い合わせ: スタジオゼブラ
+Email: info@studio-zebra.com
+`, customerName, reservation.ReservationID, formatReservationType(reservation.ReservationType),
+		formatReservationStatus(reservation.Status), dateStr,
+		reservation.StartTime, reservation.EndTime,
+		formatShootingTypes(reservation.ShootingType), reservation.NumberOfPeople)
+
+	input := &sesv2.SendEmailInput{
+		FromEmailAddress: aws.String(s.senderEmail),
+		Destination: &types.Destination{
+			ToAddresses: []string{recipientEmail},
+		},
+		Content: &types.EmailContent{
+			Simple: &types.Message{
+				Subject: &types.Content{
+					Data:    aws.String(subject),
+					Charset: aws.String("UTF-8"),
+				},
+				Body: &types.Body{
+					Html: &types.Content{
+						Data:    aws.String(bodyHTML),
+						Charset: aws.String("UTF-8"),
+					},
+					Text: &types.Content{
+						Data:    aws.String(bodyText),
+						Charset: aws.String("UTF-8"),
+					},
+				},
+			},
+		},
+	}
+
+	_, err := s.sesClient.SendEmail(ctx, input)
+	if err != nil {
+		return fmt.Errorf("failed to send email: %w", err)
+	}
+
+	return nil
+}
+
+// SendGuestReservationApproval はゲスト予約の承認通知メールを送信する
+//
+// 送信内容:
+//   - 予約が承認された旨
+//   - 予約内容と確定後のステータス
+//   - 予約詳細確認用のトークンリンク
+//
+// 引数:
+//   - ctx: コンテキスト
+//   - reservation: 予約情報（GuestEmail / GuestName / GuestToken が必須）
+//
+// 戻り値:
+//   - error: 送信エラー（送信成功時はnil）
+func (s *EmailService) SendGuestReservationApproval(ctx context.Context, reservation *entity.Reservation) error {
+	if reservation.GuestEmail == nil || *reservation.GuestEmail == "" {
+		return fmt.Errorf("guest email is required")
+	}
+	if reservation.GuestToken == nil || *reservation.GuestToken == "" {
+		return fmt.Errorf("guest token is required")
+	}
+
+	recipientEmail := *reservation.GuestEmail
+	guestName := ""
+	if reservation.GuestName != nil {
+		guestName = *reservation.GuestName
+	}
+
+	confirmationURL := fmt.Sprintf("%s/%s", s.baseURL, *reservation.GuestToken)
+	dateStr := reservation.Date.Format("2006年01月02日")
+
+	subject := "【スタジオゼブラ】ご予約が承認されました"
+	bodyHTML := fmt.Sprintf(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+</head>
+<body style="font-family: sans-serif; line-height: 1.6;">
+    <h2>ご予約が承認されました</h2>
+
+    <p>%s 様</p>
+
+    <p>スタジオゼブラのご予約が管理者により承認されました。<br>
+    以下の内容でお待ちしております。</p>
+
+    <h3>予約内容</h3>
+    <ul>
+        <li><strong>予約ID:</strong> %s</li>
+        <li><strong>予約種別:</strong> %s</li>
+        <li><strong>ステータス:</strong> %s</li>
+        <li><strong>利用日:</strong> %s</li>
+        <li><strong>利用時間:</strong> %s - %s</li>
+        <li><strong>撮影タイプ:</strong> %s</li>
+        <li><strong>撮影人数:</strong> %d名</li>
+    </ul>
+
+    <h3>予約の確認・変更・キャンセル</h3>
+    <p>以下のリンクから予約の詳細確認、キャンセルが可能です。</p>
+
+    <p><a href="%s" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">予約を確認する</a></p>
+
+    <p style="color: #666; font-size: 12px;">
+    または以下のURLをコピーしてブラウザに貼り付けてください:<br>
+    %s
+    </p>
+
+    <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+
+    <p style="color: #666; font-size: 12px;">
+    このメールに心当たりがない場合は、削除していただいて構いません。<br>
+    お問い合わせ: スタジオゼブラ<br>
+    Email: info@studio-zebra.com
+    </p>
+</body>
+</html>
+`, guestName, reservation.ReservationID, formatReservationType(reservation.ReservationType),
+		formatReservationStatus(reservation.Status), dateStr,
+		reservation.StartTime, reservation.EndTime,
+		formatShootingTypes(reservation.ShootingType), reservation.NumberOfPeople,
+		confirmationURL, confirmationURL)
+
+	bodyText := fmt.Sprintf(`
+ご予約が承認されました
+
+%s 様
+
+スタジオゼブラのご予約が管理者により承認されました。
+以下の内容でお待ちしております。
+
+【予約内容】
+予約ID: %s
+予約種別: %s
+ステータス: %s
+利用日: %s
+利用時間: %s - %s
+撮影タイプ: %s
+撮影人数: %d名
+
+【予約の確認・変更・キャンセル】
+以下のリンクから予約の詳細確認、キャンセルが可能です。
+
+%s
+
+────────────────────────────────────
+このメールに心当たりがない場合は、削除していただいて構いません。
+お問い合わせ: スタジオゼブラ
+Email: info@studio-zebra.com
+`, guestName, reservation.ReservationID, formatReservationType(reservation.ReservationType),
+		formatReservationStatus(reservation.Status), dateStr,
+		reservation.StartTime, reservation.EndTime,
+		formatShootingTypes(reservation.ShootingType), reservation.NumberOfPeople, confirmationURL)
+
+	input := &sesv2.SendEmailInput{
+		FromEmailAddress: aws.String(s.senderEmail),
+		Destination: &types.Destination{
+			ToAddresses: []string{recipientEmail},
+		},
+		Content: &types.EmailContent{
+			Simple: &types.Message{
+				Subject: &types.Content{
+					Data:    aws.String(subject),
+					Charset: aws.String("UTF-8"),
+				},
+				Body: &types.Body{
+					Html: &types.Content{
+						Data:    aws.String(bodyHTML),
+						Charset: aws.String("UTF-8"),
+					},
+					Text: &types.Content{
+						Data:    aws.String(bodyText),
+						Charset: aws.String("UTF-8"),
+					},
+				},
+			},
+		},
+	}
+
+	_, err := s.sesClient.SendEmail(ctx, input)
+	if err != nil {
+		return fmt.Errorf("failed to send email: %w", err)
+	}
+
+	return nil
+}

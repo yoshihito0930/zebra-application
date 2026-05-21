@@ -89,6 +89,10 @@ func (m *MockReservationRepository) FindByGuestToken(ctx context.Context, guestT
 	return nil, apierror.ErrReservationNotFound
 }
 
+func (m *MockReservationRepository) DeleteByKey(ctx context.Context, studioID string, date time.Time, reservationID string) error {
+	return nil
+}
+
 func strPtr(s string) *string { return &s }
 
 // MockUserRepository はユーザーリポジトリのモック
@@ -109,6 +113,10 @@ func (m *MockUserRepository) FindByID(ctx context.Context, userID string) (*enti
 }
 
 func (m *MockUserRepository) FindByEmail(ctx context.Context, email string) (*entity.User, error) {
+	return nil, nil
+}
+
+func (m *MockUserRepository) FindAdminsByStudioID(ctx context.Context, studioID string) ([]*entity.User, error) {
 	return nil, nil
 }
 

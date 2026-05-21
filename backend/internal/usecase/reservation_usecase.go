@@ -97,7 +97,9 @@ func (u *ReservationUsecase) checkBufferTimeConflict(ctx context.Context, studio
 		}
 
 		// 既存予約の時間帯が前後1時間のバッファ範囲と重複しているかチェック
-		if isTimeOverlapping(bufferStartTime, bufferEndTime, reservation.StartTime, reservation.EndTime) {
+		// バッファ境界に接している場合（例: 10:00 終了の予約に対し 11:00 開始の既存予約）も
+		// 「前後1時間以内」に該当するため、境界を含めて重複と判定する
+		if isTimeOverlappingInclusive(bufferStartTime, bufferEndTime, reservation.StartTime, reservation.EndTime) {
 			return apierror.ErrBufferTimeConflict
 		}
 	}
@@ -141,6 +143,7 @@ func formatTime(hour, min int) string {
 
 // isTimeOverlapping は2つの時間帯が重複しているかチェックする
 // 日跨ぎ対応のため、時刻を分単位に変換して比較
+// 境界が接するケース（例: 10:00-12:00 と 12:00-14:00）は重複と見なさない
 func isTimeOverlapping(start1, end1, start2, end2 string) bool {
 	// 時刻を分単位に変換
 	start1Min := timeToMinutes(start1)
@@ -150,6 +153,17 @@ func isTimeOverlapping(start1, end1, start2, end2 string) bool {
 
 	// 重複判定: start1 < end2 && start2 < end1
 	return start1Min < end2Min && start2Min < end1Min
+}
+
+// isTimeOverlappingInclusive は境界が接するケースも重複と見なす版
+// バッファ時間チェックなど「前後1時間以内」のように境界接触も禁止したい用途で使用する
+func isTimeOverlappingInclusive(start1, end1, start2, end2 string) bool {
+	start1Min := timeToMinutes(start1)
+	end1Min := timeToMinutes(end1)
+	start2Min := timeToMinutes(start2)
+	end2Min := timeToMinutes(end2)
+
+	return start1Min <= end2Min && start2Min <= end1Min
 }
 
 // timeToMinutes は時刻文字列（HH:MM形式）を0時からの経過分に変換する
