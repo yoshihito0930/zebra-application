@@ -8,14 +8,20 @@ import {
   Button,
   Alert,
   AlertIcon,
+  Flex,
   HStack,
+  Grid,
+  GridItem,
+  Link,
   useToast,
   useDisclosure,
+  useBreakpointValue,
 } from '@chakra-ui/react';
-import { LogIn, UserPlus } from 'lucide-react';
+import { Plus, ListChecks } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import ReservationCalendar from '../../components/calendar/ReservationCalendar';
+import CalendarSidePanel from '../../components/calendar/CalendarSidePanel';
 import CreateReservationModal from '../../components/reservation/CreateReservationModal';
 import DayDetailModal from '../../components/calendar/DayDetailModal';
 import { useCalendar } from '../../hooks/useCalendar';
@@ -30,45 +36,63 @@ export default function CalendarPage() {
   const { isAuthenticated } = useAuthStore();
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedStartTime, setSelectedStartTime] = useState<string>('');
 
-  // React Queryでカレンダーデータ取得
+  const isXl = useBreakpointValue({ base: false, xl: true }, { fallback: 'base' });
+
   const {
     data: calendarData,
     isLoading,
     error,
   } = useCalendar(STUDIO_ID, currentYear, currentMonth);
 
-  // 月変更時
   const handleMonthChange = (year: number, month: number) => {
     setCurrentYear(year);
     setCurrentMonth(month);
-    // React Queryが自動的に新しいデータを取得
+    setSelectedDate(null);
   };
 
-  // 日付詳細モーダル
   const { isOpen: isDayDetailOpen, onOpen: onDayDetailOpen, onClose: onDayDetailClose } = useDisclosure();
-
-  // 予約作成モーダル
   const { isOpen: isModalOpen, onOpen: onModalOpen, onClose: onModalClose } = useDisclosure();
-  const [selectedDate, setSelectedDate] = useState<string>('');
-  const [selectedStartTime, setSelectedStartTime] = useState<string>('');
 
-  // 日付クリック → 詳細モーダルを表示
+  const handleDateSelect = (date: string) => {
+    setSelectedDate(date);
+  };
+
   const handleDateClick = (date: string) => {
     setSelectedDate(date);
-    onDayDetailOpen();
+    if (!isXl) onDayDetailOpen();
   };
 
-  // 詳細モーダルから予約作成
   const handleCreateReservationFromDetail = (date: string, startTime?: string) => {
     setSelectedDate(date);
     setSelectedStartTime(startTime || '');
     onModalOpen();
   };
 
-  // 予約作成成功時
+  const handleSidePanelCreate = (date: string) => {
+    setSelectedDate(date);
+    setSelectedStartTime('');
+    onModalOpen();
+  };
+
+  const handleCreateNew = () => {
+    if (!selectedDate) {
+      toast({
+        title: '日付を選択してください',
+        description: 'カレンダーから予約したい日付をクリックしてください。',
+        status: 'info',
+        duration: 2500,
+        isClosable: true,
+      });
+      return;
+    }
+    setSelectedStartTime('');
+    onModalOpen();
+  };
+
   const handleReservationSuccess = () => {
-    // React Queryが自動的にカレンダーを再取得（invalidateQueriesで処理）
     toast({
       title: '予約を作成しました',
       status: 'success',
@@ -77,77 +101,112 @@ export default function CalendarPage() {
     });
   };
 
+  const selectedDateReservations =
+    selectedDate && calendarData
+      ? calendarData.reservations.filter((r) => r.date === selectedDate)
+      : [];
+
   return (
     <Container maxW="container.xl" py={8}>
       <VStack spacing={6} align="stretch">
-        <Box>
-          <Heading size="xl" color="brand.600" mb={2}>
-            予約カレンダー
-          </Heading>
-          <Text color="gray.600">
-            スタジオの空き状況を確認して予約を作成できます
-          </Text>
-        </Box>
+        {/* タイトルセクション */}
+        <Flex
+          direction={{ base: 'column', md: 'row' }}
+          justify="space-between"
+          align={{ base: 'flex-start', md: 'center' }}
+          gap={4}
+        >
+          <Box>
+            <Heading size="xl" color="brand.600" mb={1}>
+              予約カレンダー
+            </Heading>
+            <Text color="gray.600" fontSize="sm">
+              空き状況を確認して、撮影を予約しましょう
+            </Text>
+          </Box>
+          <HStack spacing={3}>
+            {isAuthenticated && (
+              <Button
+                variant="outline"
+                colorScheme="brand"
+                leftIcon={<ListChecks size={18} />}
+                onClick={() => navigate('/customer/reservations')}
+              >
+                マイ予約
+              </Button>
+            )}
+            <Button
+              colorScheme="brand"
+              leftIcon={<Plus size={18} />}
+              onClick={handleCreateNew}
+            >
+              新規予約を作成
+            </Button>
+          </HStack>
+        </Flex>
 
-        {/* ゲストユーザー向け案内 */}
+        {/* ゲスト案内 */}
         {!isAuthenticated && (
-          <Alert status="info" borderRadius="md">
+          <Alert status="info" variant="left-accent" borderRadius="md" py={2}>
             <AlertIcon />
-            <VStack align="flex-start" spacing={2} flex={1}>
-              <Text fontWeight="semibold">ゲストとしても予約可能です</Text>
-              <Text fontSize="sm">
-                会員登録なしでも予約を作成できます。日付をクリックして「ゲストとして予約」タブから予約してください。
-                会員登録すると、予約履歴の確認や簡単予約が可能になります。
-              </Text>
-              <HStack spacing={3} mt={2}>
-                <Button
-                  size="sm"
-                  leftIcon={<LogIn size={16} />}
-                  variant="outline"
-                  colorScheme="blue"
-                  onClick={() => navigate('/login')}
-                >
-                  ログイン
-                </Button>
-                <Button
-                  size="sm"
-                  leftIcon={<UserPlus size={16} />}
-                  colorScheme="blue"
-                  onClick={() => navigate('/signup')}
-                >
-                  新規登録
-                </Button>
-              </HStack>
-            </VStack>
+            <Text fontSize="sm" color="gray.700">
+              ゲストのままでも予約できます。
+              <Link
+                color="brand.600"
+                fontWeight="semibold"
+                ml={1}
+                onClick={() => navigate('/signup')}
+              >
+                会員登録
+              </Link>
+              すると予約履歴の確認や簡単予約が利用できます。
+            </Text>
           </Alert>
         )}
 
-        {/* カレンダー表示 */}
+        {/* メインボディ */}
         {isLoading && <LoadingSpinner />}
 
-        {error && !isLoading && <ErrorMessage message={error instanceof Error ? error.message : 'カレンダーの取得に失敗しました'} />}
-
-        {!isLoading && !error && calendarData && (
-          <Box bg="white" p={6} borderRadius="lg" shadow="md">
-            <ReservationCalendar
-              studioId={STUDIO_ID}
-              reservations={calendarData.reservations}
-              blockedSlots={calendarData.blocked_slots}
-              currentYear={currentYear}
-              currentMonth={currentMonth}
-              onDateClick={handleDateClick}
-              onMonthChange={handleMonthChange}
-            />
-          </Box>
+        {error && !isLoading && (
+          <ErrorMessage
+            message={error instanceof Error ? error.message : 'カレンダーの取得に失敗しました'}
+          />
         )}
 
-        {/* 日付詳細モーダル */}
-        {calendarData && (
+        {!isLoading && !error && calendarData && (
+          <Grid templateColumns={{ base: '1fr', xl: 'minmax(0, 3fr) 1fr' }} gap={6}>
+            <GridItem>
+              <Box bg="white" p={6} borderRadius="lg" shadow="md">
+                <ReservationCalendar
+                  studioId={STUDIO_ID}
+                  reservations={calendarData.reservations}
+                  blockedSlots={calendarData.blocked_slots}
+                  currentYear={currentYear}
+                  currentMonth={currentMonth}
+                  selectedDate={selectedDate}
+                  onDateSelect={handleDateSelect}
+                  onDateClick={handleDateClick}
+                  onMonthChange={handleMonthChange}
+                />
+              </Box>
+            </GridItem>
+            <GridItem display={{ base: 'none', xl: 'block' }}>
+              <CalendarSidePanel
+                selectedDate={selectedDate}
+                reservations={selectedDateReservations}
+                onCreateReservation={handleSidePanelCreate}
+              />
+            </GridItem>
+          </Grid>
+        )}
+
+        {/* 日付詳細モーダル（xl 未満のみ） */}
+        {calendarData && selectedDate && (
           <DayDetailModal
             isOpen={isDayDetailOpen}
             onClose={onDayDetailClose}
             date={selectedDate}
-            reservations={calendarData.reservations.filter((r) => r.date === selectedDate)}
+            reservations={selectedDateReservations}
             onCreateReservation={handleCreateReservationFromDetail}
           />
         )}
@@ -157,7 +216,7 @@ export default function CalendarPage() {
           isOpen={isModalOpen}
           onClose={onModalClose}
           studioId={STUDIO_ID}
-          initialDate={selectedDate}
+          initialDate={selectedDate ?? ''}
           initialStartTime={selectedStartTime}
           onSuccess={handleReservationSuccess}
           reservations={calendarData?.reservations || []}
