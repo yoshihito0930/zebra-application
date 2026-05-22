@@ -4,12 +4,14 @@ import {
   Grid,
   GridItem,
   HStack,
+  IconButton,
   Text,
   VStack,
   useColorModeValue,
 } from '@chakra-ui/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { CalendarReservation } from '../../types';
+import StatusLegendPopover from './StatusLegendPopover';
 
 interface ReservationCalendarProps {
   studioId: string;
@@ -19,7 +21,33 @@ interface ReservationCalendarProps {
   currentMonth: number;
   onDateClick?: (date: string) => void;
   onMonthChange?: (year: number, month: number) => void;
+  selectedDate?: string | null;
+  onDateSelect?: (date: string) => void;
 }
+
+interface StatusVisuals {
+  bg: string;
+  border: string;
+  text: string;
+  label: string;
+}
+
+const getStatusVisuals = (status: string): StatusVisuals => {
+  switch (status) {
+    case 'confirmed':
+      return { bg: 'green.100', border: 'green.500', text: 'green.800', label: '本予約' };
+    case 'tentative':
+      return { bg: 'orange.100', border: 'orange.500', text: 'orange.800', label: '仮予約' };
+    case 'pending':
+      return { bg: 'brand.50', border: 'brand.300', text: 'brand.700', label: '承認待ち' };
+    case 'scheduled':
+      return { bg: 'blue.100', border: 'blue.500', text: 'blue.800', label: 'ロケハン' };
+    case 'waitlisted':
+      return { bg: 'purple.100', border: 'purple.500', text: 'purple.800', label: '第2キープ' };
+    default:
+      return { bg: 'gray.100', border: 'gray.500', text: 'gray.800', label: '不明' };
+  }
+};
 
 export default function ReservationCalendar({
   reservations,
@@ -28,39 +56,34 @@ export default function ReservationCalendar({
   currentMonth,
   onDateClick,
   onMonthChange,
+  selectedDate = null,
+  onDateSelect,
 }: ReservationCalendarProps) {
   const today = new Date();
 
   const bgHover = useColorModeValue('gray.50', 'gray.700');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
-  const todayBg = useColorModeValue('brand.50', 'brand.900');
-  const disabledBg = useColorModeValue('gray.100', 'gray.800');
+  const disabledBg = useColorModeValue('gray.50', 'gray.800');
 
-  // 曜日ラベル
   const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
 
-  // 月の日数を取得
   const getDaysInMonth = (year: number, month: number) => {
     return new Date(year, month, 0).getDate();
   };
 
-  // 月の初日の曜日を取得（0: 日曜日）
   const getFirstDayOfMonth = (year: number, month: number) => {
     return new Date(year, month - 1, 1).getDay();
   };
 
-  // カレンダーのマス目を生成
   const generateCalendarDays = () => {
     const daysInMonth = getDaysInMonth(currentYear, currentMonth);
     const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
     const days: Array<{ date: number | null; dateString: string }> = [];
 
-    // 前月の空白
     for (let i = 0; i < firstDay; i++) {
       days.push({ date: null, dateString: '' });
     }
 
-    // 当月の日付
     for (let day = 1; day <= daysInMonth; day++) {
       const dateString = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       days.push({ date: day, dateString });
@@ -69,32 +92,27 @@ export default function ReservationCalendar({
     return days;
   };
 
-  // 指定日の予約を取得（開始時刻の昇順でソート）
   const getReservationsForDate = (dateString: string) => {
     return reservations
       .filter((r) => r.date === dateString)
       .sort((a, b) => a.start_time.localeCompare(b.start_time));
   };
 
-  // 指定日がブロック枠かチェック
   const isDateBlocked = (dateString: string) => {
     return blockedSlots.some((b) => b.date === dateString);
   };
 
-  // 今日かどうかチェック
   const isToday = (dateString: string) => {
     const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     return dateString === todayString;
   };
 
-  // 過去の日付かチェック
   const isPast = (dateString: string) => {
     const date = new Date(dateString);
     const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     return date < todayMidnight;
   };
 
-  // 月を変更
   const handlePreviousMonth = () => {
     let newYear = currentYear;
     let newMonth = currentMonth;
@@ -125,10 +143,12 @@ export default function ReservationCalendar({
 
   const handleToday = () => {
     const now = new Date();
-    const newYear = now.getFullYear();
-    const newMonth = now.getMonth() + 1;
+    onMonthChange?.(now.getFullYear(), now.getMonth() + 1);
+  };
 
-    onMonthChange?.(newYear, newMonth);
+  const handleCellClick = (dateString: string) => {
+    onDateSelect?.(dateString);
+    onDateClick?.(dateString);
   };
 
   const calendarDays = generateCalendarDays();
@@ -136,31 +156,35 @@ export default function ReservationCalendar({
   return (
     <VStack spacing={4} align="stretch">
       {/* ヘッダー */}
-      <HStack justify="space-between">
+      <HStack justify="space-between" wrap="wrap" spacing={3}>
         <HStack spacing={2}>
-          <Button
+          <IconButton
+            aria-label="前月"
+            icon={<ChevronLeft size={18} />}
+            variant="ghost"
             size="sm"
-            variant="outline"
-            leftIcon={<ChevronLeft size={16} />}
             onClick={handlePreviousMonth}
-          >
-            前月
-          </Button>
-          <Button
+          />
+          <Text fontSize="xl" fontWeight="bold" minW="120px" textAlign="center">
+            {currentYear}年 {currentMonth}月
+          </Text>
+          <IconButton
+            aria-label="翌月"
+            icon={<ChevronRight size={18} />}
+            variant="ghost"
             size="sm"
-            variant="outline"
-            rightIcon={<ChevronRight size={16} />}
             onClick={handleNextMonth}
-          >
-            翌月
-          </Button>
-          <Button size="sm" variant="ghost" onClick={handleToday}>
+          />
+          <Button size="sm" variant="outline" onClick={handleToday}>
             今日
           </Button>
         </HStack>
-        <Text fontSize="xl" fontWeight="bold">
-          {currentYear}年 {currentMonth}月
-        </Text>
+        <HStack spacing={1}>
+          <Text fontSize="sm" color="gray.500">
+            {currentYear}年{currentMonth}月の予約状況
+          </Text>
+          <StatusLegendPopover />
+        </HStack>
       </HStack>
 
       {/* カレンダー */}
@@ -188,11 +212,10 @@ export default function ReservationCalendar({
         <Grid templateColumns="repeat(7, 1fr)">
           {calendarDays.map((day, index) => {
             if (!day.date) {
-              // 空白のセル
               return (
                 <GridItem
                   key={`empty-${index}`}
-                  minH="100px"
+                  minH="110px"
                   borderWidth="1px"
                   borderColor={borderColor}
                   bg={disabledBg}
@@ -204,18 +227,25 @@ export default function ReservationCalendar({
             const blocked = isDateBlocked(day.dateString);
             const isCurrentDay = isToday(day.dateString);
             const isPastDate = isPast(day.dateString);
-            const isClickable = !isPastDate && !blocked && onDateClick;
+            const isClickable = !isPastDate && !blocked;
+            const isSelected = selectedDate === day.dateString;
+            const dayOfWeek = new Date(day.dateString).getDay();
+            const dayNumberColor = isPastDate
+              ? 'gray.400'
+              : dayOfWeek === 0
+              ? 'red.500'
+              : dayOfWeek === 6
+              ? 'blue.500'
+              : 'gray.700';
 
             return (
               <GridItem
                 key={day.dateString}
-                minH="100px"
+                minH="110px"
                 borderWidth="1px"
                 borderColor={borderColor}
-                bg={isCurrentDay ? todayBg : 'white'}
-                _dark={{
-                  bg: isCurrentDay ? todayBg : 'gray.800',
-                }}
+                bg="white"
+                _dark={{ bg: 'gray.800' }}
                 _hover={
                   isClickable
                     ? {
@@ -225,144 +255,77 @@ export default function ReservationCalendar({
                     : {}
                 }
                 onClick={() => {
-                  if (isClickable) {
-                    onDateClick(day.dateString);
-                  }
+                  if (isClickable) handleCellClick(day.dateString);
                 }}
                 position="relative"
+                boxShadow={isSelected ? 'inset 0 0 0 2px var(--chakra-colors-brand-400)' : undefined}
               >
                 <VStack align="stretch" spacing={1} p={2} h="full">
                   {/* 日付 */}
-                  <HStack justify="space-between" align="flex-start">
-                    <Text
-                      fontSize="sm"
-                      fontWeight={isCurrentDay ? 'bold' : 'normal'}
-                      color={isPastDate ? 'gray.400' : 'gray.700'}
-                      _dark={{
-                        color: isPastDate ? 'gray.600' : 'gray.300',
-                      }}
-                    >
-                      {day.date}
-                    </Text>
-                    {isCurrentDay && (
+                  <HStack justify="flex-start" align="center">
+                    {isCurrentDay ? (
                       <Box
                         bg="brand.500"
                         color="white"
-                        fontSize="xs"
-                        px={1}
-                        borderRadius="sm"
+                        borderRadius="full"
+                        w="24px"
+                        h="24px"
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
+                        fontSize="sm"
+                        fontWeight="bold"
                       >
-                        今日
+                        {day.date}
                       </Box>
+                    ) : (
+                      <Text
+                        fontSize="sm"
+                        fontWeight="medium"
+                        color={dayNumberColor}
+                        _dark={{
+                          color: isPastDate ? 'gray.600' : 'gray.300',
+                        }}
+                      >
+                        {day.date}
+                      </Text>
                     )}
                   </HStack>
 
-                  {/* ブロック枠表示 */}
+                  {/* ブロック枠 */}
                   {blocked && (
-                    <Box
-                      bg="gray.300"
-                      _dark={{ bg: 'gray.600' }}
-                      borderRadius="sm"
-                      px={2}
-                      py={1}
-                    >
+                    <Box bg="gray.300" _dark={{ bg: 'gray.600' }} borderRadius="sm" px={2} py={1}>
                       <Text fontSize="xs" fontWeight="medium">
                         休業日
                       </Text>
                     </Box>
                   )}
 
-                  {/* 予約表示 */}
-                  {dateReservations.length > 0 && (
-                    <VStack align="stretch" spacing={1} flex={1} overflowY="auto">
-                      {dateReservations.slice(0, 2).map((reservation) => (
-                        <Box
-                          key={reservation.reservation_id}
-                          bg={
-                            reservation.status === 'confirmed'
-                              ? 'green.100'
-                              : reservation.status === 'tentative'
-                              ? 'orange.100'
-                              : reservation.status === 'pending'
-                              ? 'yellow.100'
-                              : reservation.status === 'scheduled'
-                              ? 'blue.100'
-                              : reservation.status === 'waitlisted'
-                              ? 'purple.100'
-                              : 'gray.100'
-                          }
-                          _dark={{
-                            bg:
-                              reservation.status === 'confirmed'
-                                ? 'green.800'
-                                : reservation.status === 'tentative'
-                                ? 'orange.800'
-                                : reservation.status === 'pending'
-                                ? 'yellow.800'
-                                : reservation.status === 'scheduled'
-                                ? 'blue.800'
-                                : reservation.status === 'waitlisted'
-                                ? 'purple.800'
-                                : 'gray.800',
-                          }}
-                          borderLeftWidth="4px"
-                          borderLeftColor={
-                            reservation.status === 'confirmed'
-                              ? 'green.500'
-                              : reservation.status === 'tentative'
-                              ? 'orange.500'
-                              : reservation.status === 'pending'
-                              ? 'yellow.500'
-                              : reservation.status === 'scheduled'
-                              ? 'blue.500'
-                              : reservation.status === 'waitlisted'
-                              ? 'purple.500'
-                              : 'gray.500'
-                          }
-                          px={2}
-                          py={1}
-                          borderRadius="sm"
-                          cursor="pointer"
-                          _hover={{
-                            opacity: 0.8,
-                          }}
-                        >
-                          <Text
-                            fontSize="xs"
-                            fontWeight="semibold"
-                            noOfLines={1}
-                            color={
-                              reservation.status === 'confirmed'
-                                ? 'green.800'
-                                : reservation.status === 'tentative'
-                                ? 'orange.800'
-                                : reservation.status === 'pending'
-                                ? 'yellow.800'
-                                : reservation.status === 'scheduled'
-                                ? 'blue.800'
-                                : reservation.status === 'waitlisted'
-                                ? 'purple.800'
-                                : 'gray.800'
-                            }
-                            _dark={{
-                              color:
-                                reservation.status === 'confirmed'
-                                  ? 'green.100'
-                                  : reservation.status === 'tentative'
-                                  ? 'orange.100'
-                                  : reservation.status === 'pending'
-                                  ? 'yellow.100'
-                                  : reservation.status === 'scheduled'
-                                  ? 'blue.100'
-                                  : reservation.status === 'waitlisted'
-                                  ? 'purple.100'
-                                  : 'gray.100',
-                            }}
+                  {/* 予約バッジ（2段表示） */}
+                  {!blocked && dateReservations.length > 0 && (
+                    <VStack align="stretch" spacing={1} flex={1} overflow="hidden">
+                      {dateReservations.slice(0, 2).map((reservation) => {
+                        const v = getStatusVisuals(reservation.status);
+                        return (
+                          <Box
+                            key={reservation.reservation_id}
+                            bg={v.bg}
+                            _dark={{ bg: v.bg.replace('100', '800').replace('50', '900') }}
+                            borderLeftWidth="4px"
+                            borderLeftColor={v.border}
+                            px={2}
+                            py={1}
+                            borderRadius="sm"
                           >
-                            {reservation.start_time}〜{reservation.end_time}
-                          </Text>
-                        </Box>
-                      ))}
+                            <Text fontSize="xs" fontWeight="semibold" color={v.text} noOfLines={1}>
+                              {reservation.start_time}–{reservation.end_time}
+                            </Text>
+                            <Text fontSize="xs" fontWeight="bold" color={v.text} noOfLines={1}>
+                              {v.label}
+                            </Text>
+                          </Box>
+                        );
+                      })}
                       {dateReservations.length > 2 && (
                         <Text fontSize="xs" color="gray.500" textAlign="center" fontWeight="medium">
                           +{dateReservations.length - 2}件
@@ -370,107 +333,20 @@ export default function ReservationCalendar({
                       )}
                     </VStack>
                   )}
+
+                  {/* 空き表示 */}
+                  {!blocked && !isPastDate && dateReservations.length === 0 && (
+                    <Box flex={1} display="flex" alignItems="flex-end" justifyContent="flex-start">
+                      <Text fontSize="xs" color="gray.400">
+                        空き
+                      </Text>
+                    </Box>
+                  )}
                 </VStack>
               </GridItem>
             );
           })}
         </Grid>
-      </Box>
-
-      {/* 凡例 */}
-      <Box bg="white" p={4} borderRadius="md" borderWidth="1px" borderColor={borderColor}>
-        <Text fontSize="sm" fontWeight="semibold" mb={3}>
-          予約ステータス
-        </Text>
-        <HStack spacing={6} fontSize="sm" flexWrap="wrap">
-          <HStack spacing={2}>
-            <Box
-              bg="green.100"
-              _dark={{ bg: 'green.800' }}
-              borderLeftWidth="4px"
-              borderLeftColor="green.500"
-              px={3}
-              py={1}
-              borderRadius="sm"
-              minW="80px"
-            >
-              <Text fontSize="xs" fontWeight="semibold" color="green.800" _dark={{ color: 'green.100' }}>
-                本予約
-              </Text>
-            </Box>
-          </HStack>
-          <HStack spacing={2}>
-            <Box
-              bg="orange.100"
-              _dark={{ bg: 'orange.800' }}
-              borderLeftWidth="4px"
-              borderLeftColor="orange.500"
-              px={3}
-              py={1}
-              borderRadius="sm"
-              minW="80px"
-            >
-              <Text fontSize="xs" fontWeight="semibold" color="orange.800" _dark={{ color: 'orange.100' }}>
-                仮予約
-              </Text>
-            </Box>
-          </HStack>
-          <HStack spacing={2}>
-            <Box
-              bg="yellow.100"
-              _dark={{ bg: 'yellow.800' }}
-              borderLeftWidth="4px"
-              borderLeftColor="yellow.500"
-              px={3}
-              py={1}
-              borderRadius="sm"
-              minW="80px"
-            >
-              <Text fontSize="xs" fontWeight="semibold" color="yellow.800" _dark={{ color: 'yellow.100' }}>
-                承認待ち
-              </Text>
-            </Box>
-          </HStack>
-          <HStack spacing={2}>
-            <Box
-              bg="blue.100"
-              _dark={{ bg: 'blue.800' }}
-              borderLeftWidth="4px"
-              borderLeftColor="blue.500"
-              px={3}
-              py={1}
-              borderRadius="sm"
-              minW="80px"
-            >
-              <Text fontSize="xs" fontWeight="semibold" color="blue.800" _dark={{ color: 'blue.100' }}>
-                ロケハン
-              </Text>
-            </Box>
-          </HStack>
-          <HStack spacing={2}>
-            <Box
-              bg="purple.100"
-              _dark={{ bg: 'purple.800' }}
-              borderLeftWidth="4px"
-              borderLeftColor="purple.500"
-              px={3}
-              py={1}
-              borderRadius="sm"
-              minW="80px"
-            >
-              <Text fontSize="xs" fontWeight="semibold" color="purple.800" _dark={{ color: 'purple.100' }}>
-                第2キープ
-              </Text>
-            </Box>
-          </HStack>
-          <HStack spacing={2}>
-            <Box bg="gray.300" _dark={{ bg: 'gray.600' }} px={3} py={1} borderRadius="sm" minW="80px">
-              <Text fontSize="xs" fontWeight="semibold" color="gray.700" _dark={{ color: 'gray.100' }}>
-                休業日
-              </Text>
-            </Box>
-          </HStack>
-        </HStack>
       </Box>
     </VStack>
   );
