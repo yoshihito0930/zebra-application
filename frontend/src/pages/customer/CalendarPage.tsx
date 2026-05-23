@@ -170,6 +170,11 @@ export default function CalendarPage() {
             selectedDate={selectedDate}
             reservations={selectedDateReservations}
             onSnapChange={setSheetSnap}
+            onCreateReservation={(date) => {
+              setSelectedDate(date);
+              setSelectedStartTime('');
+              onModalOpen();
+            }}
           />
         )}
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Badge, Box, Flex, HStack, Text, VStack } from '@chakra-ui/react';
+import { Badge, Box, Button, Flex, HStack, Text, VStack } from '@chakra-ui/react';
+import { Plus } from 'lucide-react';
 import { motion, useAnimation, useDragControls, useMotionValue } from 'framer-motion';
 import type { PanInfo } from 'framer-motion';
 import type { CalendarReservation } from '../../types';
@@ -10,6 +11,7 @@ interface BottomReservationSheetProps {
   selectedDate: string | null;
   reservations: CalendarReservation[];
   onSnapChange?: (snap: SheetSnap) => void;
+  onCreateReservation?: (date: string) => void;
 }
 
 const getStatusVisuals = (status: string) => {
@@ -67,6 +69,7 @@ export default function BottomReservationSheet({
   selectedDate,
   reservations,
   onSnapChange,
+  onCreateReservation,
 }: BottomReservationSheetProps) {
   const vh = useViewportHeight();
 
@@ -229,13 +232,13 @@ export default function BottomReservationSheet({
           pb={32}
           sx={{ WebkitOverflowScrolling: 'touch' }}
         >
-          {sortedReservations.length === 0 ? (
-            <VStack spacing={2} py={6} align="center" color="gray.400">
-              <Text fontSize="sm">この日に予約はありません</Text>
-            </VStack>
-          ) : (
-            <VStack spacing={2} align="stretch">
-              {sortedReservations.map((reservation) => {
+          <VStack spacing={2} align="stretch">
+            {sortedReservations.length === 0 ? (
+              <VStack spacing={2} py={6} align="center" color="gray.400">
+                <Text fontSize="sm">この日に予約はありません</Text>
+              </VStack>
+            ) : (
+              sortedReservations.map((reservation) => {
                 const v = getStatusVisuals(reservation.status);
                 return (
                   <Box
@@ -262,9 +265,23 @@ export default function BottomReservationSheet({
                     )}
                   </Box>
                 );
-              })}
-            </VStack>
-          )}
+              })
+            )}
+
+            {selectedDate && onCreateReservation && (
+              <Button
+                colorScheme="brand"
+                variant="outline"
+                size="lg"
+                borderRadius="full"
+                leftIcon={<Plus size={18} />}
+                onClick={() => onCreateReservation(selectedDate)}
+                mt={2}
+              >
+                この日の予約を作成する
+              </Button>
+            )}
+          </VStack>
         </Box>
       </motion.div>
     </Box>
