@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Box,
   Container,
@@ -22,6 +22,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import ReservationCalendar from '../../components/calendar/ReservationCalendar';
 import CalendarSidePanel from '../../components/calendar/CalendarSidePanel';
+import MobileReservationCalendar from '../../components/calendar/MobileReservationCalendar';
+import BottomReservationSheet, {
+  type SheetSnap,
+} from '../../components/calendar/BottomReservationSheet';
 import CreateReservationModal from '../../components/reservation/CreateReservationModal';
 import DayDetailModal from '../../components/calendar/DayDetailModal';
 import { useCalendar } from '../../hooks/useCalendar';
@@ -29,6 +33,11 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 
 const STUDIO_ID = 'studio_001'; // TODO: 後で動的に取得
+
+const getTodayString = () => {
+  const t = new Date();
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+};
 
 export default function CalendarPage() {
   const navigate = useNavigate();
@@ -38,7 +47,13 @@ export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedStartTime, setSelectedStartTime] = useState<string>('');
+  const [sheetSnap, setSheetSnap] = useState<SheetSnap>('peek');
 
+  const layout = useBreakpointValue(
+    { base: 'mobile' as const, md: 'desktop' as const },
+    { fallback: 'desktop', ssr: false },
+  );
+  const isMobile = layout === 'mobile';
   const isXl = useBreakpointValue({ base: false, xl: true }, { fallback: 'base' });
 
   const {
@@ -56,13 +71,20 @@ export default function CalendarPage() {
   const { isOpen: isDayDetailOpen, onOpen: onDayDetailOpen, onClose: onDayDetailClose } = useDisclosure();
   const { isOpen: isModalOpen, onOpen: onModalOpen, onClose: onModalClose } = useDisclosure();
 
+  // モバイル初期表示時、selectedDate がまだなら今日を選んでおく
+  useEffect(() => {
+    if (isMobile && selectedDate === null) {
+      setSelectedDate(getTodayString());
+    }
+  }, [isMobile, selectedDate]);
+
   const handleDateSelect = (date: string) => {
     setSelectedDate(date);
   };
 
   const handleDateClick = (date: string) => {
     setSelectedDate(date);
-    if (!isXl) onDayDetailOpen();
+    if (!isXl && !isMobile) onDayDetailOpen();
   };
 
   const handleCreateReservationFromDetail = (date: string, startTime?: string) => {
@@ -79,14 +101,18 @@ export default function CalendarPage() {
 
   const handleCreateNew = () => {
     if (!selectedDate) {
-      toast({
-        title: '日付を選択してください',
-        description: 'カレンダーから予約したい日付をクリックしてください。',
-        status: 'info',
-        duration: 2500,
-        isClosable: true,
-      });
-      return;
+      if (isMobile) {
+        setSelectedDate(getTodayString());
+      } else {
+        toast({
+          title: '日付を選択してください',
+          description: 'カレンダーから予約したい日付をクリックしてください。',
+          status: 'info',
+          duration: 2500,
+          isClosable: true,
+        });
+        return;
+      }
     }
     setSelectedStartTime('');
     onModalOpen();
@@ -106,6 +132,92 @@ export default function CalendarPage() {
       ? calendarData.reservations.filter((r) => r.date === selectedDate)
       : [];
 
+  // ===== モバイルレイアウト =====
+  if (isMobile) {
+    return (
+      <Box pb={28}>
+        {isLoading && (
+          <Box pt={6} px={4}>
+            <LoadingSpinner />
+          </Box>
+        )}
+
+        {error && !isLoading && (
+          <Box pt={6} px={4}>
+            <ErrorMessage
+              message={error instanceof Error ? error.message : 'カレンダーの取得に失敗しました'}
+            />
+          </Box>
+        )}
+
+        {!isLoading && !error && calendarData && (
+          <Box px={4} pt={4} pb={6}>
+            <MobileReservationCalendar
+              reservations={calendarData.reservations}
+              blockedSlots={calendarData.blocked_slots}
+              currentYear={currentYear}
+              currentMonth={currentMonth}
+              selectedDate={selectedDate}
+              onDateSelect={handleDateSelect}
+              onMonthChange={handleMonthChange}
+            />
+          </Box>
+        )}
+
+        {/* ボトムシート */}
+        {calendarData && (
+          <BottomReservationSheet
+            selectedDate={selectedDate}
+            reservations={selectedDateReservations}
+            onSnapChange={setSheetSnap}
+          />
+        )}
+
+        {/* スティッキー CTA (peek 時のみ表示) */}
+        <Box
+          position="fixed"
+          bottom={0}
+          left={0}
+          right={0}
+          px={4}
+          pb={4}
+          pt={3}
+          zIndex={20}
+          pointerEvents="none"
+          opacity={sheetSnap === 'peek' ? 1 : 0}
+          transform={sheetSnap === 'peek' ? 'translateY(0)' : 'translateY(8px)'}
+          transition="opacity 0.18s ease, transform 0.18s ease"
+          display={{ base: 'block', md: 'none' }}
+        >
+          <Button
+            colorScheme="brand"
+            size="lg"
+            w="full"
+            borderRadius="full"
+            leftIcon={<Plus size={20} />}
+            onClick={handleCreateNew}
+            pointerEvents="auto"
+            boxShadow="0 8px 20px rgba(85, 168, 137, 0.35)"
+          >
+            新規予約を作成
+          </Button>
+        </Box>
+
+        {/* 予約作成モーダル */}
+        <CreateReservationModal
+          isOpen={isModalOpen}
+          onClose={onModalClose}
+          studioId={STUDIO_ID}
+          initialDate={selectedDate ?? ''}
+          initialStartTime={selectedStartTime}
+          onSuccess={handleReservationSuccess}
+          reservations={calendarData?.reservations || []}
+        />
+      </Box>
+    );
+  }
+
+  // ===== デスクトップレイアウト (既存) =====
   return (
     <Container maxW="container.xl" py={8}>
       <VStack spacing={6} align="stretch">
@@ -200,7 +312,7 @@ export default function CalendarPage() {
           </Grid>
         )}
 
-        {/* 日付詳細モーダル（xl 未満のみ） */}
+        {/* 日付詳細モーダル (md-lg 用) */}
         {calendarData && selectedDate && (
           <DayDetailModal
             isOpen={isDayDetailOpen}

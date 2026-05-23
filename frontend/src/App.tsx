@@ -46,7 +46,7 @@ function App() {
           <Route
             path="/customer/calendar"
             element={
-              <CustomerLayout>
+              <CustomerLayout title="カレンダー" showBack={false}>
                 <CustomerCalendarPage />
               </CustomerLayout>
             }
@@ -55,7 +55,7 @@ function App() {
             path="/customer/reservations"
             element={
               <ProtectedRoute>
-                <CustomerLayout>
+                <CustomerLayout title="マイ予約">
                   <ReservationsPage />
                 </CustomerLayout>
               </ProtectedRoute>
@@ -65,7 +65,7 @@ function App() {
             path="/customer/reservations/:id"
             element={
               <ProtectedRoute>
-                <CustomerLayout>
+                <CustomerLayout title="予約詳細">
                   <ReservationDetailPage />
                 </CustomerLayout>
               </ProtectedRoute>
@@ -75,7 +75,7 @@ function App() {
             path="/customer/inquiries"
             element={
               <ProtectedRoute>
-                <CustomerLayout>
+                <CustomerLayout title="問い合わせ">
                   {/* 問い合わせページは後で実装 */}
                   <Box p={8}>問い合わせページ（実装予定）</Box>
                 </CustomerLayout>
@@ -86,7 +86,7 @@ function App() {
             path="/customer/profile"
             element={
               <ProtectedRoute>
-                <CustomerLayout>
+                <CustomerLayout title="プロフィール">
                   <ProfilePage />
                 </CustomerLayout>
               </ProtectedRoute>
