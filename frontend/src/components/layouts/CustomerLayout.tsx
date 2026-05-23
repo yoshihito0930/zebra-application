@@ -17,7 +17,6 @@ import {
   Text,
   HStack,
   VStack,
-  Heading,
   Drawer,
   DrawerBody,
   DrawerHeader,
@@ -26,8 +25,11 @@ import {
   DrawerCloseButton,
   useDisclosure,
   Divider,
+  Tag,
+  TagLabel,
+  TagLeftIcon,
 } from '@chakra-ui/react';
-import { Bell, ChevronLeft, List, MessageCircle, MoreHorizontal, User } from 'lucide-react';
+import { Bell, List, MessageCircle, MoreHorizontal, User, UserCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import LogoutButton from '../auth/LogoutButton';
@@ -35,23 +37,15 @@ import LogoutButton from '../auth/LogoutButton';
 interface CustomerLayoutProps {
   children: ReactNode;
   breadcrumbLabel?: string;
-  title?: string;
-  showBack?: boolean;
-  onBack?: () => void;
 }
 
 export default function CustomerLayout({
   children,
   breadcrumbLabel = '予約',
-  title = '',
-  showBack = true,
-  onBack,
 }: CustomerLayoutProps) {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuthStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
-
-  const handleBack = onBack ?? (() => navigate(-1));
 
   const handleDrawerNavigate = (path: string) => {
     onClose();
@@ -60,17 +54,12 @@ export default function CustomerLayout({
 
   return (
     <Box minH="100vh" bg="gray.50">
-      {/* デスクトップヘッダー (md+) */}
-      <Box
-        display={{ base: 'none', md: 'block' }}
-        bg="white"
-        borderBottom="1px"
-        borderColor="gray.200"
-        shadow="sm"
-      >
-        <Container maxW="container.xl">
+      {/* ヘッダー (共通) */}
+      <Box bg="white" borderBottom="1px" borderColor="gray.200" shadow="sm">
+        <Container maxW="container.xl" px={{ base: 4, md: 6 }}>
           <Flex h="64px" align="center" justify="space-between">
-            <HStack spacing={4}>
+            {/* ロゴ + パンくず */}
+            <HStack spacing={{ base: 2, md: 4 }} minW={0}>
               <Box
                 w="40px"
                 h="40px"
@@ -81,29 +70,34 @@ export default function CustomerLayout({
                 justifyContent="center"
                 cursor="pointer"
                 onClick={() => navigate('/customer/calendar')}
+                flexShrink={0}
               >
                 <Text fontSize="lg" fontWeight="bold" color="white">
                   SZ
                 </Text>
               </Box>
-              <Breadcrumb separator="/" fontSize="md" color="gray.700">
-                <BreadcrumbItem display={{ base: 'none', md: 'flex' }}>
+              <Breadcrumb separator="/" fontSize={{ base: 'sm', md: 'md' }} color="gray.700">
+                <BreadcrumbItem>
                   <BreadcrumbLink
                     color="brand.600"
                     fontWeight="semibold"
                     onClick={() => navigate('/customer/calendar')}
                     _hover={{ textDecoration: 'underline' }}
+                    whiteSpace="nowrap"
                   >
                     スタジオゼブラ
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbItem isCurrentPage>
-                  <Text color="gray.700">{breadcrumbLabel}</Text>
+                  <Text color="gray.700" whiteSpace="nowrap">
+                    {breadcrumbLabel}
+                  </Text>
                 </BreadcrumbItem>
               </Breadcrumb>
             </HStack>
 
-            <HStack spacing={3}>
+            {/* 右側エリア — デスクトップ (md+) */}
+            <HStack spacing={3} display={{ base: 'none', md: 'flex' }}>
               {isAuthenticated ? (
                 <>
                   <IconButton
@@ -116,11 +110,7 @@ export default function CustomerLayout({
                     <MenuButton>
                       <HStack spacing={2} cursor="pointer">
                         <Avatar size="sm" name={user?.name} bg="brand.300" />
-                        <Text
-                          fontSize="sm"
-                          fontWeight="medium"
-                          display={{ base: 'none', md: 'block' }}
-                        >
+                        <Text fontSize="sm" fontWeight="medium">
                           {user?.name}
                         </Text>
                       </HStack>
@@ -171,44 +161,46 @@ export default function CustomerLayout({
                 </>
               )}
             </HStack>
+
+            {/* 右側エリア — モバイル (<md) */}
+            <Box display={{ base: 'block', md: 'none' }}>
+              {isAuthenticated ? (
+                <IconButton
+                  aria-label="メニュー"
+                  icon={<MoreHorizontal size={20} />}
+                  isRound
+                  variant="ghost"
+                  size="md"
+                  onClick={onOpen}
+                />
+              ) : (
+                <Tag
+                  size="md"
+                  borderRadius="full"
+                  variant="subtle"
+                  colorScheme="gray"
+                  cursor="pointer"
+                  onClick={onOpen}
+                  py={1.5}
+                  px={3}
+                >
+                  <TagLeftIcon as={UserCircle2} boxSize="14px" />
+                  <TagLabel fontSize="xs" fontWeight="semibold">
+                    ゲスト
+                  </TagLabel>
+                </Tag>
+              )}
+            </Box>
           </Flex>
         </Container>
       </Box>
 
-      {/* モバイル chrome (<md) */}
-      <Box display={{ base: 'block', md: 'none' }} bg="gray.100" px={4} pt={3} pb={4}>
-        <Flex justify="space-between" align="center" mb={2}>
-          <IconButton
-            aria-label="戻る"
-            icon={<ChevronLeft size={20} />}
-            isRound
-            bg="white"
-            shadow="sm"
-            size="md"
-            visibility={showBack ? 'visible' : 'hidden'}
-            onClick={handleBack}
-          />
-          <IconButton
-            aria-label="メニュー"
-            icon={<MoreHorizontal size={20} />}
-            isRound
-            bg="white"
-            shadow="sm"
-            size="md"
-            onClick={onOpen}
-          />
-        </Flex>
-        {title && (
-          <Heading size="xl" fontWeight="bold" color="gray.900">
-            {title}
-          </Heading>
-        )}
+      {/* メインコンテンツ */}
+      <Box as="main" py={{ base: 4, md: 8 }}>
+        {children}
       </Box>
 
-      {/* メインコンテンツ */}
-      <Box as="main" py={{ base: 0, md: 8 }}>{children}</Box>
-
-      {/* デスクトップフッター (md+) */}
+      {/* フッター (md+ のみ) */}
       <Box
         display={{ base: 'none', md: 'block' }}
         bg="white"
@@ -277,21 +269,30 @@ export default function CustomerLayout({
                   </Box>
                 </>
               ) : (
-                <VStack align="stretch" spacing={2} px={4} py={2}>
-                  <Button
-                    colorScheme="brand"
-                    onClick={() => handleDrawerNavigate('/login')}
-                  >
-                    ログイン
-                  </Button>
-                  <Button
-                    variant="outline"
-                    colorScheme="brand"
-                    onClick={() => handleDrawerNavigate('/signup')}
-                  >
-                    新規登録
-                  </Button>
-                </VStack>
+                <>
+                  <HStack px={4} py={3} spacing={3}>
+                    <UserCircle2 size={20} />
+                    <Text fontSize="sm" color="gray.700">
+                      ゲストとして閲覧中
+                    </Text>
+                  </HStack>
+                  <Divider />
+                  <VStack align="stretch" spacing={2} px={4} py={3}>
+                    <Button
+                      colorScheme="brand"
+                      onClick={() => handleDrawerNavigate('/login')}
+                    >
+                      ログイン
+                    </Button>
+                    <Button
+                      variant="outline"
+                      colorScheme="brand"
+                      onClick={() => handleDrawerNavigate('/signup')}
+                    >
+                      新規登録
+                    </Button>
+                  </VStack>
+                </>
               )}
             </VStack>
           </DrawerBody>

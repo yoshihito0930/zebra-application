@@ -152,15 +152,44 @@ export default function CalendarPage() {
 
         {!isLoading && !error && calendarData && (
           <Box px={4} pt={4} pb={6}>
-            <MobileReservationCalendar
-              reservations={calendarData.reservations}
-              blockedSlots={calendarData.blocked_slots}
-              currentYear={currentYear}
-              currentMonth={currentMonth}
-              selectedDate={selectedDate}
-              onDateSelect={handleDateSelect}
-              onMonthChange={handleMonthChange}
-            />
+            <VStack spacing={4} align="stretch">
+              <Box>
+                <Heading size="lg" color="brand.600" mb={1}>
+                  予約カレンダー
+                </Heading>
+                <Text color="gray.600" fontSize="sm">
+                  空き状況を確認して、撮影を予約しましょう
+                </Text>
+              </Box>
+
+              {!isAuthenticated && (
+                <Alert status="info" variant="left-accent" borderRadius="md" py={2}>
+                  <AlertIcon />
+                  <Text fontSize="sm" color="gray.700">
+                    ゲストのままでも予約できます。
+                    <Link
+                      color="brand.600"
+                      fontWeight="semibold"
+                      ml={1}
+                      onClick={() => navigate('/signup')}
+                    >
+                      会員登録
+                    </Link>
+                    すると予約履歴の確認や簡単予約が利用できます。
+                  </Text>
+                </Alert>
+              )}
+
+              <MobileReservationCalendar
+                reservations={calendarData.reservations}
+                blockedSlots={calendarData.blocked_slots}
+                currentYear={currentYear}
+                currentMonth={currentMonth}
+                selectedDate={selectedDate}
+                onDateSelect={handleDateSelect}
+                onMonthChange={handleMonthChange}
+              />
+            </VStack>
           </Box>
         )}
 
