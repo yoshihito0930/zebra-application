@@ -12,6 +12,7 @@ import {
   GridItem,
   Alert,
   AlertIcon,
+  useBreakpointValue,
   useDisclosure,
 } from '@chakra-ui/react';
 import { ArrowLeft, CheckCircle, Calendar as CalendarIcon, User, Mail, Phone, Building, Edit } from 'lucide-react';
@@ -27,6 +28,7 @@ import { ReservationEditModal } from '../../components/admin/ReservationEditModa
 export const ReservationDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const isMobile = useBreakpointValue({ base: true, md: false }, { ssr: false });
 
   // React Queryで予約詳細取得
   const { data: reservation, isLoading, error } = useReservation(id);
@@ -76,13 +78,18 @@ export const ReservationDetailPage = () => {
       reservation.status === 'confirmed');
 
   return (
-    <Container maxW="container.lg" py={8}>
-      <VStack spacing={6} align="stretch">
+    <Container
+      maxW={{ base: 'full', md: 'container.lg' }}
+      px={{ base: 0, md: 6 }}
+      py={{ base: 0, md: 8 }}
+    >
+      <VStack spacing={{ base: 4, md: 6 }} align="stretch">
         {/* ヘッダー */}
         <HStack justify="space-between" align="flex-start">
           <Button
             leftIcon={<ArrowLeft size={18} />}
             variant="ghost"
+            size={{ base: 'sm', md: 'md' }}
             onClick={() => navigate('/admin/reservations')}
           >
             予約一覧に戻る
@@ -98,11 +105,19 @@ export const ReservationDetailPage = () => {
         {!isLoading && !error && reservation && (
           <>
             {/* ステータスと操作 */}
-            <Box bg="white" p={6} borderRadius="lg" shadow="md">
-              <HStack justify="space-between" align="flex-start" mb={4}>
+            <Box bg="white" p={{ base: 4, md: 6 }} borderRadius="lg" shadow="md">
+              <HStack
+                justify="space-between"
+                align="flex-start"
+                mb={4}
+                flexWrap="wrap"
+                spacing={3}
+              >
                 <VStack align="flex-start" spacing={2}>
-                  <Heading size="lg">予約詳細（管理者画面）</Heading>
-                  <HStack spacing={3}>
+                  <Heading size={{ base: 'md', md: 'lg' }}>
+                    予約詳細（管理者画面）
+                  </Heading>
+                  <HStack spacing={2} flexWrap="wrap">
                     <StatusBadge status={reservation.status} size="md" />
                     <Badge colorScheme="gray" fontSize="sm">
                       {getReservationTypeLabel(reservation.reservation_type)}
@@ -115,27 +130,30 @@ export const ReservationDetailPage = () => {
                   </HStack>
                 </VStack>
 
-                <HStack spacing={3}>
-                  {canApprove && (
-                    <Button
-                      leftIcon={<CheckCircle size={18} />}
-                      colorScheme="green"
-                      onClick={onApprovalDialogOpen}
-                    >
-                      承認・拒否
-                    </Button>
-                  )}
-                  {canEdit && (
-                    <Button
-                      leftIcon={<Edit size={18} />}
-                      colorScheme="blue"
-                      variant="outline"
-                      onClick={onEditModalOpen}
-                    >
-                      編集
-                    </Button>
-                  )}
-                </HStack>
+                {/* デスクトップのみ上部に表示。モバイルは下部 sticky バー */}
+                {!isMobile && (
+                  <HStack spacing={3}>
+                    {canApprove && (
+                      <Button
+                        leftIcon={<CheckCircle size={18} />}
+                        colorScheme="green"
+                        onClick={onApprovalDialogOpen}
+                      >
+                        承認・拒否
+                      </Button>
+                    )}
+                    {canEdit && (
+                      <Button
+                        leftIcon={<Edit size={18} />}
+                        colorScheme="blue"
+                        variant="outline"
+                        onClick={onEditModalOpen}
+                      >
+                        編集
+                      </Button>
+                    )}
+                  </HStack>
+                )}
               </HStack>
 
               <Divider mb={6} />
@@ -147,7 +165,7 @@ export const ReservationDetailPage = () => {
                     <Heading size="sm" mb={3}>
                       ゲスト予約者情報
                     </Heading>
-                    <Grid templateColumns="repeat(2, 1fr)" gap={4}>
+                    <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={4}>
                       <Box>
                         <HStack spacing={2} mb={1}>
                           <User size={16} />
@@ -197,7 +215,7 @@ export const ReservationDetailPage = () => {
                     <Heading size="sm" mb={3}>
                       会員予約者情報
                     </Heading>
-                    <Grid templateColumns="repeat(2, 1fr)" gap={4}>
+                    <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={4}>
                       <Box>
                         <HStack spacing={2} mb={1}>
                           <User size={16} />
@@ -246,7 +264,7 @@ export const ReservationDetailPage = () => {
               )}
 
               {/* 予約情報 */}
-              <Grid templateColumns="repeat(2, 1fr)" gap={6}>
+              <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)' }} gap={6}>
                 <GridItem>
                   <VStack align="stretch" spacing={4}>
                     <Box>
@@ -473,7 +491,51 @@ export const ReservationDetailPage = () => {
             reservation={reservation}
           />
         )}
+
+        {/* モバイルで下部 sticky アクションバーが出るときは、コンテンツ下端の隠れ防止用にスペース確保 */}
+        {isMobile && reservation && (canApprove || canEdit) && <Box h="72px" aria-hidden />}
       </VStack>
+
+      {/* モバイル: 下部 sticky アクションバー (ボトムナビの上に重ねる) */}
+      {isMobile && reservation && (canApprove || canEdit) && (
+        <Box
+          position="fixed"
+          left={0}
+          right={0}
+          bottom="64px"
+          bg="white"
+          borderTopWidth="1px"
+          borderColor="gray.200"
+          px={3}
+          py={3}
+          zIndex={15}
+          pb={`calc(env(safe-area-inset-bottom) + 12px)`}
+        >
+          <HStack spacing={2}>
+            {canApprove && (
+              <Button
+                flex={1}
+                leftIcon={<CheckCircle size={16} />}
+                colorScheme="green"
+                onClick={onApprovalDialogOpen}
+              >
+                承認・拒否
+              </Button>
+            )}
+            {canEdit && (
+              <Button
+                flex={1}
+                leftIcon={<Edit size={16} />}
+                colorScheme="blue"
+                variant="outline"
+                onClick={onEditModalOpen}
+              >
+                編集
+              </Button>
+            )}
+          </HStack>
+        </Box>
+      )}
     </Container>
   );
 };
