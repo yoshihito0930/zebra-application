@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import MobilePageHeader from './MobilePageHeader';
 import MobileKpiTile from './MobileKpiTile';
 import MobileReservationCard from './MobileReservationCard';
+import MiniCalendar from './MiniCalendar';
 import ReservationStatusTabs from './ReservationStatusTabs';
 import {
   countByTab,
@@ -32,6 +33,7 @@ interface MobileAdminDashboardProps {
   todayCount: number;
   pendingCount: number;
   monthlyReservations: Reservation[];
+  pendingDateSet: Set<string>;
   onCardClick: (id: string) => void;
   onApprovalClick: (reservation: Reservation) => void;
 }
@@ -41,6 +43,7 @@ export default function MobileAdminDashboard({
   todayCount,
   pendingCount,
   monthlyReservations,
+  pendingDateSet,
   onCardClick,
   onApprovalClick,
 }: MobileAdminDashboardProps) {
@@ -111,6 +114,12 @@ export default function MobileAdminDashboard({
         <MobileKpiTile label="今月" value={monthlyReservations.length} />
         <MobileKpiTile label="今月売上" value={formatRevenueShort(Math.floor(monthlyRevenue))} />
       </SimpleGrid>
+
+      {/* ミニカレンダー */}
+      <MiniCalendar
+        pendingDateSet={pendingDateSet}
+        onDateClick={() => navigate('/admin/calendar')}
+      />
 
       {/* フィルタチップ */}
       <ReservationStatusTabs

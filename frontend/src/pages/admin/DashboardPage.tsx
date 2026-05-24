@@ -106,6 +106,7 @@ export default function DashboardPage() {
           todayCount={todayReservations.length}
           pendingCount={pendingReservations.length}
           monthlyReservations={monthlyReservations}
+          pendingDateSet={pendingDateSet}
           onCardClick={handleCardClick}
           onApprovalClick={handleApprovalClick}
         />
