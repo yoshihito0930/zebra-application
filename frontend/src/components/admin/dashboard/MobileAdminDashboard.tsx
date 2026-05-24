@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   AlertIcon,
@@ -49,6 +49,9 @@ export default function MobileAdminDashboard({
 }: MobileAdminDashboardProps) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabKey>('all');
+  const [pendingScrollDate, setPendingScrollDate] = useState<string | null>(null);
+  const [highlightDate, setHighlightDate] = useState<string | null>(null);
+  const groupRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const counts = useMemo(() => countByTab(allReservations), [allReservations]);
   const filtered = useMemo(
@@ -57,6 +60,11 @@ export default function MobileAdminDashboard({
   );
   const groups = useMemo(() => groupReservationsByDate(filtered, 'asc'), [filtered]);
 
+  const reservedDateSet = useMemo(
+    () => new Set(allReservations.map((r) => r.date)),
+    [allReservations]
+  );
+
   const monthlyRevenue = useMemo(
     () =>
       monthlyReservations
@@ -64,6 +72,47 @@ export default function MobileAdminDashboard({
         .reduce((sum, r) => sum + calculateReservationTotal(r).total, 0),
     [monthlyReservations]
   );
+
+  const scrollToDate = useCallback((date: string) => {
+    const el = groupRefs.current.get(date);
+    if (!el) return false;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // ハイライトは描画直後の rAF 内で設定し、effect 内同期 setState を避ける
+    window.requestAnimationFrame(() => setHighlightDate(date));
+    window.setTimeout(() => {
+      setHighlightDate((current) => (current === date ? null : current));
+    }, 1800);
+    return true;
+  }, []);
+
+  const handleCalendarDateClick = useCallback(
+    (date: string) => {
+      if (!reservedDateSet.has(date)) return;
+      // 現在のタブで対象日付が見つからない場合は 'all' に切り替えてからスクロール
+      const visibleNow = groups.some((g) => g.date === date);
+      if (!visibleNow && activeTab !== 'all') {
+        setActiveTab('all');
+        setPendingScrollDate(date);
+        return;
+      }
+      scrollToDate(date);
+    },
+    [reservedDateSet, groups, activeTab, scrollToDate]
+  );
+
+  // タブ切替後の再レンダリングで groups が更新されたらスクロール実行
+  // setState は rAF 内で呼ぶことで effect 内同期 setState のルール違反を回避
+  useEffect(() => {
+    if (!pendingScrollDate) return;
+    const visible = groups.some((g) => g.date === pendingScrollDate);
+    if (!visible) return;
+    const target = pendingScrollDate;
+    const raf = window.requestAnimationFrame(() => {
+      scrollToDate(target);
+      setPendingScrollDate(null);
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [pendingScrollDate, groups, scrollToDate]);
 
   return (
     <VStack align="stretch" spacing={4}>
@@ -118,7 +167,7 @@ export default function MobileAdminDashboard({
       {/* ミニカレンダー */}
       <MiniCalendar
         pendingDateSet={pendingDateSet}
-        onDateClick={() => navigate('/admin/calendar')}
+        onDateClick={handleCalendarDateClick}
       />
 
       {/* フィルタチップ */}
@@ -141,8 +190,22 @@ export default function MobileAdminDashboard({
             const isToday = group.label.includes('今日');
             // ラベルから "今日" / "明日" を取り除いて表示部分を整える
             const displayLabel = group.label.replace(' 今日 ', ' ').replace(' 明日 ', ' ');
+            const isHighlighted = highlightDate === group.date;
             return (
-              <Box key={group.date}>
+              <Box
+                key={group.date}
+                ref={(el) => {
+                  if (el) groupRefs.current.set(group.date, el);
+                  else groupRefs.current.delete(group.date);
+                }}
+                scrollMarginTop="12px"
+                borderRadius="lg"
+                transition="background-color 0.4s ease, box-shadow 0.4s ease"
+                bg={isHighlighted ? 'brand.50' : 'transparent'}
+                boxShadow={isHighlighted ? '0 0 0 2px var(--chakra-colors-brand-200)' : 'none'}
+                p={isHighlighted ? 2 : 0}
+                mx={isHighlighted ? -2 : 0}
+              >
                 <HStack spacing={2} mb={2}>
                   <Text
                     fontSize="sm"
