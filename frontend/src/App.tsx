@@ -15,6 +15,7 @@ import AdminDashboardPage from './pages/admin/DashboardPage';
 import AdminCalendarPage from './pages/admin/CalendarPage';
 import { ReservationsPage as AdminReservationsPage } from './pages/admin/ReservationsPage';
 import { ReservationDetailPage as AdminReservationDetailPage } from './pages/admin/ReservationDetailPage';
+import BlockedSlotsPage from './pages/admin/BlockedSlotsPage';
 import StaffDashboardPage from './pages/staff/DashboardPage';
 import StaffCalendarPage from './pages/staff/CalendarPage';
 import { ReservationsPage as StaffReservationsPage } from './pages/staff/ReservationsPage';
@@ -130,6 +131,16 @@ function App() {
               <ProtectedRoute requiredRole="admin">
                 <AdminLayout>
                   <AdminReservationDetailPage />
+                </AdminLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/blocked-slots"
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminLayout>
+                  <BlockedSlotsPage />
                 </AdminLayout>
               </ProtectedRoute>
             }

@@ -88,3 +88,66 @@ export const changePasswordSchema = z.object({
 });
 
 export type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
+
+// ブロック枠作成フォームスキーマ
+// API 仕様 (docs/api-design.md):
+//   - date: YYYY-MM-DD、今日以降
+//   - is_all_day=false の場合 start_time/end_time は HH:MM 必須、end > start
+//   - reason: 1〜200文字
+const HHMM_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
+const todayYMD = (): string => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+export const blockedSlotSchema = z
+  .object({
+    date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, '日付を選択してください')
+      .refine((d) => d >= todayYMD(), '今日以降の日付を指定してください'),
+    is_all_day: z.boolean(),
+    start_time: z
+      .string()
+      .regex(HHMM_REGEX, 'HH:MM形式で入力してください')
+      .optional()
+      .or(z.literal('')),
+    end_time: z
+      .string()
+      .regex(HHMM_REGEX, 'HH:MM形式で入力してください')
+      .optional()
+      .or(z.literal('')),
+    reason: z
+      .string()
+      .min(1, '理由を入力してください')
+      .max(200, '理由は200文字以内で入力してください'),
+  })
+  .superRefine((val, ctx) => {
+    if (val.is_all_day) return;
+    if (!val.start_time) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['start_time'],
+        message: '開始時刻を入力してください',
+      });
+    }
+    if (!val.end_time) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['end_time'],
+        message: '終了時刻を入力してください',
+      });
+    }
+    if (val.start_time && val.end_time && val.end_time <= val.start_time) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['end_time'],
+        message: '終了時刻は開始時刻より後にしてください',
+      });
+    }
+  });
+
+export type BlockedSlotFormData = z.infer<typeof blockedSlotSchema>;
