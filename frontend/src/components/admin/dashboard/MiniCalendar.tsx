@@ -17,11 +17,12 @@ import { ja } from 'date-fns/locale';
 interface MiniCalendarProps {
   pendingDateSet: Set<string>;
   onDateClick?: (date: string) => void;
+  onMonthChange?: (year: number, month: number) => void;
 }
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
-export default function MiniCalendar({ pendingDateSet, onDateClick }: MiniCalendarProps) {
+export default function MiniCalendar({ pendingDateSet, onDateClick, onMonthChange }: MiniCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()));
 
   const firstDay = startOfMonth(currentMonth);
@@ -29,8 +30,13 @@ export default function MiniCalendar({ pendingDateSet, onDateClick }: MiniCalend
   const daysInMonth = eachDayOfInterval({ start: firstDay, end: lastDay });
   const leadingBlanks = getDay(firstDay);
 
-  const goPrev = () => setCurrentMonth((m) => subMonths(m, 1));
-  const goNext = () => setCurrentMonth((m) => addMonths(m, 1));
+  const changeMonth = (next: Date) => {
+    setCurrentMonth(next);
+    onMonthChange?.(next.getFullYear(), next.getMonth() + 1);
+  };
+
+  const goPrev = () => changeMonth(subMonths(currentMonth, 1));
+  const goNext = () => changeMonth(addMonths(currentMonth, 1));
 
   return (
     <Box bg="white" borderWidth="1px" borderColor="gray.200" borderRadius="lg" p={4}>

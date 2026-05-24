@@ -29,21 +29,31 @@ import { calculateReservationTotal } from '../../../utils/reservationPrice';
 import type { Reservation } from '../../../types';
 
 interface MobileAdminDashboardProps {
+  /** 表示月で絞り込み済みの予約。フィルタチップ・日付グループ・スクロール対象。 */
+  visibleReservations: Reservation[];
+  /** 全期間の予約。isNewReservation 判定用にのみ参照。 */
   allReservations: Reservation[];
   todayCount: number;
   pendingCount: number;
   monthlyReservations: Reservation[];
   pendingDateSet: Set<string>;
+  viewYear: number;
+  viewMonth: number;
+  onMonthChange: (year: number, month: number) => void;
   onCardClick: (id: string) => void;
   onApprovalClick: (reservation: Reservation) => void;
 }
 
 export default function MobileAdminDashboard({
+  visibleReservations,
   allReservations,
   todayCount,
   pendingCount,
   monthlyReservations,
   pendingDateSet,
+  viewYear,
+  viewMonth,
+  onMonthChange,
   onCardClick,
   onApprovalClick,
 }: MobileAdminDashboardProps) {
@@ -53,16 +63,16 @@ export default function MobileAdminDashboard({
   const [highlightDate, setHighlightDate] = useState<string | null>(null);
   const groupRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
-  const counts = useMemo(() => countByTab(allReservations), [allReservations]);
+  const counts = useMemo(() => countByTab(visibleReservations), [visibleReservations]);
   const filtered = useMemo(
-    () => filterByTab(allReservations, activeTab),
-    [allReservations, activeTab]
+    () => filterByTab(visibleReservations, activeTab),
+    [visibleReservations, activeTab]
   );
   const groups = useMemo(() => groupReservationsByDate(filtered, 'asc'), [filtered]);
 
   const reservedDateSet = useMemo(
-    () => new Set(allReservations.map((r) => r.date)),
-    [allReservations]
+    () => new Set(visibleReservations.map((r) => r.date)),
+    [visibleReservations]
   );
 
   const monthlyRevenue = useMemo(
@@ -168,6 +178,7 @@ export default function MobileAdminDashboard({
       <MiniCalendar
         pendingDateSet={pendingDateSet}
         onDateClick={handleCalendarDateClick}
+        onMonthChange={onMonthChange}
       />
 
       {/* フィルタチップ */}
@@ -182,7 +193,7 @@ export default function MobileAdminDashboard({
       {groups.length === 0 ? (
         <Alert status="info" borderRadius="md">
           <AlertIcon />
-          表示できる予約がありません
+          {viewYear}年{viewMonth}月に表示できる予約はありません
         </Alert>
       ) : (
         <VStack align="stretch" spacing={5}>

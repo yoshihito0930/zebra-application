@@ -36,6 +36,10 @@ export default function DashboardPage() {
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
   const isMobile = useBreakpointValue({ base: true, md: false }, { ssr: false });
 
+  const now = new Date();
+  const [viewYear, setViewYear] = useState<number>(now.getFullYear());
+  const [viewMonth, setViewMonth] = useState<number>(now.getMonth() + 1); // 1始まり
+
   const { data: allReservations = [], isLoading, error } = useAllReservations(STUDIO_ID, 'all', 'all');
 
   const todayKey = format(new Date(), 'yyyy-MM-dd');
@@ -47,20 +51,34 @@ export default function DashboardPage() {
     () => allReservations.filter((r) => r.status === 'pending'),
     [allReservations]
   );
-  const monthlyReservations = useMemo(() => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth();
+  // KPI「今月」「今月売上」は本日基準を維持
+  const currentMonthReservations = useMemo(() => {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = today.getMonth();
     return allReservations.filter((r) => {
       const d = new Date(r.date);
       return d.getFullYear() === y && d.getMonth() === m;
     });
   }, [allReservations]);
 
+  // 一覧表示用: カレンダー表示中の年月で絞り込み
+  const visibleReservations = useMemo(() => {
+    return allReservations.filter((r) => {
+      const d = new Date(r.date);
+      return d.getFullYear() === viewYear && d.getMonth() === viewMonth - 1;
+    });
+  }, [allReservations, viewYear, viewMonth]);
+
   const pendingDateSet = useMemo(
     () => new Set(pendingReservations.map((r) => r.date)),
     [pendingReservations]
   );
+
+  const handleMonthChange = (year: number, month: number) => {
+    setViewYear(year);
+    setViewMonth(month);
+  };
 
   const handleCardClick = (id: string) => navigate(`/admin/reservations/${id}`);
 
@@ -102,11 +120,15 @@ export default function DashboardPage() {
     <>
       {isMobile ? (
         <MobileAdminDashboard
+          visibleReservations={visibleReservations}
           allReservations={allReservations}
           todayCount={todayReservations.length}
           pendingCount={pendingReservations.length}
-          monthlyReservations={monthlyReservations}
+          monthlyReservations={currentMonthReservations}
           pendingDateSet={pendingDateSet}
+          viewYear={viewYear}
+          viewMonth={viewMonth}
+          onMonthChange={handleMonthChange}
           onCardClick={handleCardClick}
           onApprovalClick={handleApprovalClick}
         />
@@ -132,7 +154,7 @@ export default function DashboardPage() {
             <KpiCardGrid
               todayCount={todayReservations.length}
               pendingCount={pendingReservations.length}
-              monthlyReservations={monthlyReservations}
+              monthlyReservations={currentMonthReservations}
             />
 
             {/* 2カラムグリッド */}
@@ -140,7 +162,10 @@ export default function DashboardPage() {
               {/* 左カラム */}
               <Box gridColumn={{ base: 'auto', lg: 'span 4' }}>
                 <VStack align="stretch" spacing={4}>
-                  <MiniCalendar pendingDateSet={pendingDateSet} />
+                  <MiniCalendar
+                    pendingDateSet={pendingDateSet}
+                    onMonthChange={handleMonthChange}
+                  />
                   <UrgentAlertCard pendingCount={pendingReservations.length} />
                 </VStack>
               </Box>
@@ -148,7 +173,7 @@ export default function DashboardPage() {
               {/* 右カラム */}
               <Box gridColumn={{ base: 'auto', lg: 'span 8' }}>
                 <ReservationListSection
-                  reservations={allReservations}
+                  reservations={visibleReservations}
                   onCardClick={handleCardClick}
                   onApprovalClick={handleApprovalClick}
                 />
