@@ -80,7 +80,16 @@ export default function AdminTopNav() {
   };
 
   return (
-    <Box as="header" bg="white" borderBottom="1px" borderColor="gray.200" position="sticky" top={0} zIndex={10}>
+    <Box
+      as="header"
+      bg="white"
+      borderBottom="1px"
+      borderColor="gray.200"
+      position="sticky"
+      top={0}
+      zIndex={10}
+      display={{ base: 'none', md: 'block' }}
+    >
       <Flex h="64px" px={{ base: 4, md: 6 }} align="center" gap={6}>
         {/* モバイル: ハンバーガー */}
         <IconButton

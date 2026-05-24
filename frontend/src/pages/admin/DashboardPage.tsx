@@ -10,6 +10,7 @@ import {
   SimpleGrid,
   Spinner,
   Text,
+  useBreakpointValue,
   useDisclosure,
   VStack,
 } from '@chakra-ui/react';
@@ -23,6 +24,7 @@ import KpiCardGrid from '../../components/admin/dashboard/KpiCardGrid';
 import MiniCalendar from '../../components/admin/dashboard/MiniCalendar';
 import UrgentAlertCard from '../../components/admin/dashboard/UrgentAlertCard';
 import ReservationListSection from '../../components/admin/dashboard/ReservationListSection';
+import MobileAdminDashboard from '../../components/admin/dashboard/MobileAdminDashboard';
 import type { Reservation } from '../../types';
 
 const STUDIO_ID = 'studio_001'; // TODO: 後で動的に取得
@@ -32,6 +34,7 @@ export default function DashboardPage() {
   const createModal = useDisclosure();
   const approvalDialog = useDisclosure();
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
+  const isMobile = useBreakpointValue({ base: true, md: false }, { ssr: false });
 
   const { data: allReservations = [], isLoading, error } = useAllReservations(STUDIO_ID, 'all', 'all');
 
@@ -96,52 +99,65 @@ export default function DashboardPage() {
   }
 
   return (
-    <Container maxW="container.xl">
-      <VStack align="stretch" spacing={6}>
-        {/* ページタイトル行 */}
-        <Flex align="center" justify="space-between" wrap="wrap" gap={3}>
-          <Box>
-            <Heading size="lg" color="gray.800">
-              予約管理
-            </Heading>
-            <Text fontSize="sm" color="gray.600" mt={1}>
-              顧客からの予約申請を承認・管理します
-            </Text>
-          </Box>
-          <Button leftIcon={<Plus size={16} />} colorScheme="brand" onClick={createModal.onOpen}>
-            予約を追加
-          </Button>
-        </Flex>
-
-        {/* KPIカード */}
-        <KpiCardGrid
+    <>
+      {isMobile ? (
+        <MobileAdminDashboard
+          allReservations={allReservations}
           todayCount={todayReservations.length}
           pendingCount={pendingReservations.length}
           monthlyReservations={monthlyReservations}
+          onCardClick={handleCardClick}
+          onApprovalClick={handleApprovalClick}
         />
+      ) : (
+        <Container maxW="container.xl">
+          <VStack align="stretch" spacing={6}>
+            {/* ページタイトル行 */}
+            <Flex align="center" justify="space-between" wrap="wrap" gap={3}>
+              <Box>
+                <Heading size="lg" color="gray.800">
+                  予約管理
+                </Heading>
+                <Text fontSize="sm" color="gray.600" mt={1}>
+                  顧客からの予約申請を承認・管理します
+                </Text>
+              </Box>
+              <Button leftIcon={<Plus size={16} />} colorScheme="brand" onClick={createModal.onOpen}>
+                予約を追加
+              </Button>
+            </Flex>
 
-        {/* 2カラムグリッド */}
-        <SimpleGrid columns={{ base: 1, lg: 12 }} spacing={6}>
-          {/* 左カラム */}
-          <Box gridColumn={{ base: 'auto', lg: 'span 4' }}>
-            <VStack align="stretch" spacing={4}>
-              <MiniCalendar pendingDateSet={pendingDateSet} />
-              <UrgentAlertCard pendingCount={pendingReservations.length} />
-            </VStack>
-          </Box>
-
-          {/* 右カラム */}
-          <Box gridColumn={{ base: 'auto', lg: 'span 8' }}>
-            <ReservationListSection
-              reservations={allReservations}
-              onCardClick={handleCardClick}
-              onApprovalClick={handleApprovalClick}
+            {/* KPIカード */}
+            <KpiCardGrid
+              todayCount={todayReservations.length}
+              pendingCount={pendingReservations.length}
+              monthlyReservations={monthlyReservations}
             />
-          </Box>
-        </SimpleGrid>
-      </VStack>
 
-      {/* 承認/拒否ダイアログ */}
+            {/* 2カラムグリッド */}
+            <SimpleGrid columns={{ base: 1, lg: 12 }} spacing={6}>
+              {/* 左カラム */}
+              <Box gridColumn={{ base: 'auto', lg: 'span 4' }}>
+                <VStack align="stretch" spacing={4}>
+                  <MiniCalendar pendingDateSet={pendingDateSet} />
+                  <UrgentAlertCard pendingCount={pendingReservations.length} />
+                </VStack>
+              </Box>
+
+              {/* 右カラム */}
+              <Box gridColumn={{ base: 'auto', lg: 'span 8' }}>
+                <ReservationListSection
+                  reservations={allReservations}
+                  onCardClick={handleCardClick}
+                  onApprovalClick={handleApprovalClick}
+                />
+              </Box>
+            </SimpleGrid>
+          </VStack>
+        </Container>
+      )}
+
+      {/* 承認/拒否ダイアログ (モバイル/デスクトップ共通) */}
       {selectedReservation && (
         <ReservationApprovalDialog
           isOpen={approvalDialog.isOpen}
@@ -151,7 +167,7 @@ export default function DashboardPage() {
         />
       )}
 
-      {/* 予約作成モーダル */}
+      {/* 予約作成モーダル (モバイル/デスクトップ共通) */}
       <CreateReservationModal
         isOpen={createModal.isOpen}
         onClose={createModal.onClose}
@@ -163,7 +179,7 @@ export default function DashboardPage() {
           status: r.status,
         }))}
       />
-    </Container>
+    </>
   );
 }
 

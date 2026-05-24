@@ -5,6 +5,7 @@ interface ReservationStatusTabsProps {
   value: TabKey;
   onChange: (next: TabKey) => void;
   counts: Record<TabKey, number>;
+  scrollable?: boolean;
 }
 
 const dotColor: Record<TabKey, string> = {
@@ -15,9 +16,14 @@ const dotColor: Record<TabKey, string> = {
   other: 'gray.400',
 };
 
-export default function ReservationStatusTabs({ value, onChange, counts }: ReservationStatusTabsProps) {
-  return (
-    <HStack spacing={2} flexWrap="wrap">
+export default function ReservationStatusTabs({
+  value,
+  onChange,
+  counts,
+  scrollable = false,
+}: ReservationStatusTabsProps) {
+  const chips = (
+    <HStack spacing={2} flexWrap={scrollable ? 'nowrap' : 'wrap'}>
       {TAB_KEYS.map((key) => {
         const active = value === key;
         const isAll = key === 'all';
@@ -40,6 +46,7 @@ export default function ReservationStatusTabs({ value, onChange, counts }: Reser
             fontWeight={active ? 'bold' : 'medium'}
             cursor="pointer"
             transition="all 0.15s"
+            flexShrink={scrollable ? 0 : undefined}
             _hover={{ bg: active ? undefined : 'gray.50' }}
             onClick={() => onChange(key)}
           >
@@ -53,4 +60,21 @@ export default function ReservationStatusTabs({ value, onChange, counts }: Reser
       })}
     </HStack>
   );
+
+  if (scrollable) {
+    return (
+      <Box
+        overflowX="auto"
+        sx={{
+          '::-webkit-scrollbar': { display: 'none' },
+          msOverflowStyle: 'none',
+          scrollbarWidth: 'none',
+        }}
+      >
+        {chips}
+      </Box>
+    );
+  }
+
+  return chips;
 }
