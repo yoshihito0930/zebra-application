@@ -131,6 +131,7 @@ export default function DashboardPage() {
           onMonthChange={handleMonthChange}
           onCardClick={handleCardClick}
           onApprovalClick={handleApprovalClick}
+          onCreateClick={createModal.onOpen}
         />
       ) : (
         <Container maxW="container.xl">

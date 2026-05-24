@@ -17,6 +17,7 @@ import MobileKpiTile from './MobileKpiTile';
 import MobileReservationCard from './MobileReservationCard';
 import MiniCalendar from './MiniCalendar';
 import ReservationStatusTabs from './ReservationStatusTabs';
+import AdminMobileFab from '../../layouts/AdminMobileFab';
 import {
   countByTab,
   filterByTab,
@@ -42,6 +43,7 @@ interface MobileAdminDashboardProps {
   onMonthChange: (year: number, month: number) => void;
   onCardClick: (id: string) => void;
   onApprovalClick: (reservation: Reservation) => void;
+  onCreateClick: () => void;
 }
 
 export default function MobileAdminDashboard({
@@ -56,6 +58,7 @@ export default function MobileAdminDashboard({
   onMonthChange,
   onCardClick,
   onApprovalClick,
+  onCreateClick,
 }: MobileAdminDashboardProps) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabKey>('all');
@@ -253,6 +256,8 @@ export default function MobileAdminDashboard({
           })}
         </VStack>
       )}
+
+      <AdminMobileFab onClick={onCreateClick} />
     </VStack>
   );
 }

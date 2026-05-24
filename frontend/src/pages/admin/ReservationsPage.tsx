@@ -29,6 +29,8 @@ import { StatusBadge } from '../../components/common/StatusBadge';
 import { ReservationApprovalDialog } from '../../components/admin/ReservationApprovalDialog';
 import MobileReservationCard from '../../components/admin/dashboard/MobileReservationCard';
 import ReservationStatusTabs from '../../components/admin/dashboard/ReservationStatusTabs';
+import AdminMobileFab from '../../components/layouts/AdminMobileFab';
+import CreateReservationModal from '../../components/reservation/CreateReservationModal';
 import { TAB_KEYS, type TabKey } from '../../utils/reservationGrouping';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -47,6 +49,7 @@ export const ReservationsPage = () => {
   const [dateRangeFilter, setDateRangeFilter] = useState<'all' | 'future' | 'past'>('all');
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const createModal = useDisclosure();
   const navigate = useNavigate();
   const isMobile = useBreakpointValue({ base: true, md: false }, { ssr: false });
 
@@ -131,6 +134,20 @@ export const ReservationsPage = () => {
     />
   );
 
+  const createDialog = (
+    <CreateReservationModal
+      isOpen={createModal.isOpen}
+      onClose={createModal.onClose}
+      studioId={STUDIO_ID}
+      reservations={apiReservations.map((r) => ({
+        date: r.date,
+        start_time: r.start_time,
+        end_time: r.end_time,
+        status: r.status,
+      }))}
+    />
+  );
+
   if (isMobile) {
     return (
       <>
@@ -182,7 +199,9 @@ export const ReservationsPage = () => {
             </VStack>
           )}
         </VStack>
+        <AdminMobileFab onClick={createModal.onOpen} />
         {approvalDialog}
+        {createDialog}
       </>
     );
   }
@@ -331,6 +350,7 @@ export const ReservationsPage = () => {
       )}
 
       {approvalDialog}
+      {createDialog}
     </Container>
   );
 };
