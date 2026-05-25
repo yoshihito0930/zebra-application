@@ -529,7 +529,10 @@
 ### プラン
 
 #### GET /studios/{id}/plans
-有効なプラン一覧を取得する
+プラン一覧を取得する
+
+クエリパラメータ:
+- `include_inactive` (任意, boolean): `true` の場合は無効プラン (`is_active=false`) も含めて返す。管理画面用。未指定または `false` の場合は有効プランのみ返す（顧客向け予約フォームのデフォルト挙動）
 
 レスポンス (200):
 ```json
@@ -541,7 +544,10 @@
       "description": "スチール撮影向けのプラン",
       "price": 15000,
       "tax_rate": 0.10,
-      "display_order": 1
+      "display_order": 1,
+      "is_active": true,
+      "created_at": "2025-03-10T14:30:00+09:00",
+      "updated_at": "2025-03-10T14:30:00+09:00"
     }
   ]
 }
@@ -597,7 +603,10 @@
 ### オプション
 
 #### GET /studios/{id}/options
-有効なオプション一覧を取得する
+オプション一覧を取得する
+
+クエリパラメータ:
+- `include_inactive` (任意, boolean): `true` の場合は無効オプション (`is_active=false`) も含めて返す。管理画面用。未指定または `false` の場合は有効オプションのみ返す
 
 レスポンス (200):
 ```json
@@ -608,7 +617,10 @@
       "option_name": "6人以上のワークショップでご利用",
       "price": 2000,
       "tax_rate": 0.10,
-      "display_order": 1
+      "display_order": 1,
+      "is_active": true,
+      "created_at": "2025-03-10T14:30:00+09:00",
+      "updated_at": "2025-03-10T14:30:00+09:00"
     }
   ]
 }

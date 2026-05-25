@@ -45,6 +45,23 @@ func (u *OptionUsecase) ListActiveOptions(ctx context.Context, studioID string) 
 	return options, nil
 }
 
+// ListAllOptions は全オプション一覧（無効含む）を取得する（管理画面用）
+func (u *OptionUsecase) ListAllOptions(ctx context.Context, studioID string) ([]*entity.Option, error) {
+	// 1. スタジオの存在確認
+	_, err := u.studioRepo.FindByID(ctx, studioID)
+	if err != nil {
+		return nil, apierror.ErrStudioNotFound
+	}
+
+	// 2. 全オプション一覧を取得
+	options, err := u.optionRepo.FindByStudioID(ctx, studioID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list all options: %w", err)
+	}
+
+	return options, nil
+}
+
 // CreateOptionInput はオプション作成のリクエスト
 type CreateOptionInput struct {
 	StudioID     string

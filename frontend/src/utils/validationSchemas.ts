@@ -151,3 +151,62 @@ export const blockedSlotSchema = z
   });
 
 export type BlockedSlotFormData = z.infer<typeof blockedSlotSchema>;
+
+// プラン作成/更新フォームスキーマ
+// API 仕様 (docs/api-design.md POST /plans):
+//   - plan_name: 1〜100文字
+//   - description: 任意、500文字以内
+//   - price: 0以上の整数（税抜）
+//   - tax_rate: 0〜1の小数（例: 0.10 = 10%）
+//   - display_order: 任意、0以上の整数
+export const planSchema = z.object({
+  plan_name: z
+    .string()
+    .min(1, 'プラン名を入力してください')
+    .max(100, 'プラン名は100文字以内で入力してください'),
+  description: z
+    .string()
+    .max(500, '説明は500文字以内で入力してください')
+    .optional()
+    .or(z.literal('')),
+  price: z
+    .number({ error: '料金を入力してください' })
+    .int('料金は整数で入力してください')
+    .min(0, '料金は0円以上で入力してください')
+    .max(10_000_000, '料金が大きすぎます'),
+  tax_rate: z
+    .number({ error: '税率を入力してください' })
+    .min(0, '税率は0以上で入力してください')
+    .max(1, '税率は1以下で入力してください（例: 0.10 = 10%）'),
+  display_order: z
+    .number({ error: '表示順を入力してください' })
+    .int('表示順は整数で入力してください')
+    .min(0, '表示順は0以上で入力してください'),
+});
+
+export type PlanFormData = z.infer<typeof planSchema>;
+
+// オプション作成/更新フォームスキーマ
+// プランと同様だが option_name に変更し description フィールドなし
+export const optionSchema = z.object({
+  option_name: z
+    .string()
+    .min(1, 'オプション名を入力してください')
+    .max(100, 'オプション名は100文字以内で入力してください'),
+  price: z
+    .number({ error: '料金を入力してください' })
+    .int('料金は整数で入力してください')
+    .min(0, '料金は0円以上で入力してください')
+    .max(10_000_000, '料金が大きすぎます'),
+  tax_rate: z
+    .number({ error: '税率を入力してください' })
+    .min(0, '税率は0以上で入力してください')
+    .max(1, '税率は1以下で入力してください（例: 0.10 = 10%）'),
+  display_order: z
+    .number({ error: '表示順を入力してください' })
+    .int('表示順は整数で入力してください')
+    .min(0, '表示順は0以上で入力してください'),
+});
+
+export type OptionFormData = z.infer<typeof optionSchema>;
+// is_active はフォームでは扱わない（ToggleActiveDialog 経由で PATCH するため）

@@ -38,7 +38,7 @@ interface MoreItem {
 
 const ITEMS: MoreItem[] = [
   { key: 'blocked-slots', label: 'ブロック枠', icon: Ban, path: '/admin/blocked-slots' },
-  { key: 'plans', label: 'プラン', icon: Package, notReady: true },
+  { key: 'plans', label: 'プラン', icon: Package, path: '/admin/plans' },
   { key: 'staff', label: 'スタッフ', icon: Users, disabled: true },
   { key: 'profile', label: 'プロフィール', icon: User, path: '/admin/profile' },
   { key: 'logout', label: 'ログアウト', icon: LogOut, action: 'logout', danger: true },

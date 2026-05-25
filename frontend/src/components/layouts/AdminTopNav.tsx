@@ -40,7 +40,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: '予約管理', path: '/admin/dashboard', matchPaths: ['/admin/dashboard', '/admin/reservations', '/admin/calendar'] },
   { label: 'ブロック', path: '/admin/blocked-slots' },
-  { label: 'プラン', path: '/admin/plans', notReady: true },
+  { label: 'プラン', path: '/admin/plans' },
   { label: '問い合わせ', path: '/admin/inquiries', notReady: true },
   { label: 'スタッフ', path: '#', disabled: true },
 ];

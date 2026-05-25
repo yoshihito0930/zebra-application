@@ -65,6 +65,44 @@ export interface Option {
   updated_at?: string;
 }
 
+// プラン作成リクエスト
+export interface CreatePlanRequest {
+  studio_id: string;
+  plan_name: string;
+  description?: string;
+  price: number;
+  tax_rate: number;
+  display_order?: number;
+}
+
+// プラン更新リクエスト
+export interface UpdatePlanRequest {
+  plan_name?: string;
+  description?: string;
+  price?: number;
+  tax_rate?: number;
+  display_order?: number;
+  is_active?: boolean;
+}
+
+// オプション作成リクエスト
+export interface CreateOptionRequest {
+  studio_id: string;
+  option_name: string;
+  price: number;
+  tax_rate: number;
+  display_order?: number;
+}
+
+// オプション更新リクエスト
+export interface UpdateOptionRequest {
+  option_name?: string;
+  price?: number;
+  tax_rate?: number;
+  display_order?: number;
+  is_active?: boolean;
+}
+
 // 予約オプション（スナップショット）
 export interface ReservationOption {
   option_id: string;

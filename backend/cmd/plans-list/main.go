@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"log"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/yoshihito0930/zebra-application/internal/domain/entity"
 	dynamodbRepo "github.com/yoshihito0930/zebra-application/internal/repository/dynamodb"
 	"github.com/yoshihito0930/zebra-application/internal/usecase"
 	"github.com/yoshihito0930/zebra-application/pkg/apierror"
@@ -46,6 +48,9 @@ type PlanResponse struct {
 	Price        int     `json:"price"`
 	TaxRate      float64 `json:"tax_rate"`
 	DisplayOrder int     `json:"display_order"`
+	IsActive     bool    `json:"is_active"`
+	CreatedAt    string  `json:"created_at,omitempty"`
+	UpdatedAt    string  `json:"updated_at,omitempty"`
 }
 
 // PlansListResponse はプラン一覧レスポンスの構造体
@@ -60,8 +65,17 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return response.ErrorWithCORS(apierror.ErrStudioNotFound), nil
 	}
 
-	// 有効なプラン一覧を取得
-	plans, err := planUsecase.ListActivePlans(ctx, studioID)
+	// クエリパラメータ include_inactive=true で無効プランも返す（管理画面用）
+	includeInactive := request.QueryStringParameters["include_inactive"] == "true"
+
+	// プラン一覧を取得
+	var plans []*entity.Plan
+	var err error
+	if includeInactive {
+		plans, err = planUsecase.ListAllPlans(ctx, studioID)
+	} else {
+		plans, err = planUsecase.ListActivePlans(ctx, studioID)
+	}
 	if err != nil {
 		log.Printf("Failed to list plans: %v", err)
 		return response.ErrorWithCORS(apierror.ErrInternalServer), nil
@@ -71,10 +85,13 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 	planResponses := make([]PlanResponse, len(plans))
 	for i, p := range plans {
 		pr := PlanResponse{
-			PlanID:   p.PlanID,
-			PlanName: p.PlanName,
-			Price:    p.Price,
-			TaxRate:  p.TaxRate,
+			PlanID:    p.PlanID,
+			PlanName:  p.PlanName,
+			Price:     p.Price,
+			TaxRate:   p.TaxRate,
+			IsActive:  p.IsActive,
+			CreatedAt: p.CreatedAt.Format(time.RFC3339),
+			UpdatedAt: p.UpdatedAt.Format(time.RFC3339),
 		}
 		if p.Description != nil {
 			pr.Description = *p.Description

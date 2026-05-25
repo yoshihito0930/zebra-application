@@ -46,6 +46,23 @@ func (u *PlanUsecase) ListActivePlans(ctx context.Context, studioID string) ([]*
 	return plans, nil
 }
 
+// ListAllPlans は全プラン一覧（無効含む）を取得する（管理画面用）
+func (u *PlanUsecase) ListAllPlans(ctx context.Context, studioID string) ([]*entity.Plan, error) {
+	// 1. スタジオの存在確認
+	_, err := u.studioRepo.FindByID(ctx, studioID)
+	if err != nil {
+		return nil, apierror.ErrStudioNotFound
+	}
+
+	// 2. 全プラン一覧を取得
+	plans, err := u.planRepo.FindByStudio(ctx, studioID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list all plans: %w", err)
+	}
+
+	return plans, nil
+}
+
 // CreatePlanInput はプラン作成のリクエスト
 type CreatePlanInput struct {
 	StudioID     string
