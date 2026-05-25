@@ -178,7 +178,6 @@ export default function OptionFormModal({
       onClose={onClose}
       size={{ base: 'full', md: 'lg' }}
       closeOnOverlayClick={!isPending}
-      scrollBehavior="inside"
     >
       <ModalOverlay />
       <ModalContent>

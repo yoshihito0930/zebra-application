@@ -8,6 +8,7 @@ import {
   MenuButton,
   MenuItem,
   MenuList,
+  Portal,
   Text,
   VStack,
 } from '@chakra-ui/react';
@@ -26,6 +27,7 @@ export default function MobileOptionCard({
   onToggleActive,
 }: MobileOptionCardProps) {
   const isActive = option.is_active;
+  const mutedColor = isActive ? undefined : 'gray.500';
 
   return (
     <Box
@@ -37,8 +39,6 @@ export default function MobileOptionCard({
       pl={4}
       pr={2}
       py={3}
-      overflow="hidden"
-      opacity={isActive ? 1 : 0.75}
     >
       <Box
         position="absolute"
@@ -47,12 +47,13 @@ export default function MobileOptionCard({
         bottom={0}
         w="5px"
         bg={isActive ? 'brand.300' : 'gray.400'}
+        borderLeftRadius="lg"
       />
 
       <Flex justify="space-between" align="flex-start" gap={2}>
         <VStack align="stretch" spacing={1} flex={1} minW={0}>
           <HStack spacing={2} flexWrap="wrap">
-            <Text fontWeight="bold" fontSize="md" color="gray.900">
+            <Text fontWeight="bold" fontSize="md" color={mutedColor ?? 'gray.900'}>
               {option.option_name}
             </Text>
             <Badge colorScheme={isActive ? 'green' : 'gray'}>
@@ -62,7 +63,7 @@ export default function MobileOptionCard({
               #{option.display_order}
             </Badge>
           </HStack>
-          <Text fontSize="sm" color="gray.700" fontWeight="medium">
+          <Text fontSize="sm" color={mutedColor ?? 'gray.700'} fontWeight="medium">
             ¥{option.price.toLocaleString()}（税抜・
             {Math.round(option.tax_rate * 100)}%）
           </Text>
@@ -76,15 +77,17 @@ export default function MobileOptionCard({
             size="md"
             variant="ghost"
           />
-          <MenuList>
-            <MenuItem onClick={() => onEdit(option)}>編集</MenuItem>
-            <MenuItem
-              color={isActive ? 'red.600' : undefined}
-              onClick={() => onToggleActive(option)}
-            >
-              {isActive ? '無効化する' : '再有効化する'}
-            </MenuItem>
-          </MenuList>
+          <Portal>
+            <MenuList>
+              <MenuItem onClick={() => onEdit(option)}>編集</MenuItem>
+              <MenuItem
+                color={isActive ? 'red.600' : undefined}
+                onClick={() => onToggleActive(option)}
+              >
+                {isActive ? '無効化する' : '再有効化する'}
+              </MenuItem>
+            </MenuList>
+          </Portal>
         </Menu>
       </Flex>
     </Box>
