@@ -235,7 +235,7 @@ func createGuestReservationHandler(ctx context.Context, request events.APIGatewa
 	}
 
 	resp := CreateGuestReservationResponse{
-		ReservationResponse: helper.BuildReservationResponse(ctx, reservation, planRepo, optionRepo),
+		ReservationResponse: helper.BuildReservationResponse(ctx, reservation, planRepo, optionRepo, userRepo),
 		GuestToken:          guestToken,
 	}
 

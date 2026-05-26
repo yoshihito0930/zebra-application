@@ -28,6 +28,10 @@ type ReservationResponse struct {
 	EquipmentInsurance bool            `json:"equipment_insurance"`
 	Note               string          `json:"note,omitempty"`
 	IsGuest            bool            `json:"is_guest"`
+	UserName           string          `json:"user_name,omitempty"`
+	UserEmail          string          `json:"user_email,omitempty"`
+	UserPhone          string          `json:"user_phone,omitempty"`
+	UserCompany        string          `json:"user_company,omitempty"`
 	GuestName          string          `json:"guest_name,omitempty"`
 	GuestEmail         string          `json:"guest_email,omitempty"`
 	GuestPhone         string          `json:"guest_phone,omitempty"`
@@ -63,6 +67,7 @@ func BuildReservationResponse(
 	r *entity.Reservation,
 	planRepo repository.PlanRepository,
 	optionRepo repository.OptionRepository,
+	userRepo repository.UserRepository,
 ) ReservationResponse {
 	// Planを取得
 	var planInfo PlanInfo
@@ -147,6 +152,20 @@ func BuildReservationResponse(
 	}
 	if r.LinkedReservationID != nil {
 		resp.LinkedReservationID = *r.LinkedReservationID
+	}
+
+	if !r.IsGuest && r.UserID != nil && *r.UserID != "" && userRepo != nil {
+		user, err := userRepo.FindByID(ctx, *r.UserID)
+		if err != nil {
+			log.Printf("Warning: Failed to fetch user %s: %v", *r.UserID, err)
+		} else if user != nil {
+			resp.UserName = user.Name
+			resp.UserEmail = user.Email
+			resp.UserPhone = user.PhoneNumber
+			if user.CompanyName != nil {
+				resp.UserCompany = *user.CompanyName
+			}
+		}
 	}
 
 	return resp

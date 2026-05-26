@@ -113,7 +113,7 @@ func cancelGuestReservationHandler(ctx context.Context, request events.APIGatewa
 	}
 
 	// helperを使ってレスポンスを構築
-	resp := helper.BuildReservationResponse(ctx, reservation, planRepo, optionRepo)
+	resp := helper.BuildReservationResponse(ctx, reservation, planRepo, optionRepo, userRepo)
 
 	return response.OKWithCORS(resp), nil
 }

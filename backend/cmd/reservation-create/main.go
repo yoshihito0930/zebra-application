@@ -228,7 +228,7 @@ func createReservationHandler(ctx context.Context, request events.APIGatewayProx
 	}
 
 	// helperを使ってレスポンスを構築（Plan/Optionの詳細を取得）
-	resp := helper.BuildReservationResponse(ctx, reservation, planRepo, optionRepo)
+	resp := helper.BuildReservationResponse(ctx, reservation, planRepo, optionRepo, userRepo)
 
 	return response.CreatedWithCORS(resp), nil
 }

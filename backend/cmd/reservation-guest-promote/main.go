@@ -24,6 +24,7 @@ var (
 	emailService       *notification.EmailService
 	planRepo           repository.PlanRepository
 	optionRepo         repository.OptionRepository
+	userRepo           repository.UserRepository
 )
 
 // init は Lambda 関数の初期化時に1度だけ実行される
@@ -43,7 +44,7 @@ func init() {
 
 	// リポジトリを初期化
 	reservationRepo := dynamodbRepo.NewReservationRepository(dynamoClient)
-	userRepo := dynamodbRepo.NewUserRepository(dynamoClient)
+	userRepo = dynamodbRepo.NewUserRepository(dynamoClient)
 	planRepo = dynamodbRepo.NewPlanRepository(dynamoClient)
 	optionRepo = dynamodbRepo.NewOptionRepository(dynamoClient)
 	blockedSlotRepo := dynamodbRepo.NewBlockedSlotRepository(dynamoClient)
@@ -93,7 +94,7 @@ func promoteGuestReservationHandler(ctx context.Context, request events.APIGatew
 	}
 
 	// helperを使ってレスポンスを構築
-	resp := helper.BuildReservationResponse(ctx, reservation, planRepo, optionRepo)
+	resp := helper.BuildReservationResponse(ctx, reservation, planRepo, optionRepo, userRepo)
 
 	return response.OKWithCORS(resp), nil
 }

@@ -10,6 +10,8 @@ import { apiRequest } from './api';
 
 // プラン一覧取得 (backend は { plans: [...] } で wrap)
 // includeInactive=true の場合、無効プランも取得（管理画面用）
+// 旧バージョンの backend は is_active を返さない場合があるため、
+// 未定義のときは true として扱う（旧仕様では有効プランしか返ってこなかったため）
 export const getPlans = async (
   studioId: string,
   includeInactive: boolean = false
@@ -19,7 +21,10 @@ export const getPlans = async (
     url: `/studios/${studioId}/plans`,
     params: includeInactive ? { include_inactive: 'true' } : undefined,
   });
-  return resp.plans ?? [];
+  return (resp.plans ?? []).map((p) => ({
+    ...p,
+    is_active: p.is_active ?? true,
+  }));
 };
 
 export const createPlan = async (data: CreatePlanRequest): Promise<Plan> => {
@@ -43,6 +48,8 @@ export const updatePlan = async (
 
 // オプション一覧取得 (backend は { options: [...] } で wrap)
 // includeInactive=true の場合、無効オプションも取得（管理画面用）
+// 旧バージョンの backend は is_active を返さない場合があるため、
+// 未定義のときは true として扱う（旧仕様では有効オプションしか返ってこなかったため）
 export const getOptions = async (
   studioId: string,
   includeInactive: boolean = false
@@ -52,7 +59,10 @@ export const getOptions = async (
     url: `/studios/${studioId}/options`,
     params: includeInactive ? { include_inactive: 'true' } : undefined,
   });
-  return resp.options ?? [];
+  return (resp.options ?? []).map((o) => ({
+    ...o,
+    is_active: o.is_active ?? true,
+  }));
 };
 
 export const createOption = async (

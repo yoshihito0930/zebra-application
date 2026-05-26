@@ -21,6 +21,7 @@ var (
 	reservationUsecase *usecase.ReservationUsecase
 	planRepo           repository.PlanRepository
 	optionRepo         repository.OptionRepository
+	userRepo           repository.UserRepository
 )
 
 // init は Lambda 関数の初期化時に1度だけ実行される
@@ -36,7 +37,7 @@ func init() {
 
 	// リポジトリを初期化
 	reservationRepo := dynamodbRepo.NewReservationRepository(dynamoClient)
-	userRepo := dynamodbRepo.NewUserRepository(dynamoClient)
+	userRepo = dynamodbRepo.NewUserRepository(dynamoClient)
 	planRepo = dynamodbRepo.NewPlanRepository(dynamoClient)
 	optionRepo = dynamodbRepo.NewOptionRepository(dynamoClient)
 	blockedSlotRepo := dynamodbRepo.NewBlockedSlotRepository(dynamoClient)
@@ -78,7 +79,7 @@ func getGuestReservationHandler(ctx context.Context, request events.APIGatewayPr
 	}
 
 	// helperを使ってレスポンスを構築（Plan/Optionの詳細を取得）
-	resp := helper.BuildReservationResponse(ctx, reservation, planRepo, optionRepo)
+	resp := helper.BuildReservationResponse(ctx, reservation, planRepo, optionRepo, userRepo)
 
 	return response.OKWithCORS(resp), nil
 }

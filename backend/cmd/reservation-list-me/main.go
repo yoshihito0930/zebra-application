@@ -23,6 +23,7 @@ var (
 	reservationUsecase *usecase.ReservationUsecase
 	planRepo           repository.PlanRepository
 	optionRepo         repository.OptionRepository
+	userRepo           repository.UserRepository
 )
 
 // init は Lambda 関数の初期化時に1度だけ実行される
@@ -34,7 +35,7 @@ func init() {
 
 	dynamoClient := dynamodb.NewFromConfig(cfg)
 	reservationRepo := dynamodbRepo.NewReservationRepository(dynamoClient)
-	userRepo := dynamodbRepo.NewUserRepository(dynamoClient)
+	userRepo = dynamodbRepo.NewUserRepository(dynamoClient)
 	planRepoGlobal := dynamodbRepo.NewPlanRepository(dynamoClient)
 	optionRepoGlobal := dynamodbRepo.NewOptionRepository(dynamoClient)
 	blockedSlotRepo := dynamodbRepo.NewBlockedSlotRepository(dynamoClient)
@@ -99,7 +100,7 @@ func listMyReservationsHandler(ctx context.Context, request events.APIGatewayPro
 	items := make([]ReservationListItem, len(reservations))
 	for i, r := range reservations {
 		// helperを使って基本レスポンスを構築
-		baseResp := helper.BuildReservationResponse(ctx, r, planRepo, optionRepo)
+		baseResp := helper.BuildReservationResponse(ctx, r, planRepo, optionRepo, userRepo)
 
 		// 詳細レスポンスを作成（追加フィールドを含む）
 		item := ReservationListItem{

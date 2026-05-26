@@ -21,6 +21,7 @@ var (
 	reservationUsecase *usecase.ReservationUsecase
 	planRepo           repository.PlanRepository
 	optionRepo         repository.OptionRepository
+	userRepo           repository.UserRepository
 )
 
 func init() {
@@ -31,7 +32,7 @@ func init() {
 
 	dynamoClient := dynamodb.NewFromConfig(cfg)
 	reservationRepo := dynamodbRepo.NewReservationRepository(dynamoClient)
-	userRepo := dynamodbRepo.NewUserRepository(dynamoClient)
+	userRepo = dynamodbRepo.NewUserRepository(dynamoClient)
 	planRepo = dynamodbRepo.NewPlanRepository(dynamoClient)
 	optionRepo = dynamodbRepo.NewOptionRepository(dynamoClient)
 	blockedSlotRepo := dynamodbRepo.NewBlockedSlotRepository(dynamoClient)
@@ -85,7 +86,7 @@ func getReservationHandler(ctx context.Context, request events.APIGatewayProxyRe
 	}
 
 	// helperを使って基本レスポンスを構築
-	baseResp := helper.BuildReservationResponse(ctx, reservation, planRepo, optionRepo)
+	baseResp := helper.BuildReservationResponse(ctx, reservation, planRepo, optionRepo, userRepo)
 
 	// 詳細レスポンスを作成（追加フィールドを含む）
 	resp := ReservationDetailResponse{
