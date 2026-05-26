@@ -499,7 +499,8 @@ func TestPromoteReservation_Success(t *testing.T) {
 	}
 }
 
-// TestCreateReservation_BufferTimeConflict は前後1時間制約のテスト
+// TestCreateReservation_BufferTimeConflict は前後 59 分以内制約のテスト
+// （ちょうど 60 分隙間が空けば許可される）
 func TestCreateReservation_BufferTimeConflict(t *testing.T) {
 	testDate := time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC)
 
@@ -513,10 +514,10 @@ func TestCreateReservation_BufferTimeConflict(t *testing.T) {
 		errorType       *apierror.APIError
 	}{
 		{
-			name:            "本予約: 既存予約の1時間前 → エラー",
+			name:            "本予約: 既存予約との隙間が 59 分 → エラー",
 			reservationType: entity.ReservationTypeRegular,
-			startTime:       "09:00",
-			endTime:         "10:00",
+			startTime:       "09:01",
+			endTime:         "10:01",
 			existingReservations: []*entity.Reservation{
 				{
 					ReservationID: "rsv_existing",
@@ -531,10 +532,10 @@ func TestCreateReservation_BufferTimeConflict(t *testing.T) {
 			errorType: apierror.ErrBufferTimeConflict,
 		},
 		{
-			name:            "本予約: 既存予約の1時間後 → エラー",
+			name:            "本予約: 既存予約との後ろ隙間が 59 分 → エラー",
 			reservationType: entity.ReservationTypeRegular,
-			startTime:       "14:00",
-			endTime:         "15:00",
+			startTime:       "13:59",
+			endTime:         "14:59",
 			existingReservations: []*entity.Reservation{
 				{
 					ReservationID: "rsv_existing",
@@ -547,6 +548,23 @@ func TestCreateReservation_BufferTimeConflict(t *testing.T) {
 			},
 			wantError: true,
 			errorType: apierror.ErrBufferTimeConflict,
+		},
+		{
+			name:            "本予約: 既存予約とちょうど 60 分隙間 → OK",
+			reservationType: entity.ReservationTypeRegular,
+			startTime:       "09:00",
+			endTime:         "10:00",
+			existingReservations: []*entity.Reservation{
+				{
+					ReservationID: "rsv_existing",
+					StudioID:      "studio_001",
+					Status:        entity.ReservationStatusConfirmed,
+					Date:          testDate,
+					StartTime:     "11:00",
+					EndTime:       "13:00",
+				},
+			},
+			wantError: false,
 		},
 		{
 			name:            "本予約: 既存予約から2時間前 → OK",
@@ -566,10 +584,10 @@ func TestCreateReservation_BufferTimeConflict(t *testing.T) {
 			wantError: false,
 		},
 		{
-			name:            "第2キープ: 既存予約の1時間前 → OK（制約なし）",
+			name:            "第2キープ: 隙間 59 分 → OK（制約なし）",
 			reservationType: entity.ReservationTypeSecondKeep,
-			startTime:       "09:00",
-			endTime:         "10:00",
+			startTime:       "09:01",
+			endTime:         "10:01",
 			existingReservations: []*entity.Reservation{
 				{
 					ReservationID: "rsv_existing",
@@ -583,10 +601,10 @@ func TestCreateReservation_BufferTimeConflict(t *testing.T) {
 			wantError: false,
 		},
 		{
-			name:            "ロケハン: 既存予約の1時間前 → OK（制約なし）",
+			name:            "ロケハン: 隙間 59 分 → OK（制約なし）",
 			reservationType: entity.ReservationTypeLocationScout,
-			startTime:       "09:00",
-			endTime:         "10:00",
+			startTime:       "09:01",
+			endTime:         "10:01",
 			existingReservations: []*entity.Reservation{
 				{
 					ReservationID: "rsv_existing",
@@ -600,10 +618,10 @@ func TestCreateReservation_BufferTimeConflict(t *testing.T) {
 			wantError: false,
 		},
 		{
-			name:            "仮予約: 既存仮予約の1時間前 → エラー",
+			name:            "仮予約: 既存仮予約との隙間 59 分 → エラー",
 			reservationType: entity.ReservationTypeTentative,
-			startTime:       "09:00",
-			endTime:         "10:00",
+			startTime:       "09:01",
+			endTime:         "10:01",
 			existingReservations: []*entity.Reservation{
 				{
 					ReservationID: "rsv_existing",

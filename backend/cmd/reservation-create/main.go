@@ -182,6 +182,8 @@ func createReservationHandler(ctx context.Context, request events.APIGatewayProx
 		switch err {
 		case apierror.ErrReservationConflict:
 			return response.ErrorWithCORS(apierror.ErrReservationConflict), nil
+		case apierror.ErrBufferTimeConflict:
+			return response.ErrorWithCORS(apierror.ErrBufferTimeConflict), nil
 		case apierror.ErrBlockedSlotConflict:
 			return response.ErrorWithCORS(apierror.ErrBlockedSlotConflict), nil
 		case apierror.ErrSecondKeepNoPrimary:

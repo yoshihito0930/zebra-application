@@ -216,10 +216,11 @@ var (
 		StatusCode: http.StatusConflict,
 	}
 
-	// ErrBufferTimeConflict は既存予約の前後1時間以内に本予約・仮予約を作成しようとした場合のエラー
+	// ErrBufferTimeConflict は既存予約の前後59分以内に本予約・仮予約を作成しようとした場合のエラー
+	// （境界がちょうど 60 分空いている場合は許可される）
 	ErrBufferTimeConflict = &APIError{
 		Code:       "BUFFER_TIME_CONFLICT",
-		Message:    "指定の時間帯は既存予約の前後1時間以内です。第2キープまたはロケハンをご利用ください",
+		Message:    "指定の時間帯は既存予約の前後59分以内です。第2キープまたはロケハンをご利用ください",
 		StatusCode: http.StatusConflict,
 	}
 )

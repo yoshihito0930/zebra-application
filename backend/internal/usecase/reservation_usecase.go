@@ -61,27 +61,18 @@ type CreateReservationInput struct {
 	Note               *string
 }
 
-// checkBufferTimeConflict は既存予約の前後1時間以内に重複がないかチェックする
+// checkBufferTimeConflict は既存予約の前後59分以内に重複がないかチェックする
 // 本予約・仮予約の場合のみチェックを実施（第2キープ・ロケハンは除外）
+// 例: 既存予約が 10:00-12:00 の場合、ちょうど 1 時間後の 13:00 開始は許可される
 func (u *ReservationUsecase) checkBufferTimeConflict(ctx context.Context, studioID string, date time.Time, startTime, endTime string, reservationType entity.ReservationType) error {
-	// 第2キープとロケハンは前後1時間の制約を受けない
+	// 第2キープとロケハンはバッファ時間の制約を受けない
 	if reservationType == entity.ReservationTypeSecondKeep || reservationType == entity.ReservationTypeLocationScout {
 		return nil
 	}
 
-	// 開始時刻と終了時刻をパース
-	startHour, startMin, err := parseTime(startTime)
-	if err != nil {
-		return fmt.Errorf("failed to parse start time: %w", err)
-	}
-	endHour, endMin, err := parseTime(endTime)
-	if err != nil {
-		return fmt.Errorf("failed to parse end time: %w", err)
-	}
-
-	// 前後1時間のバッファ時間を計算
-	bufferStartTime := formatTime(startHour-1, startMin)
-	bufferEndTime := formatTime(endHour+1, endMin)
+	// 開始・終了時刻を分単位に変換
+	newStartMin := timeToMinutes(startTime)
+	newEndMin := timeToMinutes(endTime)
 
 	// 同日の予約を全て取得
 	reservations, err := u.reservationRepo.FindByStudioAndDateRange(ctx, studioID, date, date)
@@ -89,17 +80,27 @@ func (u *ReservationUsecase) checkBufferTimeConflict(ctx context.Context, studio
 		return fmt.Errorf("failed to find reservations for buffer time check: %w", err)
 	}
 
-	// confirmed/tentativeの予約に対して前後1時間チェック
+	// confirmed/tentative の予約に対して前後59分のギャップをチェック
 	for _, reservation := range reservations {
 		if reservation.Status != entity.ReservationStatusConfirmed &&
 			reservation.Status != entity.ReservationStatusTentative {
 			continue
 		}
 
-		// 既存予約の時間帯が前後1時間のバッファ範囲と重複しているかチェック
-		// バッファ境界に接している場合（例: 10:00 終了の予約に対し 11:00 開始の既存予約）も
-		// 「前後1時間以内」に該当するため、境界を含めて重複と判定する
-		if isTimeOverlappingInclusive(bufferStartTime, bufferEndTime, reservation.StartTime, reservation.EndTime) {
+		existingStartMin := timeToMinutes(reservation.StartTime)
+		existingEndMin := timeToMinutes(reservation.EndTime)
+
+		// 隙間が 60 分未満（= 59 分以内）なら衝突。ちょうど 60 分空けば許可する。
+		var gap int
+		if newEndMin <= existingStartMin {
+			gap = existingStartMin - newEndMin
+		} else if existingEndMin <= newStartMin {
+			gap = newStartMin - existingEndMin
+		} else {
+			// 時間帯そのものが重なっている場合もバッファ違反として扱う
+			return apierror.ErrBufferTimeConflict
+		}
+		if gap < 60 {
 			return apierror.ErrBufferTimeConflict
 		}
 	}

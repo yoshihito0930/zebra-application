@@ -153,6 +153,10 @@ func updateReservationHandler(ctx context.Context, request events.APIGatewayProx
 			return response.ErrorWithCORS(apierror.ErrInvalidStatusTransition), nil
 		case apierror.ErrReservationConflict:
 			return response.ErrorWithCORS(apierror.ErrReservationConflict), nil
+		case apierror.ErrBufferTimeConflict:
+			return response.ErrorWithCORS(apierror.ErrBufferTimeConflict), nil
+		case apierror.ErrBlockedSlotConflict:
+			return response.ErrorWithCORS(apierror.ErrBlockedSlotConflict), nil
 		default:
 			log.Printf("Failed to update reservation: %v", err)
 			return response.ErrorWithCORS(apierror.ErrInternalServer), nil
