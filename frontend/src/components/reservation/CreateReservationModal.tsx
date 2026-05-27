@@ -355,24 +355,14 @@ export default function CreateReservationModal({
   // 現在の予約種別と日付に基づいてブロックされた時間帯を取得
   const blockedTimeRanges = getBlockedTimeRanges(selectedDate || '', selectedReservationType);
 
-  // バナー表示用: 既存予約とバッファ込みのブロック範囲をメッセージ化
-  const fmtMin = (totalMin: number) => {
-    const h = Math.floor(totalMin / 60);
-    const m = totalMin % 60;
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-  };
-
+  // バナー表示用: 既存予約をメッセージ化
   const blockedRangeMessages = (() => {
     if (!selectedDate || blockedTimeRanges.length === 0) return [];
     const dateRes = reservations.filter(
       (r) => r.date === selectedDate &&
         (r.status === 'confirmed' || r.status === 'tentative')
     );
-    return dateRes.map((r) => {
-      const s = timeToMinutes(r.start_time);
-      const e = timeToMinutes(r.end_time);
-      return `${r.start_time}〜${r.end_time}の予約があります（前後1時間を含め${fmtMin(Math.max(0, s - 60))}〜${fmtMin(Math.min(24 * 60, e + 60))}は予約不可）`;
-    });
+    return dateRes.map((r) => `${r.start_time}〜${r.end_time}の予約があります`);
   })();
 
   // タブ変更時の処理
