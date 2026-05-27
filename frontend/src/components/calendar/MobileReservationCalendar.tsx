@@ -14,7 +14,13 @@ import type { CalendarReservation } from '../../types';
 
 interface MobileReservationCalendarProps {
   reservations: CalendarReservation[];
-  blockedSlots?: Array<{ date: string; start_time?: string; end_time?: string }>;
+  blockedSlots?: Array<{
+    date: string;
+    is_all_day: boolean;
+    start_time?: string;
+    end_time?: string;
+    reason: string;
+  }>;
   currentYear: number;
   currentMonth: number;
   selectedDate?: string | null;
@@ -115,8 +121,11 @@ export default function MobileReservationCalendar({
       .filter((r) => r.date === dateString)
       .sort((a, b) => a.start_time.localeCompare(b.start_time));
 
-  const isDateBlocked = (dateString: string) =>
-    blockedSlots.some((b) => b.date === dateString);
+  const getAllDayBlock = (dateString: string) =>
+    blockedSlots.find((b) => b.date === dateString && b.is_all_day);
+
+  const hasTimedBlock = (dateString: string) =>
+    blockedSlots.some((b) => b.date === dateString && !b.is_all_day);
 
   const handlePreviousMonth = () => {
     if (currentMonth === 1) {
@@ -194,12 +203,13 @@ export default function MobileReservationCalendar({
       <Grid templateColumns="repeat(7, 1fr)" rowGap={1}>
         {cells.map((cell, index) => {
           const dateReservations = getReservationsForDate(cell.dateString);
-          const blocked = isDateBlocked(cell.dateString);
+          const allDayBlock = getAllDayBlock(cell.dateString);
+          const timedBlock = hasTimedBlock(cell.dateString);
           const isCurrentDay = cell.dateString === todayString;
           const isSelected = selectedDate === cell.dateString;
           const dayOfWeek = index % 7;
           const hasReservations = dateReservations.length > 0;
-          const isClickable = cell.inCurrentMonth && !blocked;
+          const isClickable = cell.inCurrentMonth && !allDayBlock;
 
           // 数字色
           let numberColor: string;
@@ -249,6 +259,14 @@ export default function MobileReservationCalendar({
                   </Text>
                 </Box>
                 <HStack spacing="3px" h="6px" align="center" justify="center">
+                  {(allDayBlock || timedBlock) && (
+                    <Box
+                      w="5px"
+                      h="5px"
+                      borderRadius="full"
+                      bg="gray.500"
+                    />
+                  )}
                   {visibleDots.map((reservation) => (
                     <Box
                       key={reservation.reservation_id}

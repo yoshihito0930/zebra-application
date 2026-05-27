@@ -246,6 +246,7 @@ export default function CalendarPage() {
           initialStartTime={selectedStartTime}
           onSuccess={handleReservationSuccess}
           reservations={calendarData?.reservations || []}
+          blockedSlots={calendarData?.blocked_slots || []}
         />
       </Box>
     );
@@ -366,6 +367,7 @@ export default function CalendarPage() {
           initialStartTime={selectedStartTime}
           onSuccess={handleReservationSuccess}
           reservations={calendarData?.reservations || []}
+          blockedSlots={calendarData?.blocked_slots || []}
         />
       </VStack>
     </Container>

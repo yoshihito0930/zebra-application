@@ -16,7 +16,13 @@ import StatusLegendPopover from './StatusLegendPopover';
 interface ReservationCalendarProps {
   studioId: string;
   reservations: CalendarReservation[];
-  blockedSlots?: Array<{ date: string; start_time?: string; end_time?: string }>;
+  blockedSlots?: Array<{
+    date: string;
+    is_all_day: boolean;
+    start_time?: string;
+    end_time?: string;
+    reason: string;
+  }>;
   currentYear: number;
   currentMonth: number;
   onDateClick?: (date: string) => void;
@@ -98,9 +104,13 @@ export default function ReservationCalendar({
       .sort((a, b) => a.start_time.localeCompare(b.start_time));
   };
 
-  const isDateBlocked = (dateString: string) => {
-    return blockedSlots.some((b) => b.date === dateString);
-  };
+  const getAllDayBlock = (dateString: string) =>
+    blockedSlots.find((b) => b.date === dateString && b.is_all_day);
+
+  const getTimedBlocks = (dateString: string) =>
+    blockedSlots
+      .filter((b) => b.date === dateString && !b.is_all_day)
+      .sort((a, b) => (a.start_time ?? '').localeCompare(b.start_time ?? ''));
 
   const isToday = (dateString: string) => {
     const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -224,10 +234,11 @@ export default function ReservationCalendar({
             }
 
             const dateReservations = getReservationsForDate(day.dateString);
-            const blocked = isDateBlocked(day.dateString);
+            const allDayBlock = getAllDayBlock(day.dateString);
+            const timedBlocks = getTimedBlocks(day.dateString);
             const isCurrentDay = isToday(day.dateString);
             const isPastDate = isPast(day.dateString);
-            const isClickable = !isPastDate && !blocked;
+            const isClickable = !isPastDate && !allDayBlock;
             const isSelected = selectedDate === day.dateString;
             const dayOfWeek = new Date(day.dateString).getDay();
             const dayNumberColor = isPastDate
@@ -292,17 +303,34 @@ export default function ReservationCalendar({
                     )}
                   </HStack>
 
-                  {/* ブロック枠 */}
-                  {blocked && (
+                  {/* ブロック枠（終日） */}
+                  {allDayBlock && (
                     <Box bg="gray.300" _dark={{ bg: 'gray.600' }} borderRadius="sm" px={2} py={1}>
-                      <Text fontSize="xs" fontWeight="medium">
-                        休業日
+                      <Text fontSize="xs" fontWeight="medium" noOfLines={1}>
+                        {allDayBlock.reason || '休業日'}
                       </Text>
                     </Box>
                   )}
 
+                  {/* ブロック枠（時間指定） */}
+                  {!allDayBlock &&
+                    timedBlocks.slice(0, 2).map((b) => (
+                      <Box
+                        key={`${b.start_time}-${b.end_time}`}
+                        bg="gray.300"
+                        _dark={{ bg: 'gray.600' }}
+                        borderRadius="sm"
+                        px={2}
+                        py={1}
+                      >
+                        <Text fontSize="xs" fontWeight="medium" noOfLines={1}>
+                          {`${b.reason} ${b.start_time}-${b.end_time}`}
+                        </Text>
+                      </Box>
+                    ))}
+
                   {/* 予約バッジ（2段表示） */}
-                  {!blocked && dateReservations.length > 0 && (
+                  {!allDayBlock && dateReservations.length > 0 && (
                     <VStack align="stretch" spacing={1} flex={1} overflow="hidden">
                       {dateReservations.slice(0, 2).map((reservation) => {
                         const v = getStatusVisuals(reservation.status);
@@ -335,7 +363,7 @@ export default function ReservationCalendar({
                   )}
 
                   {/* 空き表示 */}
-                  {!blocked && !isPastDate && dateReservations.length === 0 && (
+                  {!allDayBlock && timedBlocks.length === 0 && !isPastDate && dateReservations.length === 0 && (
                     <Box flex={1} display="flex" alignItems="flex-end" justifyContent="flex-start">
                       <Text fontSize="xs" color="gray.400">
                         空き

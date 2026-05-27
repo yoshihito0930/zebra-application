@@ -66,7 +66,14 @@ export default function StatusLegendPopover() {
             <HStack spacing={2}>
               <Box bg="gray.300" px={2} py={1} borderRadius="sm" flex={1}>
                 <Text fontSize="xs" fontWeight="semibold" color="gray.700">
-                  休業日
+                  休業日（終日）
+                </Text>
+              </Box>
+            </HStack>
+            <HStack spacing={2}>
+              <Box bg="gray.300" px={2} py={1} borderRadius="sm" flex={1}>
+                <Text fontSize="xs" fontWeight="semibold" color="gray.700">
+                  ブロック枠（時間指定）
                 </Text>
               </Box>
             </HStack>

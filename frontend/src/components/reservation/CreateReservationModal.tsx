@@ -45,7 +45,7 @@ import { useCreateReservation, useCreateGuestReservation } from '../../hooks/use
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
 import { useAuthStore } from '../../stores/authStore';
-import type { CreateReservationRequest, Reservation } from '../../types';
+import type { BlockedSlot, CreateReservationRequest, Reservation } from '../../types';
 import { INSURANCE_PRICE, INSURANCE_TAX } from '../../utils/reservationPrice';
 
 // 時刻を分単位に変換するヘルパー
@@ -125,6 +125,7 @@ interface CreateReservationModalProps {
     end_time: string;
     status: string;
   }>;
+  blockedSlots?: BlockedSlot[];
 }
 
 export default function CreateReservationModal({
@@ -135,6 +136,7 @@ export default function CreateReservationModal({
   initialStartTime,
   onSuccess,
   reservations = [],
+  blockedSlots = [],
 }: CreateReservationModalProps) {
   const toast = useToast();
   const { isAuthenticated } = useAuthStore();
@@ -279,35 +281,54 @@ export default function CreateReservationModal({
 
   const priceInfo = calculateTotalPrice();
 
-  // 前後1時間の制約をチェックする関数（15分単位で細かく制御）
+  // ブロック対象の時間範囲を集計（ブロック枠 + 既存予約バッファ）
   const getBlockedTimeRanges = (date: string, reservationType: string) => {
-    // 第2キープとロケハンは前後1時間の制約を受けない
-    if (reservationType === 'second_keep' || reservationType === 'location_scout') {
-      return [];
+    const ranges: Array<{
+      startMin: number;
+      endMin: number;
+      source: 'reservation' | 'blocked';
+      label: string;
+    }> = [];
+
+    // ブロック枠は予約種別に関係なく常に適用（バッファなし、指定時間そのまま）
+    for (const b of blockedSlots.filter((s) => s.date === date)) {
+      if (b.is_all_day) {
+        ranges.push({
+          startMin: 0,
+          endMin: 24 * 60,
+          source: 'blocked',
+          label: `${b.reason}（終日）`,
+        });
+      } else if (b.start_time && b.end_time) {
+        ranges.push({
+          startMin: timeToMinutes(b.start_time),
+          endMin: timeToMinutes(b.end_time),
+          source: 'blocked',
+          label: `${b.reason} ${b.start_time}-${b.end_time}`,
+        });
+      }
     }
 
-    // 選択された日付の予約を取得
-    const dateReservations = reservations.filter(
-      (r) => r.date === date && (r.status === 'confirmed' || r.status === 'tentative')
-    );
+    // 既存予約の前後1時間バッファは regular/tentative のみ
+    if (reservationType !== 'second_keep' && reservationType !== 'location_scout') {
+      const dateReservations = reservations.filter(
+        (r) => r.date === date && (r.status === 'confirmed' || r.status === 'tentative')
+      );
 
-    const blockedRanges: Array<{ startMin: number; endMin: number }> = [];
+      for (const reservation of dateReservations) {
+        const startMin = timeToMinutes(reservation.start_time);
+        const endMin = timeToMinutes(reservation.end_time);
 
-    for (const reservation of dateReservations) {
-      const [startHourStr, startMinStr] = reservation.start_time.split(':');
-      const [endHourStr, endMinStr] = reservation.end_time.split(':');
-
-      const startMin = parseInt(startHourStr) * 60 + parseInt(startMinStr);
-      const endMin = parseInt(endHourStr) * 60 + parseInt(endMinStr);
-
-      // 前1時間（60分）と後1時間（60分）をブロック
-      blockedRanges.push({
-        startMin: Math.max(0, startMin - 60),
-        endMin: Math.min(24 * 60, endMin + 60),
-      });
+        ranges.push({
+          startMin: Math.max(0, startMin - 60),
+          endMin: Math.min(24 * 60, endMin + 60),
+          source: 'reservation',
+          label: `${reservation.start_time}〜${reservation.end_time}の予約があります`,
+        });
+      }
     }
 
-    return blockedRanges;
+    return ranges;
   };
 
   // 時刻（時＋分）が無効かどうかをチェック
@@ -355,14 +376,12 @@ export default function CreateReservationModal({
   // 現在の予約種別と日付に基づいてブロックされた時間帯を取得
   const blockedTimeRanges = getBlockedTimeRanges(selectedDate || '', selectedReservationType);
 
-  // バナー表示用: 既存予約をメッセージ化
+  // バナー表示用: 予約・ブロック枠の重複範囲をメッセージ化
   const blockedRangeMessages = (() => {
     if (!selectedDate || blockedTimeRanges.length === 0) return [];
-    const dateRes = reservations.filter(
-      (r) => r.date === selectedDate &&
-        (r.status === 'confirmed' || r.status === 'tentative')
+    return blockedTimeRanges.map((r) =>
+      r.source === 'blocked' ? `${r.label} はブロックされています` : r.label
     );
-    return dateRes.map((r) => `${r.start_time}〜${r.end_time}の予約があります`);
   })();
 
   // タブ変更時の処理
