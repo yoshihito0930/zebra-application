@@ -88,6 +88,23 @@ func getReservationHandler(ctx context.Context, request events.APIGatewayProxyRe
 	// helperを使って基本レスポンスを構築
 	baseResp := helper.BuildReservationResponse(ctx, reservation, planRepo, optionRepo, userRepo)
 
+	// 会員予約の予約者ユーザー情報を明示的に取得して上書き（list endpoint と同じパターン）。
+	// helper 側にも user fetch があるが、取得失敗時の挙動を統一しログ可視性を高めるため
+	// detail endpoint では handler 側でも明示的に取得する。
+	if !reservation.IsGuest && reservation.UserID != nil && *reservation.UserID != "" {
+		user, err := userRepo.FindByID(ctx, *reservation.UserID)
+		if err != nil {
+			log.Printf("Warning: Failed to fetch user %s: %v", *reservation.UserID, err)
+		} else if user != nil {
+			baseResp.UserName = user.Name
+			baseResp.UserEmail = user.Email
+			baseResp.UserPhone = user.PhoneNumber
+			if user.CompanyName != nil {
+				baseResp.UserCompany = *user.CompanyName
+			}
+		}
+	}
+
 	// 詳細レスポンスを作成（追加フィールドを含む）
 	resp := ReservationDetailResponse{
 		ReservationResponse: baseResp,
