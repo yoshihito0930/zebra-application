@@ -130,30 +130,6 @@ resource "aws_cloudwatch_metric_alarm" "api_gateway_5xx" {
   }
 }
 
-# API Gatewayレイテンシーアラーム
-resource "aws_cloudwatch_metric_alarm" "api_gateway_latency" {
-  alarm_name          = "${var.environment}-api-gateway-latency"
-  comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = "2"
-  metric_name         = "Latency"
-  namespace           = "AWS/ApiGateway"
-  period              = "300"
-  statistic           = "Average"
-  threshold           = "5000" # 5秒
-  alarm_description   = "API Gatewayのレイテンシーが閾値を超えました"
-  alarm_actions       = [aws_sns_topic.alarms.arn]
-
-  dimensions = {
-    ApiName = "${var.environment}-zebra-api"
-  }
-
-  tags = {
-    Environment = var.environment
-    Project     = "zebra-application"
-    ManagedBy   = "terraform"
-  }
-}
-
 # Lambdaエラー率アラーム（主要な関数のみ）
 resource "aws_cloudwatch_metric_alarm" "lambda_errors" {
   for_each = toset([
@@ -189,8 +165,6 @@ resource "aws_cloudwatch_metric_alarm" "lambda_errors" {
 resource "aws_cloudwatch_metric_alarm" "lambda_duration" {
   for_each = toset([
     var.lambda_function_names.reservation_create,
-    var.lambda_function_names.batch_tentative_reminder,
-    var.lambda_function_names.batch_second_keep_promote,
   ])
 
   alarm_name          = "${var.environment}-lambda-${each.key}-duration"
