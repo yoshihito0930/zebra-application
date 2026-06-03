@@ -135,7 +135,7 @@ export default function CalendarPage() {
   // ===== モバイルレイアウト =====
   if (isMobile) {
     return (
-      <Box pb={28}>
+      <Box pb="240px">
         {isLoading && (
           <Box pt={6} px={4}>
             <LoadingSpinner />
