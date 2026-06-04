@@ -16,6 +16,19 @@ const apiClient: AxiosInstance = axios.create({
   },
 });
 
+// 埋め込みウィジェットからベースURLを実行時に注入するためのセッター。
+// SPA はビルド時の VITE_API_BASE_URL を使うため呼び出さない。
+export const setApiBaseUrl = (url: string) => {
+  apiClient.defaults.baseURL = url;
+};
+
+// 埋め込みモードフラグ。true の間は 401 検出時にホストページのナビゲーションを
+// 乗っ取らない（window.location.href によるリダイレクトを抑止する）。
+let embeddedMode = false;
+export const setEmbeddedMode = (value: boolean) => {
+  embeddedMode = value;
+};
+
 // リクエストインターセプター（認証トークン付与）
 apiClient.interceptors.request.use(
   (config) => {
@@ -50,6 +63,10 @@ apiClient.interceptors.response.use(
   (error: AxiosError<APIError>) => {
     // 401エラー（トークン期限切れ・無効）の場合、認証状態をクリアしてログイン画面へ
     if (error.response?.status === 401) {
+      // 埋め込みモードではホストのナビゲーションを乗っ取らない
+      if (embeddedMode) {
+        return Promise.reject(error);
+      }
       const path = window.location.pathname;
       const onExemptPage = SESSION_EXPIRY_EXEMPT_PATHS.some((p) => path.startsWith(p));
       if (!onExemptPage) {

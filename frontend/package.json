@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:widget": "tsc -b && vite build --config vite.widget.config.ts",
+    "build:all": "npm run build && vite build --config vite.widget.config.ts",
+    "dev:widget": "vite build --watch --config vite.widget.config.ts",
     "lint": "eslint .",
     "preview": "vite preview",
     "test:e2e": "playwright test",

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zebra 予約ウィジェット 埋め込みテスト</title>
+    <!-- ホストページ側の素のスタイル（resetCSS=false でこれらが壊れないことを確認するため） -->
+    <style>
+      body {
+        font-family: Georgia, serif;
+        margin: 0;
+        background: #f4f1ea;
+        color: #333;
+      }
+      .host-header {
+        background: #2b2b2b;
+        color: #fff;
+        padding: 24px 32px;
+      }
+      .host-header h1 {
+        margin: 0;
+        font-size: 28px;
+      }
+      .host-content {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 32px 16px;
+      }
+      .host-note {
+        background: #fff;
+        border: 1px solid #ddd;
+        padding: 16px;
+        border-radius: 8px;
+        margin-bottom: 24px;
+      }
+    </style>
+
+    <!--
+      ウィジェットのスタイルは zebra-widget.js が実行時に注入する（Chakra UI / emotion）。
+      静的な zebra-widget.css は生成されないため <link> は不要。
+    -->
+  </head>
+  <body>
+    <!-- ホスト（Astro想定）サイトのダミーコンテンツ -->
+    <header class="host-header">
+      <h1>スタジオゼブラ（ダミーHP）</h1>
+    </header>
+
+    <main class="host-content">
+      <div class="host-note">
+        この見出し・本文はホストページ（serif フォント）のスタイルです。下のウィジェットを描画しても、
+        ここの見た目が崩れていなければ <code>resetCSS=false</code> が効いています。
+      </div>
+
+      <h2>ご予約はこちら</h2>
+
+      <!-- ===== ウィジェットのマウント先 ===== -->
+      <div
+        id="zebra-reservation"
+        data-studio-id="studio_001"
+        data-api-base-url="http://localhost:3000"
+        data-login-url="http://localhost:5173/login"
+        data-signup-url="http://localhost:5173/signup"
+      ></div>
+    </main>
+
+    <!-- ===== ウィジェット本体 ===== -->
+    <script src="../dist-widget/zebra-widget.js" defer></script>
+  </body>
+</html>
