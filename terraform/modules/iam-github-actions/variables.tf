@@ -19,6 +19,11 @@ variable "frontend_s3_bucket_arn" {
   type        = string
 }
 
+variable "widget_s3_bucket_arn" {
+  description = "埋め込みウィジェット配信用S3バケットARN"
+  type        = string
+}
+
 variable "cloudfront_distribution_arn" {
   description = "CloudFront Distribution ARN"
   type        = string

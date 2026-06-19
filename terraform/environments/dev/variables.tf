@@ -53,3 +53,12 @@ variable "github_repository" {
   type        = string
   default     = "yoshihito0930/zebra-application"
 }
+
+# CORS で許可する埋め込み元オリジン。
+# 実Astro HP のオリジンが確定したら "https://<実HPドメイン>" に変更する。
+# 現状は SPA(CloudFront) と外部HP の双方から API を叩くため "*"（全許可）を維持。
+variable "allowed_origin" {
+  description = "CORS で許可する埋め込み元オリジン（'*' で全許可）"
+  type        = string
+  default     = "*"
+}

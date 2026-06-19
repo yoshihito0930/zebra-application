@@ -65,6 +65,16 @@ output "frontend_cloudfront_distribution_id" {
   value       = module.frontend.cloudfront_distribution_id
 }
 
+output "widget_s3_bucket" {
+  description = "埋め込みウィジェット配信用S3バケット名（GitHub Secret WIDGET_S3_BUCKET に設定）"
+  value       = module.frontend.widget_s3_bucket_name
+}
+
+output "widget_url" {
+  description = "埋め込みウィジェットJSの配信URL"
+  value       = module.frontend.widget_url
+}
+
 output "github_actions_role_arn" {
   description = "GitHub Actions用IAMロールARN"
   value       = module.iam_github_actions.role_arn

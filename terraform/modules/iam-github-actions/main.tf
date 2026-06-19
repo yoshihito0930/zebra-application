@@ -76,7 +76,9 @@ resource "aws_iam_role_policy" "frontend_deploy" {
         ]
         Resource = [
           var.frontend_s3_bucket_arn,
-          "${var.frontend_s3_bucket_arn}/*"
+          "${var.frontend_s3_bucket_arn}/*",
+          var.widget_s3_bucket_arn,
+          "${var.widget_s3_bucket_arn}/*"
         ]
       },
       # CloudFrontキャッシュ無効化権限

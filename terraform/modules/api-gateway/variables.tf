@@ -14,6 +14,16 @@ variable "cognito_user_pool_arn" {
   type        = string
 }
 
+# CORS で許可する埋め込み元オリジン。
+# REST API Gateway の MOCK/GatewayResponse は単一固定値しか返せないため、
+# 複数オリジンをリクエストに応じて動的にエコーすることはできない（その場合は Lambda 側対応が必要）。
+# dev では当面 "*"（全許可）を維持しつつ、値をコードで管理できるようにする。
+variable "allowed_origin" {
+  description = "CORS で許可する埋め込み元オリジン（例: https://example.com）。'*' で全許可"
+  type        = string
+  default     = "*"
+}
+
 variable "lambda_functions" {
   description = "Lambda関数のマップ (name -> {invoke_arn})"
   type = object({

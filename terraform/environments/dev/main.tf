@@ -80,16 +80,16 @@ module "cloudwatch" {
 module "lambda" {
   source = "../../modules/lambda"
 
-  environment           = var.environment
-  lambda_artifacts_dir  = var.lambda_artifacts_dir
-  dynamodb_table_arns   = values(module.dynamodb.table_arns)
-  dynamodb_table_names  = module.dynamodb.table_names
-  cognito_user_pool_id  = module.cognito.user_pool_id
-  cognito_user_pool_arn = module.cognito.user_pool_arn
-  cognito_user_pool_client_id = module.cognito.user_pool_client_id
+  environment                     = var.environment
+  lambda_artifacts_dir            = var.lambda_artifacts_dir
+  dynamodb_table_arns             = values(module.dynamodb.table_arns)
+  dynamodb_table_names            = module.dynamodb.table_names
+  cognito_user_pool_id            = module.cognito.user_pool_id
+  cognito_user_pool_arn           = module.cognito.user_pool_arn
+  cognito_user_pool_client_id     = module.cognito.user_pool_client_id
   cognito_user_pool_client_secret = module.cognito.user_pool_client_secret
-  ses_sender_email      = var.ses_sender_email
-  guest_reservation_url = var.guest_reservation_url
+  ses_sender_email                = var.ses_sender_email
+  guest_reservation_url           = var.guest_reservation_url
 
   depends_on = [module.cloudwatch]
 }
@@ -217,8 +217,12 @@ module "api_gateway" {
     }
   }
 
-  cloudwatch_log_group_arn          = module.cloudwatch.api_gateway_log_group_arn
-  api_gateway_cloudwatch_role_arn   = module.cloudwatch.api_gateway_cloudwatch_role_arn
+  cloudwatch_log_group_arn        = module.cloudwatch.api_gateway_log_group_arn
+  api_gateway_cloudwatch_role_arn = module.cloudwatch.api_gateway_cloudwatch_role_arn
+
+  allowed_origin = var.allowed_origin
+  # CORS の integration_response / gateway_response を変更したため deployment を再生成する
+  redeploy_nonce = "2026-06-06-widget-cors-allowed-origin"
 }
 
 # SES（メール送信）
@@ -254,8 +258,9 @@ module "frontend" {
 module "iam_github_actions" {
   source = "../../modules/iam-github-actions"
 
-  environment                = var.environment
-  github_repository          = var.github_repository
-  frontend_s3_bucket_arn     = module.frontend.s3_bucket_arn
+  environment                 = var.environment
+  github_repository           = var.github_repository
+  frontend_s3_bucket_arn      = module.frontend.s3_bucket_arn
+  widget_s3_bucket_arn        = module.frontend.widget_s3_bucket_arn
   cloudfront_distribution_arn = module.frontend.cloudfront_distribution_arn
 }

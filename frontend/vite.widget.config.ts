@@ -7,6 +7,10 @@ import path from 'path'
 // React/Chakra など全依存をバンドルし、ホストは <script>/<link> を置くだけで動く。
 export default defineConfig({
   plugins: [react()],
+  // ウィジェットは public/ アセット(favicon.svg, icons.svg)を取り込まない。
+  // Vite はデフォルトで publicDir 配下を outDir(dist-widget) に丸ごとコピーするため、
+  // ウィジェット配信に不要な SVG が混入する。これを無効化して zebra-widget.js のみ出力する。
+  publicDir: false,
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
