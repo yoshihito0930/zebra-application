@@ -87,11 +87,14 @@ func (s *EmailService) SendGuestReservationConfirmation(ctx context.Context, res
 
     <h3>予約内容</h3>
     <ul>
-        <li><strong>予約ID:</strong> %s</li>
         <li><strong>利用日:</strong> %s</li>
         <li><strong>利用時間:</strong> %s - %s</li>
-        <li><strong>撮影タイプ:</strong> %s</li>
+        <li><strong>撮影種別:</strong> %s</li>
+        <li><strong>撮影詳細:</strong> %s</li>
         <li><strong>撮影人数:</strong> %d名</li>
+        <li><strong>カメラマン氏名:</strong> %s</li>
+        <li><strong>機材保険:</strong> %s</li>
+        <li><strong>ホリゾント養生:</strong> %s</li>
     </ul>
 
     <h3>予約の確認・変更・キャンセル</h3>
@@ -114,8 +117,10 @@ func (s *EmailService) SendGuestReservationConfirmation(ctx context.Context, res
     </p>
 </body>
 </html>
-`, guestName, reservation.ReservationID, dateStr, reservation.StartTime, reservation.EndTime,
-		formatShootingTypes(reservation.ShootingType), reservation.NumberOfPeople,
+`, guestName, dateStr, reservation.StartTime, reservation.EndTime,
+		formatShootingTypes(reservation.ShootingType), reservation.ShootingDetails,
+		reservation.NumberOfPeople, reservation.PhotographerName,
+		formatYesNo(reservation.EquipmentInsurance), formatYesNo(reservation.NeedsProtection),
 		confirmationURL, confirmationURL)
 
 	bodyText := fmt.Sprintf(`
@@ -127,11 +132,14 @@ func (s *EmailService) SendGuestReservationConfirmation(ctx context.Context, res
 以下の内容で予約を受け付けております。管理者の承認をお待ちください。
 
 【予約内容】
-予約ID: %s
 利用日: %s
 利用時間: %s - %s
-撮影タイプ: %s
+撮影種別: %s
+撮影詳細: %s
 撮影人数: %d名
+カメラマン氏名: %s
+機材保険: %s
+ホリゾント養生: %s
 
 【予約の確認・変更・キャンセル】
 以下のリンクから予約の詳細確認、キャンセルが可能です。
@@ -143,8 +151,11 @@ func (s *EmailService) SendGuestReservationConfirmation(ctx context.Context, res
 このメールに心当たりがない場合は、削除していただいて構いません。
 お問い合わせ: スタジオゼブラ
 Email: info@studio-zebra.com
-`, guestName, reservation.ReservationID, dateStr, reservation.StartTime, reservation.EndTime,
-		formatShootingTypes(reservation.ShootingType), reservation.NumberOfPeople, confirmationURL)
+`, guestName, dateStr, reservation.StartTime, reservation.EndTime,
+		formatShootingTypes(reservation.ShootingType), reservation.ShootingDetails,
+		reservation.NumberOfPeople, reservation.PhotographerName,
+		formatYesNo(reservation.EquipmentInsurance), formatYesNo(reservation.NeedsProtection),
+		confirmationURL)
 
 	// SESでメール送信
 	input := &sesv2.SendEmailInput{
@@ -420,12 +431,15 @@ func (s *EmailService) SendCustomerReservationConfirmation(ctx context.Context, 
 
     <h3>予約内容</h3>
     <ul>
-        <li><strong>予約ID:</strong> %s</li>
         <li><strong>予約種別:</strong> %s</li>
         <li><strong>利用日:</strong> %s</li>
         <li><strong>利用時間:</strong> %s - %s</li>
-        <li><strong>撮影タイプ:</strong> %s</li>
+        <li><strong>撮影種別:</strong> %s</li>
+        <li><strong>撮影詳細:</strong> %s</li>
         <li><strong>撮影人数:</strong> %d名</li>
+        <li><strong>カメラマン氏名:</strong> %s</li>
+        <li><strong>機材保険:</strong> %s</li>
+        <li><strong>ホリゾント養生:</strong> %s</li>
     </ul>
 
     <h3>予約の確認・変更・キャンセル</h3>
@@ -440,9 +454,11 @@ func (s *EmailService) SendCustomerReservationConfirmation(ctx context.Context, 
     </p>
 </body>
 </html>
-`, customerName, reservation.ReservationID, formatReservationType(reservation.ReservationType), dateStr,
+`, customerName, formatReservationType(reservation.ReservationType), dateStr,
 		reservation.StartTime, reservation.EndTime,
-		formatShootingTypes(reservation.ShootingType), reservation.NumberOfPeople)
+		formatShootingTypes(reservation.ShootingType), reservation.ShootingDetails,
+		reservation.NumberOfPeople, reservation.PhotographerName,
+		formatYesNo(reservation.EquipmentInsurance), formatYesNo(reservation.NeedsProtection))
 
 	bodyText := fmt.Sprintf(`
 ご予約ありがとうございます
@@ -453,12 +469,15 @@ func (s *EmailService) SendCustomerReservationConfirmation(ctx context.Context, 
 以下の内容で予約を受け付けております。管理者の承認をお待ちください。
 
 【予約内容】
-予約ID: %s
 予約種別: %s
 利用日: %s
 利用時間: %s - %s
-撮影タイプ: %s
+撮影種別: %s
+撮影詳細: %s
 撮影人数: %d名
+カメラマン氏名: %s
+機材保険: %s
+ホリゾント養生: %s
 
 【予約の確認・変更・キャンセル】
 マイページから予約の詳細確認・キャンセルが可能です。
@@ -467,9 +486,11 @@ func (s *EmailService) SendCustomerReservationConfirmation(ctx context.Context, 
 このメールに心当たりがない場合は、削除していただいて構いません。
 お問い合わせ: スタジオゼブラ
 Email: info@studio-zebra.com
-`, customerName, reservation.ReservationID, formatReservationType(reservation.ReservationType), dateStr,
+`, customerName, formatReservationType(reservation.ReservationType), dateStr,
 		reservation.StartTime, reservation.EndTime,
-		formatShootingTypes(reservation.ShootingType), reservation.NumberOfPeople)
+		formatShootingTypes(reservation.ShootingType), reservation.ShootingDetails,
+		reservation.NumberOfPeople, reservation.PhotographerName,
+		formatYesNo(reservation.EquipmentInsurance), formatYesNo(reservation.NeedsProtection))
 
 	input := &sesv2.SendEmailInput{
 		FromEmailAddress: aws.String(s.senderEmail),
@@ -570,8 +591,12 @@ func (s *EmailService) SendAdminReservationNotification(ctx context.Context, res
         <li><strong>予約種別:</strong> %s</li>
         <li><strong>利用日:</strong> %s</li>
         <li><strong>利用時間:</strong> %s - %s</li>
-        <li><strong>撮影タイプ:</strong> %s</li>
+        <li><strong>撮影種別:</strong> %s</li>
+        <li><strong>撮影詳細:</strong> %s</li>
         <li><strong>撮影人数:</strong> %d名</li>
+        <li><strong>カメラマン氏名:</strong> %s</li>
+        <li><strong>機材保険:</strong> %s</li>
+        <li><strong>ホリゾント養生:</strong> %s</li>
     </ul>
 
     <h3>予約者情報</h3>
@@ -591,7 +616,9 @@ func (s *EmailService) SendAdminReservationNotification(ctx context.Context, res
 </html>
 `, reservation.ReservationID, reserverKind, formatReservationType(reservation.ReservationType), dateStr,
 		reservation.StartTime, reservation.EndTime,
-		formatShootingTypes(reservation.ShootingType), reservation.NumberOfPeople,
+		formatShootingTypes(reservation.ShootingType), reservation.ShootingDetails,
+		reservation.NumberOfPeople, reservation.PhotographerName,
+		formatYesNo(reservation.EquipmentInsurance), formatYesNo(reservation.NeedsProtection),
 		reserverName, reserverEmail, reserverPhone, reserverCompany)
 
 	bodyText := fmt.Sprintf(`
@@ -605,8 +632,12 @@ func (s *EmailService) SendAdminReservationNotification(ctx context.Context, res
 予約種別: %s
 利用日: %s
 利用時間: %s - %s
-撮影タイプ: %s
+撮影種別: %s
+撮影詳細: %s
 撮影人数: %d名
+カメラマン氏名: %s
+機材保険: %s
+ホリゾント養生: %s
 
 【予約者情報】
 お名前: %s
@@ -618,7 +649,9 @@ func (s *EmailService) SendAdminReservationNotification(ctx context.Context, res
 このメールはスタジオゼブラ予約管理システムからの自動送信です。
 `, reservation.ReservationID, reserverKind, formatReservationType(reservation.ReservationType), dateStr,
 		reservation.StartTime, reservation.EndTime,
-		formatShootingTypes(reservation.ShootingType), reservation.NumberOfPeople,
+		formatShootingTypes(reservation.ShootingType), reservation.ShootingDetails,
+		reservation.NumberOfPeople, reservation.PhotographerName,
+		formatYesNo(reservation.EquipmentInsurance), formatYesNo(reservation.NeedsProtection),
 		reserverName, reserverEmail, reserverPhone, reserverCompany)
 
 	input := &sesv2.SendEmailInput{
@@ -670,7 +703,16 @@ func formatReservationType(t entity.ReservationType) string {
 	}
 }
 
-// formatShootingTypes は撮影タイプの配列を読みやすい文字列に変換する
+// shootingTypeLabels は撮影種別のDB値→日本語ラベルの対応表
+// フロントエンドの選択肢（CreateReservationModal.tsx）と一致させる
+var shootingTypeLabels = map[string]string{
+	"stills":                  "スチール撮影",
+	"video":                   "ムービー撮影",
+	"music_with_restrictions": "楽器の演奏を伴う撮影(制限あり)",
+}
+
+// formatShootingTypes は撮影種別の配列を日本語ラベルに変換して読みやすい文字列にする
+// 未知の値はそのまま出力する
 func formatShootingTypes(types []string) string {
 	if len(types) == 0 {
 		return "未指定"
@@ -681,9 +723,21 @@ func formatShootingTypes(types []string) string {
 		if i > 0 {
 			result += "、"
 		}
-		result += t
+		if label, ok := shootingTypeLabels[t]; ok {
+			result += label
+		} else {
+			result += t
+		}
 	}
 	return result
+}
+
+// formatYesNo は真偽値を「あり」「なし」に変換する
+func formatYesNo(b bool) string {
+	if b {
+		return "あり"
+	}
+	return "なし"
 }
 
 // formatDateTime は日時を読みやすい形式にフォーマットする
