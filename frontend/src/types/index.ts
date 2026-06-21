@@ -65,6 +65,23 @@ export interface Option {
   updated_at?: string;
 }
 
+// スタジオ（GET /studios/{id} のレスポンス。公開・認証不要）
+export interface Studio {
+  studio_id: string;
+  studio_name: string;
+  studio_address: string;
+  phone_number: string;
+  email: string;
+  business_hours_start: string;
+  business_hours_end: string;
+  regular_holidays?: string[];
+  tentative_expiry_days: number;
+  cancellation_policy?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 // プラン作成リクエスト
 export interface CreatePlanRequest {
   studio_id: string;

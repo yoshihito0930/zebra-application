@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -22,12 +23,18 @@ import {
   ModalFooter,
   ModalBody,
   ModalCloseButton,
+  FormControl,
+  FormLabel,
+  Input,
+  Textarea,
+  SimpleGrid,
 } from '@chakra-ui/react';
-import { Calendar, Clock, User, Mail, Phone, Building, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, User, Mail, Phone, Building, AlertCircle, CalendarClock } from 'lucide-react';
 import {
   useGuestReservation,
   useCancelGuestReservation,
 } from '../../hooks/useGuestReservations';
+import { useStudio } from '../../hooks/useStudio';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import StatusBadge from '../../components/common/StatusBadge';
@@ -44,7 +51,17 @@ export default function GuestReservationDetailPage() {
   } = useGuestReservation(token);
   const cancelMutation = useCancelGuestReservation();
 
+  // 時間変更依頼メールの宛先（スタジオのメールアドレス）を取得
+  const { data: studio } = useStudio(reservation?.studio_id);
+
   const { isOpen: isCancelModalOpen, onOpen: onCancelModalOpen, onClose: onCancelModalClose } = useDisclosure();
+  const { isOpen: isChangeModalOpen, onOpen: onChangeModalOpen, onClose: onChangeModalClose } = useDisclosure();
+
+  // 時間変更依頼フォーム（希望日時・理由）
+  const [desiredDate, setDesiredDate] = useState('');
+  const [desiredStartTime, setDesiredStartTime] = useState('');
+  const [desiredEndTime, setDesiredEndTime] = useState('');
+  const [changeReason, setChangeReason] = useState('');
 
   const error = !token
     ? 'トークンが指定されていません'
@@ -82,6 +99,32 @@ export default function GuestReservationDetailPage() {
     });
   };
 
+  // 時間変更依頼メールを mailto で生成して開く
+  const handleSubmitChangeRequest = () => {
+    if (!reservation || !studio?.email) return;
+
+    const lines = [
+      'スタジオご担当者様',
+      '',
+      '下記の予約について、時間変更を希望します。ご確認のほどよろしくお願いいたします。',
+      '',
+      `予約番号: ${reservation.reservation_id}`,
+      `予約者名: ${reservation.guest_name ?? ''}`,
+      `現在の日時: ${reservation.date} ${reservation.start_time}〜${reservation.end_time}`,
+      '',
+      '【変更希望】',
+      `希望日: ${desiredDate || '(未入力)'}`,
+      `希望時間: ${desiredStartTime || '(未入力)'}〜${desiredEndTime || '(未入力)'}`,
+      `理由・備考: ${changeReason || '(なし)'}`,
+    ];
+    const subject = `【時間変更依頼】予約 ${reservation.reservation_id}`;
+    const body = lines.join('\r\n');
+    const mailto = `mailto:${studio.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+    window.location.href = mailto;
+    onChangeModalClose();
+  };
+
   const isCancelling = cancelMutation.isPending;
 
   if (isLoading) {
@@ -113,6 +156,8 @@ export default function GuestReservationDetailPage() {
   }
 
   const canCancel = reservation.status === 'pending' || reservation.status === 'tentative' || reservation.status === 'confirmed';
+  // 時間変更依頼は仮予約（reservation_type=tentative）かつ未キャンセルの場合のみ
+  const canRequestChange = reservation.reservation_type === 'tentative' && reservation.status !== 'cancelled';
 
   return (
     <Container maxW="container.md" py={8}>
@@ -315,17 +360,30 @@ export default function GuestReservationDetailPage() {
             <Divider />
 
             {/* アクション */}
-            <HStack spacing={4}>
-              <Button flex={1} variant="outline" onClick={() => navigate('/customer/calendar')}>
-                カレンダーに戻る
-              </Button>
-
-              {canCancel && (
-                <Button flex={1} colorScheme="red" onClick={onCancelModalOpen}>
-                  予約をキャンセル
+            <VStack spacing={4} align="stretch">
+              {canRequestChange && (
+                <Button
+                  colorScheme="brand"
+                  variant="outline"
+                  leftIcon={<CalendarClock size={16} />}
+                  onClick={onChangeModalOpen}
+                >
+                  時間変更を依頼する
                 </Button>
               )}
-            </HStack>
+
+              <HStack spacing={4}>
+                <Button flex={1} variant="outline" onClick={() => navigate('/customer/calendar')}>
+                  カレンダーに戻る
+                </Button>
+
+                {canCancel && (
+                  <Button flex={1} colorScheme="red" onClick={onCancelModalOpen}>
+                    予約をキャンセル
+                  </Button>
+                )}
+              </HStack>
+            </VStack>
           </VStack>
         </Box>
 
@@ -380,6 +438,91 @@ export default function GuestReservationDetailPage() {
             </Button>
             <Button colorScheme="red" onClick={handleCancel} isLoading={isCancelling} loadingText="キャンセル中...">
               キャンセルする
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* 時間変更依頼モーダル */}
+      <Modal isOpen={isChangeModalOpen} onClose={onChangeModalClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>時間変更を依頼する</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack spacing={4} align="stretch">
+              <Text fontSize="sm" color="gray.600">
+                ご希望の日時と理由をご入力ください。内容を記載したメールの作成画面が開きます。スタジオの確認後に変更が反映されます。
+              </Text>
+
+              <Box bg="gray.50" p={4} borderRadius="md">
+                <Text fontSize="sm" color="gray.600" mb={1}>
+                  現在の予約日時
+                </Text>
+                <Text fontSize="sm" fontWeight="medium">
+                  {reservation.date} {reservation.start_time} 〜 {reservation.end_time}
+                </Text>
+              </Box>
+
+              <FormControl>
+                <FormLabel fontSize="sm">希望日</FormLabel>
+                <Input
+                  type="date"
+                  value={desiredDate}
+                  onChange={(e) => setDesiredDate(e.target.value)}
+                />
+              </FormControl>
+
+              <SimpleGrid columns={2} spacing={4}>
+                <FormControl>
+                  <FormLabel fontSize="sm">希望開始時刻</FormLabel>
+                  <Input
+                    type="time"
+                    value={desiredStartTime}
+                    onChange={(e) => setDesiredStartTime(e.target.value)}
+                  />
+                </FormControl>
+                <FormControl>
+                  <FormLabel fontSize="sm">希望終了時刻</FormLabel>
+                  <Input
+                    type="time"
+                    value={desiredEndTime}
+                    onChange={(e) => setDesiredEndTime(e.target.value)}
+                  />
+                </FormControl>
+              </SimpleGrid>
+
+              <FormControl>
+                <FormLabel fontSize="sm">理由・備考（任意）</FormLabel>
+                <Textarea
+                  value={changeReason}
+                  onChange={(e) => setChangeReason(e.target.value)}
+                  placeholder="変更理由やご要望があればご記入ください"
+                  rows={3}
+                />
+              </FormControl>
+
+              {!studio?.email && (
+                <Alert status="warning" borderRadius="md">
+                  <AlertIcon />
+                  <AlertDescription fontSize="xs">
+                    スタジオの連絡先メールアドレスを取得できませんでした。お手数ですが、お電話などでお問い合わせください。
+                  </AlertDescription>
+                </Alert>
+              )}
+            </VStack>
+          </ModalBody>
+
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={onChangeModalClose}>
+              戻る
+            </Button>
+            <Button
+              colorScheme="brand"
+              onClick={handleSubmitChangeRequest}
+              isDisabled={!studio?.email}
+            >
+              メールで依頼する
             </Button>
           </ModalFooter>
         </ModalContent>
