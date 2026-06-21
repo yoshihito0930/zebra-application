@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   Box,
   Container,
@@ -21,7 +21,6 @@ import { Plus, ListChecks } from 'lucide-react';
 import ReservationCalendar from './ReservationCalendar';
 import CalendarSidePanel from './CalendarSidePanel';
 import MobileReservationCalendar from './MobileReservationCalendar';
-import BottomReservationSheet, { type SheetSnap } from './BottomReservationSheet';
 import DayDetailModal from './DayDetailModal';
 import CreateReservationModal from '../reservation/CreateReservationModal';
 import { useCalendar } from '../../hooks/useCalendar';
@@ -70,7 +69,6 @@ export default function EmbeddedCalendar({
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedStartTime, setSelectedStartTime] = useState<string>('');
-  const [sheetSnap, setSheetSnap] = useState<SheetSnap>('peek');
 
   const layout = useBreakpointValue(
     { base: 'mobile' as const, md: 'desktop' as const },
@@ -94,15 +92,9 @@ export default function EmbeddedCalendar({
   const { isOpen: isDayDetailOpen, onOpen: onDayDetailOpen, onClose: onDayDetailClose } = useDisclosure();
   const { isOpen: isModalOpen, onOpen: onModalOpen, onClose: onModalClose } = useDisclosure();
 
-  // モバイル初期表示時、selectedDate がまだなら今日を選んでおく
-  useEffect(() => {
-    if (isMobile && selectedDate === null) {
-      setSelectedDate(getTodayString());
-    }
-  }, [isMobile, selectedDate]);
-
   const handleDateSelect = (date: string) => {
     setSelectedDate(date);
+    if (isMobile) onDayDetailOpen();
   };
 
   const handleDateClick = (date: string) => {
@@ -172,7 +164,7 @@ export default function EmbeddedCalendar({
   // ===== モバイルレイアウト =====
   if (isMobile) {
     return (
-      <Box pb="240px">
+      <Box pb={6}>
         {isLoading && (
           <Box pt={6} px={4}>
             <LoadingSpinner />
@@ -214,49 +206,16 @@ export default function EmbeddedCalendar({
           </Box>
         )}
 
-        {/* ボトムシート */}
-        {calendarData && (
-          <BottomReservationSheet
-            selectedDate={selectedDate}
+        {/* 日付詳細モーダル (モバイル) */}
+        {calendarData && selectedDate && (
+          <DayDetailModal
+            isOpen={isDayDetailOpen}
+            onClose={onDayDetailClose}
+            date={selectedDate}
             reservations={selectedDateReservations}
-            onSnapChange={setSheetSnap}
-            onCreateReservation={(date) => {
-              setSelectedDate(date);
-              setSelectedStartTime('');
-              onModalOpen();
-            }}
+            onCreateReservation={handleCreateReservationFromDetail}
           />
         )}
-
-        {/* スティッキー CTA (peek 時のみ表示) */}
-        <Box
-          position="fixed"
-          bottom={0}
-          left={0}
-          right={0}
-          px={4}
-          pb={4}
-          pt={3}
-          zIndex={20}
-          pointerEvents="none"
-          opacity={sheetSnap === 'peek' ? 1 : 0}
-          transform={sheetSnap === 'peek' ? 'translateY(0)' : 'translateY(8px)'}
-          transition="opacity 0.18s ease, transform 0.18s ease"
-          display={{ base: 'block', md: 'none' }}
-        >
-          <Button
-            colorScheme="brand"
-            size="lg"
-            w="full"
-            borderRadius="full"
-            leftIcon={<Plus size={20} />}
-            onClick={handleCreateNew}
-            pointerEvents="auto"
-            boxShadow="0 8px 20px rgba(85, 168, 137, 0.35)"
-          >
-            新規予約を作成
-          </Button>
-        </Box>
 
         {/* 予約作成モーダル */}
         <CreateReservationModal
