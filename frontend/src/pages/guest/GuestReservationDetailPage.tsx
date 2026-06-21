@@ -100,7 +100,6 @@ export default function GuestReservationDetailPage() {
             <Heading size="lg" color="brand.600" mb={2}>
               予約確認
             </Heading>
-            <Text color="gray.600">ゲスト予約の詳細を確認できます</Text>
           </Box>
 
           <ErrorMessage message={error || '予約が見つかりませんでした'} />
@@ -122,7 +121,6 @@ export default function GuestReservationDetailPage() {
           <Heading size="lg" color="brand.600" mb={2}>
             予約詳細
           </Heading>
-          <Text color="gray.600">ゲスト予約の詳細</Text>
         </Box>
 
         {reservation.status === 'cancelled' && (
