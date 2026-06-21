@@ -147,8 +147,9 @@ export default function EmbeddedCalendar({
       ? calendarData.reservations.filter((r) => r.date === selectedDate)
       : [];
 
-  // ゲスト案内（未ログイン かつ 会員登録導線がある時のみ）
-  const guestBanner = !isAuthenticated && onNavigateSignup && (
+  // ゲスト案内（SPA表示 かつ 未ログイン かつ 会員登録導線がある時のみ）
+  // 埋め込みウィジェット（showChrome=false）ではカレンダー本体のみを表示するため出さない
+  const guestBanner = showChrome && !isAuthenticated && onNavigateSignup && (
     <Alert status="info" variant="left-accent" borderRadius="md" py={2}>
       <AlertIcon />
       <Text fontSize="sm" color="gray.700">
@@ -182,14 +183,17 @@ export default function EmbeddedCalendar({
         {!isLoading && !error && calendarData && (
           <Box px={4} pt={4} pb={6}>
             <VStack spacing={4} align="stretch">
-              <Box>
-                <Heading size="lg" color="brand.600" mb={1}>
-                  予約カレンダー
-                </Heading>
-                <Text color="gray.600" fontSize="sm">
-                  空き状況を確認して、撮影を予約しましょう
-                </Text>
-              </Box>
+              {/* タイトル/サブタイトルは SPA 表示時のみ（ウィジェットはカレンダーのみ） */}
+              {showChrome && (
+                <Box>
+                  <Heading size="lg" color="brand.600" mb={1}>
+                    予約カレンダー
+                  </Heading>
+                  <Text color="gray.600" fontSize="sm">
+                    空き状況を確認して、撮影を予約しましょう
+                  </Text>
+                </Box>
+              )}
 
               {guestBanner}
 
@@ -236,37 +240,39 @@ export default function EmbeddedCalendar({
   // ===== デスクトップレイアウト =====
   const desktopBody = (
     <VStack spacing={6} align="stretch">
-      {/* タイトルセクション */}
-      <Flex
-        direction={{ base: 'column', md: 'row' }}
-        justify="space-between"
-        align={{ base: 'flex-start', md: 'center' }}
-        gap={4}
-      >
-        <Box>
-          <Heading size="xl" color="brand.600" mb={1}>
-            予約カレンダー
-          </Heading>
-          <Text color="gray.600" fontSize="sm">
-            空き状況を確認して、撮影を予約しましょう
-          </Text>
-        </Box>
-        <HStack spacing={3}>
-          {isAuthenticated && onNavigateMyReservations && (
-            <Button
-              variant="outline"
-              colorScheme="brand"
-              leftIcon={<ListChecks size={18} />}
-              onClick={onNavigateMyReservations}
-            >
-              マイ予約
+      {/* タイトルセクション（SPA 表示時のみ。ウィジェットはカレンダーのみ表示） */}
+      {showChrome && (
+        <Flex
+          direction={{ base: 'column', md: 'row' }}
+          justify="space-between"
+          align={{ base: 'flex-start', md: 'center' }}
+          gap={4}
+        >
+          <Box>
+            <Heading size="xl" color="brand.600" mb={1}>
+              予約カレンダー
+            </Heading>
+            <Text color="gray.600" fontSize="sm">
+              空き状況を確認して、撮影を予約しましょう
+            </Text>
+          </Box>
+          <HStack spacing={3}>
+            {isAuthenticated && onNavigateMyReservations && (
+              <Button
+                variant="outline"
+                colorScheme="brand"
+                leftIcon={<ListChecks size={18} />}
+                onClick={onNavigateMyReservations}
+              >
+                マイ予約
+              </Button>
+            )}
+            <Button colorScheme="brand" leftIcon={<Plus size={18} />} onClick={handleCreateNew}>
+              新規予約を作成
             </Button>
-          )}
-          <Button colorScheme="brand" leftIcon={<Plus size={18} />} onClick={handleCreateNew}>
-            新規予約を作成
-          </Button>
-        </HStack>
-      </Flex>
+          </HStack>
+        </Flex>
+      )}
 
       {/* ゲスト案内 */}
       {guestBanner}
