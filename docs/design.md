@@ -689,7 +689,7 @@ frontend/
 │   │   └── forms/          # フォーム関連
 │   ├── pages/              # 画面コンポーネント
 │   │   ├── auth/           # 認証画面
-│   │   ├── customer/       # 顧客向け画面
+│   │   ├── customer/       # 公開予約画面（ログイン不要。旧 顧客向け画面）
 │   │   └── admin/          # 管理者向け画面
 │   ├── hooks/              # カスタムフック
 │   ├── services/           # API通信
