@@ -12,7 +12,6 @@ import {
   Button,
   Link,
   HStack,
-  Divider,
   Alert,
   AlertIcon,
   useToast,
@@ -170,25 +169,6 @@ export default function LoginPage() {
               </Button>
             </VStack>
           </form>
-
-          {/* 区切り線 */}
-          <HStack>
-            <Divider />
-            <Text fontSize="sm" color="gray.500" whiteSpace="nowrap">
-              または
-            </Text>
-            <Divider />
-          </HStack>
-
-          {/* サインアップリンク */}
-          <Box textAlign="center">
-            <Text fontSize="sm" color="gray.600">
-              アカウントをお持ちでない方は{' '}
-              <Link color="brand.600" fontWeight="semibold" onClick={() => navigate('/signup')}>
-                新規登録
-              </Link>
-            </Text>
-          </Box>
         </VStack>
       </Box>
     </Container>

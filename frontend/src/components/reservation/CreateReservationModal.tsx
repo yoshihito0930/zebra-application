@@ -126,6 +126,12 @@ interface CreateReservationModalProps {
     status: string;
   }>;
   blockedSlots?: BlockedSlot[];
+  /**
+   * 公開／ウィジェット文脈で使うフラグ。true のときは会員予約タブを出さず、
+   * 常にゲスト予約（POST /reservations/guest）として作成する。
+   * admin/staff の管理画面では false（既定）のまま会員予約パスも使える。
+   */
+  guestOnly?: boolean;
 }
 
 export default function CreateReservationModal({
@@ -137,9 +143,12 @@ export default function CreateReservationModal({
   onSuccess,
   reservations = [],
   blockedSlots = [],
+  guestOnly = false,
 }: CreateReservationModalProps) {
   const toast = useToast();
   const { isAuthenticated } = useAuthStore();
+  // 会員予約タブを表示するか。guestOnly（公開／ウィジェット）のときは常にゲストのみ。
+  const showMemberOption = isAuthenticated && !guestOnly;
   const [tabIndex, setTabIndex] = useState(0); // 0: 会員, 1: ゲスト
   // const [guestToken, setGuestToken] = useState<string | null>(null);
 
@@ -202,8 +211,8 @@ export default function CreateReservationModal({
   // モーダルが開かれたときの初期化
   useEffect(() => {
     if (isOpen) {
-      // タブを会員タブにリセット（ログインしている場合）
-      setTabIndex(isAuthenticated ? 0 : 0);
+      // タブを先頭にリセット（会員タブがある場合は会員タブ）
+      setTabIndex(0);
       // 初期日付設定
       if (initialDate) {
         setValue('date', initialDate);
@@ -221,7 +230,7 @@ export default function CreateReservationModal({
       setEndHour(null);
       setEndMinute(null);
     }
-  }, [isOpen, isAuthenticated, initialDate, initialStartTime, setValue]);
+  }, [isOpen, initialDate, initialStartTime, setValue]);
 
   // 選択中のプラン・オプション・予約種別・日付
   const selectedPlanId = watch('plan_id');
@@ -385,21 +394,18 @@ export default function CreateReservationModal({
   })();
 
   // タブ変更時の処理
-  // 未ログイン時はタブが「ゲスト」のみ（index=0）なので、認証済みのときのみ index でゲスト判定する。
+  // 会員タブが無い（ゲスト専用）ときはタブが「ゲスト」のみ（index=0）なので常にゲスト。
+  // 会員タブがあるときのみ index===1 でゲスト判定する。
   const handleTabChange = (index: number) => {
     setTabIndex(index);
-    setValue('is_guest', !isAuthenticated || index === 1);
+    setValue('is_guest', !showMemberOption || index === 1);
   };
 
   // フォーム送信
   const onSubmit = async (data: ReservationFormData) => {
-    // デバッグ: 送信データを確認
-    console.log('Form submit data:', data);
-    console.log('Tab index:', tabIndex, 'isAuthenticated:', isAuthenticated);
-
     // バリデーション
-    // 未ログインは常にゲスト扱い。ログイン中はタブ index でゲスト/会員を判定する。
-    const isGuest = !isAuthenticated || tabIndex === 1;
+    // ゲスト専用文脈では常にゲスト扱い。会員タブがあるときのみタブ index で判定する。
+    const isGuest = !showMemberOption || tabIndex === 1;
     const schema = isGuest ? guestReservationSchema : memberReservationSchema;
 
     const result = schema.safeParse({
@@ -543,12 +549,12 @@ export default function CreateReservationModal({
             {!isLoadingData && !dataError && (
               <Tabs index={tabIndex} onChange={handleTabChange} variant="enclosed" colorScheme="brand" isLazy>
                 <TabList>
-                  {isAuthenticated && <Tab>会員として予約</Tab>}
-                  <Tab>ゲストとして予約</Tab>
+                  {showMemberOption && <Tab>会員として予約</Tab>}
+                  <Tab>{showMemberOption ? 'ゲストとして予約' : '予約内容の入力'}</Tab>
                 </TabList>
 
                 <TabPanels>
-                  {isAuthenticated && (
+                  {showMemberOption && (
                     <TabPanel px={0}>
                       <VStack spacing={6} align="stretch">
                 {/* 予約種別 */}
@@ -886,7 +892,7 @@ export default function CreateReservationModal({
                         <AlertIcon />
                         <VStack align="flex-start" spacing={1} flex={1}>
                           <Text fontSize="sm" fontWeight="semibold">
-                            ゲストとして予約する場合
+                            {showMemberOption ? 'ゲストとして予約する場合' : 'ご予約について'}
                           </Text>
                           <Text fontSize="xs">
                             予約確認用のリンクをメールで送信します。予約の確認・キャンセルはメールに記載されたリンクから行えます。

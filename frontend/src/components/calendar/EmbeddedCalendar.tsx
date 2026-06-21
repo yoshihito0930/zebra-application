@@ -217,7 +217,7 @@ export default function EmbeddedCalendar({
           />
         )}
 
-        {/* 予約作成モーダル */}
+        {/* 予約作成モーダル（公開カレンダーは常にゲスト予約） */}
         <CreateReservationModal
           isOpen={isModalOpen}
           onClose={onModalClose}
@@ -227,6 +227,7 @@ export default function EmbeddedCalendar({
           onSuccess={handleReservationSuccess}
           reservations={calendarData?.reservations || []}
           blockedSlots={calendarData?.blocked_slots || []}
+          guestOnly
         />
       </Box>
     );
@@ -317,7 +318,7 @@ export default function EmbeddedCalendar({
         />
       )}
 
-      {/* 予約作成モーダル */}
+      {/* 予約作成モーダル（公開カレンダーは常にゲスト予約） */}
       <CreateReservationModal
         isOpen={isModalOpen}
         onClose={onModalClose}
@@ -327,6 +328,7 @@ export default function EmbeddedCalendar({
         onSuccess={handleReservationSuccess}
         reservations={calendarData?.reservations || []}
         blockedSlots={calendarData?.blocked_slots || []}
+        guestOnly
       />
     </VStack>
   );

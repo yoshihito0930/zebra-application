@@ -8,9 +8,6 @@ import VerifyEmailPage from './pages/auth/VerifyEmailPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import CustomerCalendarPage from './pages/customer/CalendarPage';
-import ReservationsPage from './pages/customer/ReservationsPage';
-import ReservationDetailPage from './pages/customer/ReservationDetailPage';
-import ProfilePage from './pages/customer/ProfilePage';
 import AdminDashboardPage from './pages/admin/DashboardPage';
 import AdminCalendarPage from './pages/admin/CalendarPage';
 import { ReservationsPage as AdminReservationsPage } from './pages/admin/ReservationsPage';
@@ -44,54 +41,13 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-          {/* 顧客向け画面 */}
+          {/* 公開予約カレンダー（ログイン不要・誰でも閲覧/予約可能） */}
           <Route
             path="/customer/calendar"
             element={
               <CustomerLayout breadcrumbLabel="カレンダー">
                 <CustomerCalendarPage />
               </CustomerLayout>
-            }
-          />
-          <Route
-            path="/customer/reservations"
-            element={
-              <ProtectedRoute>
-                <CustomerLayout breadcrumbLabel="マイ予約">
-                  <ReservationsPage />
-                </CustomerLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/customer/reservations/:id"
-            element={
-              <ProtectedRoute>
-                <CustomerLayout breadcrumbLabel="予約詳細">
-                  <ReservationDetailPage />
-                </CustomerLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/customer/inquiries"
-            element={
-              <ProtectedRoute>
-                <CustomerLayout breadcrumbLabel="問い合わせ">
-                  {/* 問い合わせページは後で実装 */}
-                  <Box p={8}>問い合わせページ（実装予定）</Box>
-                </CustomerLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/customer/profile"
-            element={
-              <ProtectedRoute>
-                <CustomerLayout breadcrumbLabel="プロフィール">
-                  <ProfilePage />
-                </CustomerLayout>
-              </ProtectedRoute>
             }
           />
 
