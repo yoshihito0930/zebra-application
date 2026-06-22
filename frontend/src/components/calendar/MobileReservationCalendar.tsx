@@ -26,6 +26,8 @@ interface MobileReservationCalendarProps {
   selectedDate?: string | null;
   onDateSelect?: (date: string) => void;
   onMonthChange?: (year: number, month: number) => void;
+  /** 年月の上の「予約カレンダー」ラベルを表示するか（埋め込みウィジェットでは false） */
+  showHeaderLabel?: boolean;
 }
 
 const getStatusDotColor = (status: string): string => {
@@ -69,6 +71,7 @@ export default function MobileReservationCalendar({
   selectedDate = null,
   onDateSelect,
   onMonthChange,
+  showHeaderLabel = true,
 }: MobileReservationCalendarProps) {
   const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
   const todayString = getTodayString();
@@ -158,9 +161,11 @@ export default function MobileReservationCalendar({
         justify="space-between"
       >
         <Box>
-          <Text fontSize="sm" color="gray.600" fontWeight="medium">
-            予約カレンダー
-          </Text>
+          {showHeaderLabel && (
+            <Text fontSize="sm" color="gray.600" fontWeight="medium">
+              予約カレンダー
+            </Text>
+          )}
           <Heading size="md" fontWeight="bold" mt={0.5}>
             {currentYear}年 {currentMonth}月
           </Heading>

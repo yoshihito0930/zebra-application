@@ -205,6 +205,7 @@ export default function EmbeddedCalendar({
                 selectedDate={selectedDate}
                 onDateSelect={handleDateSelect}
                 onMonthChange={handleMonthChange}
+                showHeaderLabel={showChrome}
               />
             </VStack>
           </Box>
