@@ -9,7 +9,16 @@ on:
       - 'frontend/src/widget/**'
       - 'frontend/vite.widget.config.ts'
       - 'frontend/src/services/api.ts'
-      - 'frontend/src/components/calendar/EmbeddedCalendar.tsx'
+      # ウィジェットはカレンダー〜予約フォームを共有バンドルする。
+      # EmbeddedCalendar 単体ではなく、それが取り込む予約フォーム・共通部品・
+      # フック・型・ユーティリティの変更でも再デプロイされるようパスを拡張。
+      - 'frontend/src/components/calendar/**'
+      - 'frontend/src/components/reservation/**'
+      - 'frontend/src/components/common/**'
+      - 'frontend/src/hooks/**'
+      - 'frontend/src/stores/**'
+      - 'frontend/src/types/**'
+      - 'frontend/src/utils/**'
       - '.github/workflows/deploy-widget-dev.yml'
 
   # 手動トリガー
