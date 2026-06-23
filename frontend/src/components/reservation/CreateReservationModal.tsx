@@ -49,6 +49,13 @@ import { DatePickerField, TimePickerField } from './DateTimePickerFields';
 import type { BlockedSlot, CreateReservationRequest, Reservation } from '../../types';
 import { INSURANCE_PRICE, INSURANCE_TAX } from '../../utils/reservationPrice';
 
+// 必須入力欄を示す赤いアスタリスク
+const RequiredMark = () => (
+  <Box as="span" color="red.500" aria-hidden="true">
+    *
+  </Box>
+);
+
 // 時刻を分単位に変換するヘルパー
 const timeToMinutes = (timeStr: string): number => {
   const [hourStr, minStr] = timeStr.split(':');
@@ -560,7 +567,7 @@ export default function CreateReservationModal({
                       <VStack spacing={6} align="stretch">
                 {/* 予約種別 */}
                 <FormControl isInvalid={!!errors.reservation_type}>
-                  <FormLabel>予約種別</FormLabel>
+                  <FormLabel>予約種別 <RequiredMark /></FormLabel>
                   <Controller
                     name="reservation_type"
                     control={control}
@@ -580,7 +587,7 @@ export default function CreateReservationModal({
 
                 {/* プラン選択 */}
                 <FormControl isInvalid={!!errors.plan_id}>
-                  <FormLabel>プラン</FormLabel>
+                  <FormLabel>プラン <RequiredMark /></FormLabel>
                   <Controller
                     name="plan_id"
                     control={control}
@@ -623,7 +630,7 @@ export default function CreateReservationModal({
 
                 {/* 日付・時刻 */}
                 <FormControl isInvalid={!!errors.date}>
-                  <FormLabel>日付</FormLabel>
+                  <FormLabel>日付 <RequiredMark /></FormLabel>
                   <Controller
                     name="date"
                     control={control}
@@ -653,7 +660,7 @@ export default function CreateReservationModal({
                     </Alert>
                   )}
                   <FormControl isInvalid={!!errors.start_time}>
-                    <FormLabel>開始時刻</FormLabel>
+                    <FormLabel>開始時刻 <RequiredMark /></FormLabel>
                     <TimePickerField
                       hour={startHour}
                       minute={startMinute}
@@ -671,7 +678,7 @@ export default function CreateReservationModal({
                   </FormControl>
 
                   <FormControl isInvalid={!!errors.end_time}>
-                    <FormLabel>終了時刻</FormLabel>
+                    <FormLabel>終了時刻 <RequiredMark /></FormLabel>
                     <TimePickerField
                       hour={endHour}
                       minute={endMinute}
@@ -697,7 +704,7 @@ export default function CreateReservationModal({
 
                 {/* 撮影種別 */}
                 <FormControl isInvalid={!!errors.shooting_type}>
-                  <FormLabel>撮影種別</FormLabel>
+                  <FormLabel>撮影種別 <RequiredMark /></FormLabel>
                   <Controller
                     name="shooting_type"
                     control={control}
@@ -716,7 +723,7 @@ export default function CreateReservationModal({
 
                 {/* 撮影詳細 */}
                 <FormControl isInvalid={!!errors.shooting_details}>
-                  <FormLabel>撮影詳細</FormLabel>
+                  <FormLabel>撮影詳細 <RequiredMark /></FormLabel>
                   <Controller
                     name="shooting_details"
                     control={control}
@@ -732,7 +739,7 @@ export default function CreateReservationModal({
 
                 {/* カメラマン名 */}
                 <FormControl isInvalid={!!errors.photographer_name}>
-                  <FormLabel>カメラマン名</FormLabel>
+                  <FormLabel>カメラマン名 <RequiredMark /></FormLabel>
                   <Controller
                     name="photographer_name"
                     control={control}
@@ -745,7 +752,7 @@ export default function CreateReservationModal({
 
                 {/* 参加人数 */}
                 <FormControl isInvalid={!!errors.number_of_people}>
-                  <FormLabel>参加人数</FormLabel>
+                  <FormLabel>参加人数 <RequiredMark /></FormLabel>
                   <Controller
                     name="number_of_people"
                     control={control}
@@ -884,19 +891,19 @@ export default function CreateReservationModal({
 
                         <VStack spacing={4}>
                           <FormControl isInvalid={!!errors.guest_name}>
-                            <FormLabel>お名前 *</FormLabel>
+                            <FormLabel>お名前 <RequiredMark /></FormLabel>
                             <Input placeholder="山田太郎" {...register('guest_name')} />
                             <FormErrorMessage>{String(errors.guest_name?.message || '')}</FormErrorMessage>
                           </FormControl>
 
                           <FormControl isInvalid={!!errors.guest_email}>
-                            <FormLabel>メールアドレス *</FormLabel>
+                            <FormLabel>メールアドレス <RequiredMark /></FormLabel>
                             <Input type="email" placeholder="guest@example.com" {...register('guest_email')} />
                             <FormErrorMessage>{String(errors.guest_email?.message || '')}</FormErrorMessage>
                           </FormControl>
 
                           <FormControl isInvalid={!!errors.guest_phone}>
-                            <FormLabel>電話番号 *</FormLabel>
+                            <FormLabel>電話番号 <RequiredMark /></FormLabel>
                             <Input placeholder="090-1234-5678" {...register('guest_phone')} />
                             <FormErrorMessage>{String(errors.guest_phone?.message || '')}</FormErrorMessage>
                           </FormControl>
@@ -914,7 +921,7 @@ export default function CreateReservationModal({
                       {/* 既存の予約フォームフィールドをコピー（予約種別から料金表示まで） */}
                       {/* 予約種別 */}
                       <FormControl isInvalid={!!errors.reservation_type}>
-                        <FormLabel>予約種別</FormLabel>
+                        <FormLabel>予約種別 <RequiredMark /></FormLabel>
                         <Controller
                           name="reservation_type"
                           control={control}
@@ -934,7 +941,7 @@ export default function CreateReservationModal({
 
                       {/* プラン選択 */}
                       <FormControl isInvalid={!!errors.plan_id}>
-                        <FormLabel>プラン</FormLabel>
+                        <FormLabel>プラン <RequiredMark /></FormLabel>
                         <Controller
                           name="plan_id"
                           control={control}
@@ -977,7 +984,7 @@ export default function CreateReservationModal({
 
                       {/* 日付・時刻 */}
                       <FormControl isInvalid={!!errors.date}>
-                        <FormLabel>日付</FormLabel>
+                        <FormLabel>日付 <RequiredMark /></FormLabel>
                         <Controller
                           name="date"
                           control={control}
@@ -1007,7 +1014,7 @@ export default function CreateReservationModal({
                           </Alert>
                         )}
                         <FormControl isInvalid={!!errors.start_time}>
-                          <FormLabel>開始時刻</FormLabel>
+                          <FormLabel>開始時刻 <RequiredMark /></FormLabel>
                           <TimePickerField
                             hour={startHour}
                             minute={startMinute}
@@ -1025,7 +1032,7 @@ export default function CreateReservationModal({
                         </FormControl>
 
                         <FormControl isInvalid={!!errors.end_time}>
-                          <FormLabel>終了時刻</FormLabel>
+                          <FormLabel>終了時刻 <RequiredMark /></FormLabel>
                           <TimePickerField
                             hour={endHour}
                             minute={endMinute}
@@ -1051,7 +1058,7 @@ export default function CreateReservationModal({
 
                       {/* 撮影種別 */}
                       <FormControl isInvalid={!!errors.shooting_type}>
-                        <FormLabel>撮影種別</FormLabel>
+                        <FormLabel>撮影種別 <RequiredMark /></FormLabel>
                         <Controller
                           name="shooting_type"
                           control={control}
@@ -1070,7 +1077,7 @@ export default function CreateReservationModal({
 
                       {/* 撮影詳細 */}
                       <FormControl isInvalid={!!errors.shooting_details}>
-                        <FormLabel>撮影詳細</FormLabel>
+                        <FormLabel>撮影詳細 <RequiredMark /></FormLabel>
                         <Controller
                           name="shooting_details"
                           control={control}
@@ -1086,7 +1093,7 @@ export default function CreateReservationModal({
 
                       {/* カメラマン名 */}
                       <FormControl isInvalid={!!errors.photographer_name}>
-                        <FormLabel>カメラマン名</FormLabel>
+                        <FormLabel>カメラマン名 <RequiredMark /></FormLabel>
                         <Controller
                           name="photographer_name"
                           control={control}
@@ -1099,7 +1106,7 @@ export default function CreateReservationModal({
 
                       {/* 参加人数 */}
                       <FormControl isInvalid={!!errors.number_of_people}>
-                        <FormLabel>参加人数</FormLabel>
+                        <FormLabel>参加人数 <RequiredMark /></FormLabel>
                         <Controller
                           name="number_of_people"
                           control={control}
