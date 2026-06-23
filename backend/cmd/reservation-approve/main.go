@@ -8,9 +8,7 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/aws/aws-sdk-go-v2/service/sesv2"
 	"github.com/yoshihito0930/zebra-application/internal/middleware"
-	"github.com/yoshihito0930/zebra-application/internal/notification"
 	"github.com/yoshihito0930/zebra-application/internal/repository"
 	dynamodbRepo "github.com/yoshihito0930/zebra-application/internal/repository/dynamodb"
 	"github.com/yoshihito0930/zebra-application/internal/usecase"
@@ -22,7 +20,6 @@ var (
 	reservationUsecase *usecase.ReservationUsecase
 	optionRepo         repository.OptionRepository
 	userRepo           repository.UserRepository
-	emailService       *notification.EmailService
 )
 
 func init() {
@@ -32,8 +29,6 @@ func init() {
 	}
 
 	dynamoClient := dynamodb.NewFromConfig(cfg)
-	sesClient := sesv2.NewFromConfig(cfg)
-	emailService = notification.NewEmailService(sesClient)
 
 	reservationRepo := dynamodbRepo.NewReservationRepository(dynamoClient)
 	userRepo = dynamodbRepo.NewUserRepository(dynamoClient)
@@ -78,27 +73,9 @@ func approveReservationHandler(ctx context.Context, request events.APIGatewayPro
 		}
 	}
 
-	// 予約者宛に承認通知メールを送信（失敗時もログのみで承認は成立させる）
-	if reservation.IsGuest {
-		if reservation.GuestEmail == nil || *reservation.GuestEmail == "" {
-			log.Printf("guest email is empty for reservation %s, skipping approval email", reservation.ReservationID)
-		} else if err := emailService.SendGuestReservationApproval(ctx, reservation); err != nil {
-			log.Printf("failed to send guest reservation approval email (reservation_id=%s): %v", reservation.ReservationID, err)
-		}
-	} else {
-		if reservation.UserID == nil || *reservation.UserID == "" {
-			log.Printf("user_id is empty for reservation %s, skipping approval email", reservation.ReservationID)
-		} else {
-			user, userErr := userRepo.FindByID(ctx, *reservation.UserID)
-			if userErr != nil {
-				log.Printf("failed to find user for approval email (user_id=%s): %v", *reservation.UserID, userErr)
-			} else if user == nil {
-				log.Printf("user not found for approval email (user_id=%s)", *reservation.UserID)
-			} else if err := emailService.SendCustomerReservationApproval(ctx, reservation, user); err != nil {
-				log.Printf("failed to send customer reservation approval email (reservation_id=%s): %v", reservation.ReservationID, err)
-			}
-		}
-	}
+	// 承認時の承認通知メールは自動送信しない。
+	// 管理者がレビュー画面で内容を確認・編集したうえで、別エンドポイント
+	// （POST /reservations/{id}/approval-email）から明示的に送信する。
 
 	resp := ApproveReservationResponse{
 		ReservationID:   reservation.ReservationID,

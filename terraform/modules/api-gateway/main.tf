@@ -128,6 +128,13 @@ resource "aws_api_gateway_resource" "reservations_id_approve" {
   path_part   = "approve"
 }
 
+# /reservations/{id}/approval-email （GET=プレビュー, POST=送信）
+resource "aws_api_gateway_resource" "reservations_id_approval_email" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  parent_id   = aws_api_gateway_resource.reservations_id.id
+  path_part   = "approval-email"
+}
+
 # /reservations/{id}/reject
 resource "aws_api_gateway_resource" "reservations_id_reject" {
   rest_api_id = aws_api_gateway_rest_api.main.id
@@ -253,33 +260,36 @@ resource "aws_api_gateway_resource" "inquiries_id_close" {
 module "lambda_integration" {
   for_each = {
     # 認証
-    "auth_signup"      = { resource = aws_api_gateway_resource.auth_signup.id, method = "POST", invoke_arn = var.lambda_functions.auth_signup.invoke_arn, auth = false }
-    "auth_login"       = { resource = aws_api_gateway_resource.auth_login.id, method = "POST", invoke_arn = var.lambda_functions.auth_login.invoke_arn, auth = false }
-    "users_me_get"     = { resource = aws_api_gateway_resource.users_me.id, method = "GET", invoke_arn = var.lambda_functions.users_me_get.invoke_arn, auth = true }
+    "auth_signup"  = { resource = aws_api_gateway_resource.auth_signup.id, method = "POST", invoke_arn = var.lambda_functions.auth_signup.invoke_arn, auth = false }
+    "auth_login"   = { resource = aws_api_gateway_resource.auth_login.id, method = "POST", invoke_arn = var.lambda_functions.auth_login.invoke_arn, auth = false }
+    "users_me_get" = { resource = aws_api_gateway_resource.users_me.id, method = "GET", invoke_arn = var.lambda_functions.users_me_get.invoke_arn, auth = true }
     # カレンダー
-    "calendar_get"     = { resource = aws_api_gateway_resource.studios_id_calendar.id, method = "GET", invoke_arn = var.lambda_functions.calendar_get.invoke_arn, auth = false }
+    "calendar_get" = { resource = aws_api_gateway_resource.studios_id_calendar.id, method = "GET", invoke_arn = var.lambda_functions.calendar_get.invoke_arn, auth = false }
     # 予約
     "reservation_create"  = { resource = aws_api_gateway_resource.reservations.id, method = "POST", invoke_arn = var.lambda_functions.reservation_create.invoke_arn, auth = true }
     "reservation_list"    = { resource = aws_api_gateway_resource.reservations.id, method = "GET", invoke_arn = var.lambda_functions.reservation_list.invoke_arn, auth = true }
     "reservation_list_me" = { resource = aws_api_gateway_resource.reservations_me.id, method = "GET", invoke_arn = var.lambda_functions.reservation_list_me.invoke_arn, auth = true }
     "reservation_get"     = { resource = aws_api_gateway_resource.reservations_id.id, method = "GET", invoke_arn = var.lambda_functions.reservation_get.invoke_arn, auth = true }
     "reservation_approve" = { resource = aws_api_gateway_resource.reservations_id_approve.id, method = "PATCH", invoke_arn = var.lambda_functions.reservation_approve.invoke_arn, auth = true }
-    "reservation_reject"  = { resource = aws_api_gateway_resource.reservations_id_reject.id, method = "PATCH", invoke_arn = var.lambda_functions.reservation_reject.invoke_arn, auth = true }
-    "reservation_promote" = { resource = aws_api_gateway_resource.reservations_id_promote.id, method = "PATCH", invoke_arn = var.lambda_functions.reservation_promote.invoke_arn, auth = true }
-    "reservation_cancel"  = { resource = aws_api_gateway_resource.reservations_id_cancel.id, method = "PATCH", invoke_arn = var.lambda_functions.reservation_cancel.invoke_arn, auth = true }
-    "reservation_update"  = { resource = aws_api_gateway_resource.reservations_id.id, method = "PATCH", invoke_arn = var.lambda_functions.reservation_update.invoke_arn, auth = true }
+    # 承認メールのレビューゲート（プレビュー=GET, 送信=POST）
+    "reservation_approval_email_preview" = { resource = aws_api_gateway_resource.reservations_id_approval_email.id, method = "GET", invoke_arn = var.lambda_functions.reservation_approval_email_preview.invoke_arn, auth = true }
+    "reservation_approval_email_send"    = { resource = aws_api_gateway_resource.reservations_id_approval_email.id, method = "POST", invoke_arn = var.lambda_functions.reservation_approval_email_send.invoke_arn, auth = true }
+    "reservation_reject"                 = { resource = aws_api_gateway_resource.reservations_id_reject.id, method = "PATCH", invoke_arn = var.lambda_functions.reservation_reject.invoke_arn, auth = true }
+    "reservation_promote"                = { resource = aws_api_gateway_resource.reservations_id_promote.id, method = "PATCH", invoke_arn = var.lambda_functions.reservation_promote.invoke_arn, auth = true }
+    "reservation_cancel"                 = { resource = aws_api_gateway_resource.reservations_id_cancel.id, method = "PATCH", invoke_arn = var.lambda_functions.reservation_cancel.invoke_arn, auth = true }
+    "reservation_update"                 = { resource = aws_api_gateway_resource.reservations_id.id, method = "PATCH", invoke_arn = var.lambda_functions.reservation_update.invoke_arn, auth = true }
     # ゲスト予約（2026-04-16追加）
     "reservation_guest_get"     = { resource = aws_api_gateway_resource.reservations_guest_token.id, method = "GET", invoke_arn = var.lambda_functions["reservation_guest_get"].invoke_arn, auth = false }
     "reservation_guest_cancel"  = { resource = aws_api_gateway_resource.reservations_guest_token_cancel.id, method = "PATCH", invoke_arn = var.lambda_functions["reservation_guest_cancel"].invoke_arn, auth = false }
     "reservation_guest_promote" = { resource = aws_api_gateway_resource.reservations_guest_token_promote.id, method = "PATCH", invoke_arn = var.lambda_functions["reservation_guest_promote"].invoke_arn, auth = false }
     # ゲスト予約作成（2026-05-08追加）
-    "reservation_guest_create"  = { resource = aws_api_gateway_resource.reservations_guest.id, method = "POST", invoke_arn = var.lambda_functions["reservation_guest_create"].invoke_arn, auth = false }
+    "reservation_guest_create" = { resource = aws_api_gateway_resource.reservations_guest.id, method = "POST", invoke_arn = var.lambda_functions["reservation_guest_create"].invoke_arn, auth = false }
     # プラン
-    "plans_list"   = { resource = aws_api_gateway_resource.studios_id_plans.id, method = "GET", invoke_arn = var.lambda_functions.plans_list.invoke_arn, auth = false }
-    "plan_create"  = { resource = aws_api_gateway_resource.plans.id, method = "POST", invoke_arn = var.lambda_functions.plan_create.invoke_arn, auth = true }
-    "plan_get"     = { resource = aws_api_gateway_resource.plans_id.id, method = "GET", invoke_arn = var.lambda_functions.plan_get.invoke_arn, auth = false }
-    "plan_update"  = { resource = aws_api_gateway_resource.plans_id.id, method = "PATCH", invoke_arn = var.lambda_functions.plan_update.invoke_arn, auth = true }
-    "plan_delete"  = { resource = aws_api_gateway_resource.plans_id.id, method = "DELETE", invoke_arn = var.lambda_functions.plan_delete.invoke_arn, auth = true }
+    "plans_list"  = { resource = aws_api_gateway_resource.studios_id_plans.id, method = "GET", invoke_arn = var.lambda_functions.plans_list.invoke_arn, auth = false }
+    "plan_create" = { resource = aws_api_gateway_resource.plans.id, method = "POST", invoke_arn = var.lambda_functions.plan_create.invoke_arn, auth = true }
+    "plan_get"    = { resource = aws_api_gateway_resource.plans_id.id, method = "GET", invoke_arn = var.lambda_functions.plan_get.invoke_arn, auth = false }
+    "plan_update" = { resource = aws_api_gateway_resource.plans_id.id, method = "PATCH", invoke_arn = var.lambda_functions.plan_update.invoke_arn, auth = true }
+    "plan_delete" = { resource = aws_api_gateway_resource.plans_id.id, method = "DELETE", invoke_arn = var.lambda_functions.plan_delete.invoke_arn, auth = true }
     # オプション
     "options_list"  = { resource = aws_api_gateway_resource.studios_id_options.id, method = "GET", invoke_arn = var.lambda_functions.options_list.invoke_arn, auth = false }
     "option_create" = { resource = aws_api_gateway_resource.options.id, method = "POST", invoke_arn = var.lambda_functions.option_create.invoke_arn, auth = true }
@@ -287,9 +297,9 @@ module "lambda_integration" {
     "option_update" = { resource = aws_api_gateway_resource.options_id.id, method = "PATCH", invoke_arn = var.lambda_functions.option_update.invoke_arn, auth = true }
     "option_delete" = { resource = aws_api_gateway_resource.options_id.id, method = "DELETE", invoke_arn = var.lambda_functions.option_delete.invoke_arn, auth = true }
     # ブロック枠
-    "blocked_slots_list"   = { resource = aws_api_gateway_resource.blocked_slots.id, method = "GET", invoke_arn = var.lambda_functions.blocked_slots_list.invoke_arn, auth = true }
-    "blocked_slot_create"  = { resource = aws_api_gateway_resource.blocked_slots.id, method = "POST", invoke_arn = var.lambda_functions.blocked_slot_create.invoke_arn, auth = true }
-    "blocked_slot_delete"  = { resource = aws_api_gateway_resource.blocked_slots_id.id, method = "DELETE", invoke_arn = var.lambda_functions.blocked_slot_delete.invoke_arn, auth = true }
+    "blocked_slots_list"  = { resource = aws_api_gateway_resource.blocked_slots.id, method = "GET", invoke_arn = var.lambda_functions.blocked_slots_list.invoke_arn, auth = true }
+    "blocked_slot_create" = { resource = aws_api_gateway_resource.blocked_slots.id, method = "POST", invoke_arn = var.lambda_functions.blocked_slot_create.invoke_arn, auth = true }
+    "blocked_slot_delete" = { resource = aws_api_gateway_resource.blocked_slots_id.id, method = "DELETE", invoke_arn = var.lambda_functions.blocked_slot_delete.invoke_arn, auth = true }
     # 問い合わせ
     "inquiry_create" = { resource = aws_api_gateway_resource.inquiries.id, method = "POST", invoke_arn = var.lambda_functions.inquiry_create.invoke_arn, auth = true }
     "inquiry_list"   = { resource = aws_api_gateway_resource.inquiries.id, method = "GET", invoke_arn = var.lambda_functions.inquiry_list.invoke_arn, auth = true }
@@ -400,33 +410,34 @@ resource "aws_api_gateway_account" "main" {
 # 403 を返し、ブラウザからの PATCH リクエストが CORS でブロックされた。
 resource "aws_api_gateway_method" "options" {
   for_each = {
-    auth_signup                           = aws_api_gateway_resource.auth_signup.id
-    auth_login                            = aws_api_gateway_resource.auth_login.id
-    users_me                              = aws_api_gateway_resource.users_me.id
-    studios_id_calendar                   = aws_api_gateway_resource.studios_id_calendar.id
-    studios_id_plans                      = aws_api_gateway_resource.studios_id_plans.id
-    studios_id_options                    = aws_api_gateway_resource.studios_id_options.id
-    reservations                          = aws_api_gateway_resource.reservations.id
-    reservations_me                       = aws_api_gateway_resource.reservations_me.id
-    reservations_id                       = aws_api_gateway_resource.reservations_id.id
-    reservations_id_approve               = aws_api_gateway_resource.reservations_id_approve.id
-    reservations_id_reject                = aws_api_gateway_resource.reservations_id_reject.id
-    reservations_id_promote               = aws_api_gateway_resource.reservations_id_promote.id
-    reservations_id_cancel                = aws_api_gateway_resource.reservations_id_cancel.id
-    reservations_guest                    = aws_api_gateway_resource.reservations_guest.id
-    reservations_guest_token              = aws_api_gateway_resource.reservations_guest_token.id
-    reservations_guest_token_cancel       = aws_api_gateway_resource.reservations_guest_token_cancel.id
-    reservations_guest_token_promote      = aws_api_gateway_resource.reservations_guest_token_promote.id
-    plans                                 = aws_api_gateway_resource.plans.id
-    plans_id                              = aws_api_gateway_resource.plans_id.id
-    options                               = aws_api_gateway_resource.options.id
-    options_id                            = aws_api_gateway_resource.options_id.id
-    blocked_slots                         = aws_api_gateway_resource.blocked_slots.id
-    blocked_slots_id                      = aws_api_gateway_resource.blocked_slots_id.id
-    inquiries                             = aws_api_gateway_resource.inquiries.id
-    inquiries_id                          = aws_api_gateway_resource.inquiries_id.id
-    inquiries_id_reply                    = aws_api_gateway_resource.inquiries_id_reply.id
-    inquiries_id_close                    = aws_api_gateway_resource.inquiries_id_close.id
+    auth_signup                      = aws_api_gateway_resource.auth_signup.id
+    auth_login                       = aws_api_gateway_resource.auth_login.id
+    users_me                         = aws_api_gateway_resource.users_me.id
+    studios_id_calendar              = aws_api_gateway_resource.studios_id_calendar.id
+    studios_id_plans                 = aws_api_gateway_resource.studios_id_plans.id
+    studios_id_options               = aws_api_gateway_resource.studios_id_options.id
+    reservations                     = aws_api_gateway_resource.reservations.id
+    reservations_me                  = aws_api_gateway_resource.reservations_me.id
+    reservations_id                  = aws_api_gateway_resource.reservations_id.id
+    reservations_id_approve          = aws_api_gateway_resource.reservations_id_approve.id
+    reservations_id_approval_email   = aws_api_gateway_resource.reservations_id_approval_email.id
+    reservations_id_reject           = aws_api_gateway_resource.reservations_id_reject.id
+    reservations_id_promote          = aws_api_gateway_resource.reservations_id_promote.id
+    reservations_id_cancel           = aws_api_gateway_resource.reservations_id_cancel.id
+    reservations_guest               = aws_api_gateway_resource.reservations_guest.id
+    reservations_guest_token         = aws_api_gateway_resource.reservations_guest_token.id
+    reservations_guest_token_cancel  = aws_api_gateway_resource.reservations_guest_token_cancel.id
+    reservations_guest_token_promote = aws_api_gateway_resource.reservations_guest_token_promote.id
+    plans                            = aws_api_gateway_resource.plans.id
+    plans_id                         = aws_api_gateway_resource.plans_id.id
+    options                          = aws_api_gateway_resource.options.id
+    options_id                       = aws_api_gateway_resource.options_id.id
+    blocked_slots                    = aws_api_gateway_resource.blocked_slots.id
+    blocked_slots_id                 = aws_api_gateway_resource.blocked_slots_id.id
+    inquiries                        = aws_api_gateway_resource.inquiries.id
+    inquiries_id                     = aws_api_gateway_resource.inquiries_id.id
+    inquiries_id_reply               = aws_api_gateway_resource.inquiries_id_reply.id
+    inquiries_id_close               = aws_api_gateway_resource.inquiries_id_close.id
   }
 
   rest_api_id   = aws_api_gateway_rest_api.main.id

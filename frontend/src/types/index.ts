@@ -170,6 +170,31 @@ export interface Reservation {
   user_email?: string;
   user_phone?: string;
   user_company?: string;
+  // 承認メールの送信完了日時（レビューゲートで送信した時刻。未送信時はundefined）
+  approval_email_sent_at?: string;
+}
+
+// 承認メールのプレビュー（初期値）。
+// 宛先・件名・本文の初期値はバックエンドのプレビューAPIが供給する。
+export interface ApprovalEmailPreview {
+  to: string; // 宛先（予約レコード由来、編集不可）
+  subject: string; // 件名（テンプレート初期値）
+  body: string; // 本文（テンプレート初期値、編集可能）
+  missing_variables: string[]; // 値が欠損しているテンプレート変数
+  already_sent_at?: string; // 既送信日時（未送信時はundefined）
+}
+
+// 承認メール送信リクエスト（宛先は含めない＝予約レコードから再解決）
+export interface SendApprovalEmailRequest {
+  subject: string;
+  body: string;
+}
+
+// 承認メール送信レスポンス
+export interface SendApprovalEmailResponse {
+  reservation_id: string;
+  to: string;
+  approval_email_sent_at: string;
 }
 
 // 予約作成リクエスト

@@ -99,6 +99,16 @@ output "reservation_approve_invoke_arn" {
   value       = aws_lambda_function.reservation_approve.invoke_arn
 }
 
+output "reservation_approval_email_preview_invoke_arn" {
+  description = "承認メールプレビューLambda呼び出しARN"
+  value       = aws_lambda_function.reservation_approval_email_preview.invoke_arn
+}
+
+output "reservation_approval_email_send_invoke_arn" {
+  description = "承認メール送信Lambda呼び出しARN"
+  value       = aws_lambda_function.reservation_approval_email_send.invoke_arn
+}
+
 output "reservation_reject_function_name" {
   description = "予約却下Lambda関数名"
   value       = aws_lambda_function.reservation_reject.function_name
@@ -410,43 +420,45 @@ output "reservation_guest_create_invoke_arn" {
 output "all_lambda_functions" {
   description = "すべてのLambda関数名のマップ"
   value = {
-    auth_signup                 = aws_lambda_function.auth_signup.function_name
-    auth_login                  = aws_lambda_function.auth_login.function_name
-    users_me_get                = aws_lambda_function.users_me_get.function_name
-    calendar_get                = aws_lambda_function.calendar_get.function_name
-    reservation_create          = aws_lambda_function.reservation_create.function_name
-    reservation_list            = aws_lambda_function.reservation_list.function_name
-    reservation_get             = aws_lambda_function.reservation_get.function_name
-    reservation_approve         = aws_lambda_function.reservation_approve.function_name
-    reservation_reject          = aws_lambda_function.reservation_reject.function_name
-    reservation_promote         = aws_lambda_function.reservation_promote.function_name
-    reservation_cancel          = aws_lambda_function.reservation_cancel.function_name
-    reservation_update          = aws_lambda_function.reservation_update.function_name
-    plans_list                  = aws_lambda_function.plans_list.function_name
-    plan_create                 = aws_lambda_function.plan_create.function_name
-    plan_get                    = aws_lambda_function.plan_get.function_name
-    plan_update                 = aws_lambda_function.plan_update.function_name
-    plan_delete                 = aws_lambda_function.plan_delete.function_name
-    options_list                = aws_lambda_function.options_list.function_name
-    option_create               = aws_lambda_function.option_create.function_name
-    option_get                  = aws_lambda_function.option_get.function_name
-    option_update               = aws_lambda_function.option_update.function_name
-    option_delete               = aws_lambda_function.option_delete.function_name
-    blocked_slots_list          = aws_lambda_function.blocked_slots_list.function_name
-    blocked_slot_create         = aws_lambda_function.blocked_slot_create.function_name
-    blocked_slot_delete         = aws_lambda_function.blocked_slot_delete.function_name
-    inquiry_create              = aws_lambda_function.inquiry_create.function_name
-    inquiry_list                = aws_lambda_function.inquiry_list.function_name
-    inquiry_get                 = aws_lambda_function.inquiry_get.function_name
-    inquiry_reply               = aws_lambda_function.inquiry_reply.function_name
-    inquiry_close               = aws_lambda_function.inquiry_close.function_name
-    studio_get                  = aws_lambda_function.studio_get.function_name
-    studio_update               = aws_lambda_function.studio_update.function_name
-    batch_tentative_reminder    = aws_lambda_function.batch_tentative_reminder.function_name
-    batch_second_keep_promote   = aws_lambda_function.batch_second_keep_promote.function_name
-    reservation_guest_get       = aws_lambda_function.reservation_guest_get.function_name
-    reservation_guest_cancel    = aws_lambda_function.reservation_guest_cancel.function_name
-    reservation_guest_promote   = aws_lambda_function.reservation_guest_promote.function_name
-    reservation_guest_create    = aws_lambda_function.reservation_guest_create.function_name
+    auth_signup                        = aws_lambda_function.auth_signup.function_name
+    auth_login                         = aws_lambda_function.auth_login.function_name
+    users_me_get                       = aws_lambda_function.users_me_get.function_name
+    calendar_get                       = aws_lambda_function.calendar_get.function_name
+    reservation_create                 = aws_lambda_function.reservation_create.function_name
+    reservation_list                   = aws_lambda_function.reservation_list.function_name
+    reservation_get                    = aws_lambda_function.reservation_get.function_name
+    reservation_approve                = aws_lambda_function.reservation_approve.function_name
+    reservation_approval_email_preview = aws_lambda_function.reservation_approval_email_preview.function_name
+    reservation_approval_email_send    = aws_lambda_function.reservation_approval_email_send.function_name
+    reservation_reject                 = aws_lambda_function.reservation_reject.function_name
+    reservation_promote                = aws_lambda_function.reservation_promote.function_name
+    reservation_cancel                 = aws_lambda_function.reservation_cancel.function_name
+    reservation_update                 = aws_lambda_function.reservation_update.function_name
+    plans_list                         = aws_lambda_function.plans_list.function_name
+    plan_create                        = aws_lambda_function.plan_create.function_name
+    plan_get                           = aws_lambda_function.plan_get.function_name
+    plan_update                        = aws_lambda_function.plan_update.function_name
+    plan_delete                        = aws_lambda_function.plan_delete.function_name
+    options_list                       = aws_lambda_function.options_list.function_name
+    option_create                      = aws_lambda_function.option_create.function_name
+    option_get                         = aws_lambda_function.option_get.function_name
+    option_update                      = aws_lambda_function.option_update.function_name
+    option_delete                      = aws_lambda_function.option_delete.function_name
+    blocked_slots_list                 = aws_lambda_function.blocked_slots_list.function_name
+    blocked_slot_create                = aws_lambda_function.blocked_slot_create.function_name
+    blocked_slot_delete                = aws_lambda_function.blocked_slot_delete.function_name
+    inquiry_create                     = aws_lambda_function.inquiry_create.function_name
+    inquiry_list                       = aws_lambda_function.inquiry_list.function_name
+    inquiry_get                        = aws_lambda_function.inquiry_get.function_name
+    inquiry_reply                      = aws_lambda_function.inquiry_reply.function_name
+    inquiry_close                      = aws_lambda_function.inquiry_close.function_name
+    studio_get                         = aws_lambda_function.studio_get.function_name
+    studio_update                      = aws_lambda_function.studio_update.function_name
+    batch_tentative_reminder           = aws_lambda_function.batch_tentative_reminder.function_name
+    batch_second_keep_promote          = aws_lambda_function.batch_second_keep_promote.function_name
+    reservation_guest_get              = aws_lambda_function.reservation_guest_get.function_name
+    reservation_guest_cancel           = aws_lambda_function.reservation_guest_cancel.function_name
+    reservation_guest_promote          = aws_lambda_function.reservation_guest_promote.function_name
+    reservation_guest_create           = aws_lambda_function.reservation_guest_create.function_name
   }
 }

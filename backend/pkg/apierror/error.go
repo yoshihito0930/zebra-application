@@ -225,6 +225,17 @@ var (
 	}
 )
 
+// 422 Unprocessable Entity - 内容不備による処理不能エラー
+var (
+	// ErrApprovalEmailMissingVariables は承認メール本文に展開できない（欠損した）変数が含まれており、
+	// 未展開・空欄のまま送信されるのを防ぐために送信をブロックする場合のエラー
+	ErrApprovalEmailMissingVariables = &APIError{
+		Code:       "APPROVAL_EMAIL_MISSING_VARIABLES",
+		Message:    "メール本文に必要な情報が不足しているため送信できません",
+		StatusCode: http.StatusUnprocessableEntity,
+	}
+)
+
 // 500 Internal Server Error - サーバー内部エラー
 var (
 	// ErrInternalServer はサーバー内部でエラーが発生した場合のエラー

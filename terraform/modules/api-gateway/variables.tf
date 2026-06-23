@@ -54,6 +54,12 @@ variable "lambda_functions" {
     reservation_approve = object({
       invoke_arn = string
     })
+    reservation_approval_email_preview = object({
+      invoke_arn = string
+    })
+    reservation_approval_email_send = object({
+      invoke_arn = string
+    })
     reservation_reject = object({
       invoke_arn = string
     })

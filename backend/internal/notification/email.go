@@ -3,6 +3,7 @@ package notification
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -17,6 +18,7 @@ type EmailService struct {
 	sesClient   *sesv2.Client
 	senderEmail string
 	baseURL     string // ゲスト予約確認用のベースURL
+	dryRun      bool   // true の場合は実際にSESへ送信せず内容をログ出力する（誤送信防止）
 }
 
 // NewEmailService は EmailService のコンストラクタ
@@ -31,11 +33,86 @@ func NewEmailService(sesClient *sesv2.Client) *EmailService {
 		baseURL = "https://studio-zebra.com/reservations/guest"
 	}
 
+	// EMAIL_DRY_RUN=true のとき、実際の送信を行わずログ出力のみとする。
+	// dev環境ではtrueに設定し、本番宛の誤送信を防止する。
+	dryRun := os.Getenv("EMAIL_DRY_RUN") == "true"
+
 	return &EmailService{
 		sesClient:   sesClient,
 		senderEmail: senderEmail,
 		baseURL:     baseURL,
+		dryRun:      dryRun,
 	}
+}
+
+// SenderEmail は送信元メールアドレス（スタジオのドメイン）を返す
+func (s *EmailService) SenderEmail() string {
+	return s.senderEmail
+}
+
+// IsDryRun はドライランモードか否かを返す
+func (s *EmailService) IsDryRun() bool {
+	return s.dryRun
+}
+
+// SendApprovalEmailWithBody は承認メールを、呼び出し側が用意した件名・本文（プレーンテキスト）で送信する。
+//
+// 承認時の自動送信ではなく、管理者がレビュー画面で内容を確認・編集したうえで明示的に送信する用途。
+// 送信元は常にスタジオのドメイン（SES_SENDER_EMAIL）であり、宛先は呼び出し側が予約レコードから解決する。
+//
+// ドライラン（EMAIL_DRY_RUN=true）の場合はSESを呼ばず、宛先・件名・本文をログ出力して成功扱いで返す。
+//
+// 引数:
+//   - ctx: コンテキスト
+//   - recipientEmail: 宛先メールアドレス（予約レコード由来）
+//   - subject: 件名
+//   - body: 本文（プレーンテキスト）
+//
+// 戻り値:
+//   - error: 送信エラー（送信成功時はnil）
+func (s *EmailService) SendApprovalEmailWithBody(ctx context.Context, recipientEmail, subject, body string) error {
+	if recipientEmail == "" {
+		return fmt.Errorf("recipient email is required")
+	}
+	if subject == "" {
+		return fmt.Errorf("subject is required")
+	}
+	if body == "" {
+		return fmt.Errorf("body is required")
+	}
+
+	if s.dryRun {
+		log.Printf("[EMAIL_DRY_RUN] approval email not sent. from=%s to=%s subject=%q body=\n%s",
+			s.senderEmail, recipientEmail, subject, body)
+		return nil
+	}
+
+	input := &sesv2.SendEmailInput{
+		FromEmailAddress: aws.String(s.senderEmail),
+		Destination: &types.Destination{
+			ToAddresses: []string{recipientEmail},
+		},
+		Content: &types.EmailContent{
+			Simple: &types.Message{
+				Subject: &types.Content{
+					Data:    aws.String(subject),
+					Charset: aws.String("UTF-8"),
+				},
+				Body: &types.Body{
+					Text: &types.Content{
+						Data:    aws.String(body),
+						Charset: aws.String("UTF-8"),
+					},
+				},
+			},
+		},
+	}
+
+	if _, err := s.sesClient.SendEmail(ctx, input); err != nil {
+		return fmt.Errorf("failed to send approval email: %w", err)
+	}
+
+	return nil
 }
 
 // SendGuestReservationConfirmation はゲスト予約の確認メールを送信する

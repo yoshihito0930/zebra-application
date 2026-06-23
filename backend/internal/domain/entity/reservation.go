@@ -150,6 +150,10 @@ type Reservation struct {
 	// ExpiryDate は仮予約の有効期限日（YYYY-MM-DD、仮予約のみ）
 	ExpiryDate *time.Time `json:"expiry_date,omitempty" dynamodbav:"expiry_date,omitempty"`
 
+	// ApprovalEmailSentAt は承認メールの送信完了日時（未送信時はnil）
+	// 承認時の自動送信ではなく、管理者がレビュー画面から明示的に送信した時刻を記録する
+	ApprovalEmailSentAt *time.Time `json:"approval_email_sent_at,omitempty" dynamodbav:"approval_email_sent_at,omitempty"`
+
 	// CreatedAt は作成日時（UTC、ISO8601形式）
 	CreatedAt time.Time `json:"created_at" dynamodbav:"created_at"`
 

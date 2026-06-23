@@ -23,6 +23,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import StatusBadge from '../../components/common/StatusBadge';
 import { ReservationApprovalDialog } from '../../components/admin/ReservationApprovalDialog';
+import { ApprovalEmailReviewModal } from '../../components/admin/ApprovalEmailReviewModal';
 import { ReservationEditModal } from '../../components/admin/ReservationEditModal';
 
 export const ReservationDetailPage = () => {
@@ -39,10 +40,18 @@ export const ReservationDetailPage = () => {
   // 編集モーダル
   const { isOpen: isEditModalOpen, onOpen: onEditModalOpen, onClose: onEditModalClose } = useDisclosure();
 
+  // 承認後に開く承認メールのレビュー画面
+  const { isOpen: isReviewModalOpen, onOpen: onReviewModalOpen, onClose: onReviewModalClose } = useDisclosure();
+
   // 承認・拒否成功時の処理
   const handleApprovalSuccess = () => {
     // React Queryが自動的に再取得
     onApprovalDialogClose();
+  };
+
+  // 承認成立後、承認メールのレビュー画面を開く
+  const handleApproved = () => {
+    onReviewModalOpen();
   };
 
   // 予約種別のラベル
@@ -125,6 +134,12 @@ export const ReservationDetailPage = () => {
                     {reservation.is_guest && (
                       <Badge colorScheme="orange" fontSize="sm">
                         ゲスト予約
+                      </Badge>
+                    )}
+                    {reservation.approval_email_sent_at && (
+                      <Badge colorScheme="green" fontSize="sm">
+                        承認メール送信済み（
+                        {new Date(reservation.approval_email_sent_at).toLocaleString('ja-JP')}）
                       </Badge>
                     )}
                   </HStack>
@@ -480,6 +495,16 @@ export const ReservationDetailPage = () => {
             onClose={onApprovalDialogClose}
             reservation={reservation}
             onSuccess={handleApprovalSuccess}
+            onApproved={handleApproved}
+          />
+        )}
+
+        {/* 承認メールのレビュー・送信 */}
+        {reservation && (
+          <ApprovalEmailReviewModal
+            isOpen={isReviewModalOpen}
+            onClose={onReviewModalClose}
+            reservation={reservation}
           />
         )}
 

@@ -19,6 +19,7 @@ import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { useAllReservations } from '../../hooks/useReservations';
 import { ReservationApprovalDialog } from '../../components/admin/ReservationApprovalDialog';
+import { ApprovalEmailReviewModal } from '../../components/admin/ApprovalEmailReviewModal';
 import CreateReservationModal from '../../components/reservation/CreateReservationModal';
 import KpiCardGrid from '../../components/admin/dashboard/KpiCardGrid';
 import MiniCalendar from '../../components/admin/dashboard/MiniCalendar';
@@ -33,7 +34,10 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const createModal = useDisclosure();
   const approvalDialog = useDisclosure();
+  const reviewModal = useDisclosure();
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
+  // レビュー画面用に承認直後の予約を保持する（selectedReservation とは別管理）
+  const [reviewReservation, setReviewReservation] = useState<Reservation | null>(null);
   const isMobile = useBreakpointValue({ base: true, md: false }, { ssr: false });
 
   const now = new Date();
@@ -90,6 +94,12 @@ export default function DashboardPage() {
   const handleApprovalSuccess = () => {
     approvalDialog.onClose();
     setSelectedReservation(null);
+  };
+
+  // 承認成立後、承認メールのレビュー画面を開く
+  const handleApproved = (reservation: Reservation) => {
+    setReviewReservation(reservation);
+    reviewModal.onOpen();
   };
 
   if (isLoading) {
@@ -191,6 +201,16 @@ export default function DashboardPage() {
           onClose={approvalDialog.onClose}
           reservation={selectedReservation}
           onSuccess={handleApprovalSuccess}
+          onApproved={handleApproved}
+        />
+      )}
+
+      {/* 承認メールのレビュー・送信 (モバイル/デスクトップ共通) */}
+      {reviewReservation && (
+        <ApprovalEmailReviewModal
+          isOpen={reviewModal.isOpen}
+          onClose={reviewModal.onClose}
+          reservation={reviewReservation}
         />
       )}
 

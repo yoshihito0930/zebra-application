@@ -135,14 +135,16 @@ locals {
 
   # 環境変数（全Lambda関数共通）
   common_env_vars = merge({
-    ENVIRONMENT                = var.environment
-    LOG_LEVEL                  = var.environment == "prod" ? "INFO" : "DEBUG"
-    SES_SENDER_EMAIL           = var.ses_sender_email
-    GUEST_RESERVATION_URL      = var.guest_reservation_url
-    COGNITO_USER_POOL_ID       = var.cognito_user_pool_id
-    COGNITO_CLIENT_ID          = var.cognito_user_pool_client_id
-    COGNITO_CLIENT_SECRET      = var.cognito_user_pool_client_secret
-  }, {
+    ENVIRONMENT           = var.environment
+    LOG_LEVEL             = var.environment == "prod" ? "INFO" : "DEBUG"
+    SES_SENDER_EMAIL      = var.ses_sender_email
+    GUEST_RESERVATION_URL = var.guest_reservation_url
+    # prod以外（dev等）ではメール送信をドライランにし、本番宛の誤送信を防止する
+    EMAIL_DRY_RUN         = var.environment == "prod" ? "false" : "true"
+    COGNITO_USER_POOL_ID  = var.cognito_user_pool_id
+    COGNITO_CLIENT_ID     = var.cognito_user_pool_client_id
+    COGNITO_CLIENT_SECRET = var.cognito_user_pool_client_secret
+    }, {
     for key, value in var.dynamodb_table_names : "${upper(key)}_TABLE" => value
   })
 }
@@ -341,6 +343,50 @@ resource "aws_lambda_function" "reservation_approve" {
   role             = aws_iam_role.lambda_execution_role.arn
   handler          = "bootstrap"
   source_code_hash = filebase64sha256("${var.lambda_artifacts_dir}/reservation-approve.zip")
+  runtime          = local.lambda_runtime
+  timeout          = local.lambda_timeout
+  memory_size      = local.lambda_memory_size
+
+  environment {
+    variables = local.common_env_vars
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = "zebra-application"
+    ManagedBy   = "terraform"
+  }
+}
+
+# GET /reservations/{id}/approval-email （承認メールのプレビュー）
+resource "aws_lambda_function" "reservation_approval_email_preview" {
+  filename         = "${var.lambda_artifacts_dir}/reservation-approval-email-preview.zip"
+  function_name    = "${var.environment}-reservation-approval-email-preview"
+  role             = aws_iam_role.lambda_execution_role.arn
+  handler          = "bootstrap"
+  source_code_hash = filebase64sha256("${var.lambda_artifacts_dir}/reservation-approval-email-preview.zip")
+  runtime          = local.lambda_runtime
+  timeout          = local.lambda_timeout
+  memory_size      = local.lambda_memory_size
+
+  environment {
+    variables = local.common_env_vars
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = "zebra-application"
+    ManagedBy   = "terraform"
+  }
+}
+
+# POST /reservations/{id}/approval-email （承認メールの送信）
+resource "aws_lambda_function" "reservation_approval_email_send" {
+  filename         = "${var.lambda_artifacts_dir}/reservation-approval-email-send.zip"
+  function_name    = "${var.environment}-reservation-approval-email-send"
+  role             = aws_iam_role.lambda_execution_role.arn
+  handler          = "bootstrap"
+  source_code_hash = filebase64sha256("${var.lambda_artifacts_dir}/reservation-approval-email-send.zip")
   runtime          = local.lambda_runtime
   timeout          = local.lambda_timeout
   memory_size      = local.lambda_memory_size
@@ -955,8 +1001,8 @@ resource "aws_lambda_function" "reservation_guest_get" {
 
   environment {
     variables = merge(local.common_env_vars, {
-      SES_SENDER_EMAIL          = var.ses_sender_email
-      GUEST_RESERVATION_URL     = var.guest_reservation_url
+      SES_SENDER_EMAIL      = var.ses_sender_email
+      GUEST_RESERVATION_URL = var.guest_reservation_url
     })
   }
 
@@ -980,8 +1026,8 @@ resource "aws_lambda_function" "reservation_guest_cancel" {
 
   environment {
     variables = merge(local.common_env_vars, {
-      SES_SENDER_EMAIL          = var.ses_sender_email
-      GUEST_RESERVATION_URL     = var.guest_reservation_url
+      SES_SENDER_EMAIL      = var.ses_sender_email
+      GUEST_RESERVATION_URL = var.guest_reservation_url
     })
   }
 
@@ -1005,8 +1051,8 @@ resource "aws_lambda_function" "reservation_guest_promote" {
 
   environment {
     variables = merge(local.common_env_vars, {
-      SES_SENDER_EMAIL          = var.ses_sender_email
-      GUEST_RESERVATION_URL     = var.guest_reservation_url
+      SES_SENDER_EMAIL      = var.ses_sender_email
+      GUEST_RESERVATION_URL = var.guest_reservation_url
     })
   }
 

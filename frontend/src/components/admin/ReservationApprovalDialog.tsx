@@ -23,6 +23,8 @@ interface ReservationApprovalDialogProps {
   onClose: () => void;
   reservation: Reservation;
   onSuccess: () => void;
+  // 承認が成立した直後に呼ばれる。親はこれを受けて承認メールのレビュー画面を開く。
+  onApproved: (reservation: Reservation) => void;
 }
 
 export const ReservationApprovalDialog = ({
@@ -30,6 +32,7 @@ export const ReservationApprovalDialog = ({
   onClose,
   reservation,
   onSuccess,
+  onApproved,
 }: ReservationApprovalDialogProps) => {
   const [action, setAction] = useState<'approve' | 'reject'>('approve');
   // NOTE: backend は predicate ステータスを reservation_type から自動決定するため
@@ -53,13 +56,13 @@ export const ReservationApprovalDialog = ({
         {
           onSuccess: () => {
             toast({
-              title: '予約を承認しました',
+              title: '予約を承認しました。続けてメール内容を確認してください',
               status: 'success',
               duration: 3000,
             });
-            onSuccess();
+            // 承認は成立済み。自動送信はせず、親がメールのレビュー画面を開く。
             onClose();
-            navigate('/admin/calendar');
+            onApproved(reservation);
           },
           onError: (error) => {
             toast({

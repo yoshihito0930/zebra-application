@@ -129,6 +129,12 @@ module "api_gateway" {
     reservation_approve = {
       invoke_arn = module.lambda.reservation_approve_invoke_arn
     }
+    reservation_approval_email_preview = {
+      invoke_arn = module.lambda.reservation_approval_email_preview_invoke_arn
+    }
+    reservation_approval_email_send = {
+      invoke_arn = module.lambda.reservation_approval_email_send_invoke_arn
+    }
     reservation_reject = {
       invoke_arn = module.lambda.reservation_reject_invoke_arn
     }

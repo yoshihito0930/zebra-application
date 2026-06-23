@@ -9,8 +9,15 @@ import {
   approveReservation,
   rejectReservation,
   promoteReservation,
+  getApprovalEmailPreview,
+  sendApprovalEmail,
 } from '../services/reservationService';
-import type { CreateReservationRequest, Reservation, MonthlyStats } from '../types';
+import type {
+  CreateReservationRequest,
+  Reservation,
+  MonthlyStats,
+  SendApprovalEmailRequest,
+} from '../types';
 
 // クエリキー定義
 export const reservationKeys = {
@@ -22,6 +29,8 @@ export const reservationKeys = {
   detail: (id: string) => [...reservationKeys.details(), id] as const,
   myReservations: () => [...reservationKeys.all, 'my'] as const,
   todayReservations: (studioId: string) => [...reservationKeys.all, 'today', studioId] as const,
+  approvalEmailPreview: (id: string) =>
+    [...reservationKeys.detail(id), 'approval-email-preview'] as const,
 };
 
 // dateRange ('all'|'future'|'past') を backend が要求する start_date/end_date に変換する
@@ -149,6 +158,41 @@ export const useApproveReservation = () => {
         reservationKeys.detail(updatedReservation.reservation_id),
         updatedReservation
       );
+    },
+  });
+};
+
+/**
+ * 承認メールのプレビュー（初期値）を取得するフック（管理者用）
+ * レビュー画面を開いたタイミングで宛先・件名・本文の初期値を取得する。
+ * staleTime=0 / refetch無効で、モーダルを開くたびに最新を取得する。
+ */
+export const useApprovalEmailPreview = (id: string | undefined, enabled: boolean) => {
+  return useQuery({
+    queryKey: reservationKeys.approvalEmailPreview(id || ''),
+    queryFn: () => {
+      if (!id) throw new Error('予約IDが指定されていません');
+      return getApprovalEmailPreview(id);
+    },
+    enabled: !!id && enabled,
+    staleTime: 0,
+    gcTime: 0,
+  });
+};
+
+/**
+ * 承認メール送信のミューテーション（管理者用）
+ * 送信後は予約詳細を再取得し、送信済み状態（approval_email_sent_at）を反映する。
+ */
+export const useSendApprovalEmail = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: SendApprovalEmailRequest }) =>
+      sendApprovalEmail(id, data),
+    onSuccess: (_result, { id }) => {
+      queryClient.invalidateQueries({ queryKey: reservationKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: reservationKeys.lists() });
     },
   });
 };

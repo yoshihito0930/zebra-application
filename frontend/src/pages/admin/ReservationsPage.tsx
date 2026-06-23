@@ -27,6 +27,7 @@ import type { Reservation } from '../../types';
 import { calculateReservationTotal } from '../../utils/reservationPrice';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { ReservationApprovalDialog } from '../../components/admin/ReservationApprovalDialog';
+import { ApprovalEmailReviewModal } from '../../components/admin/ApprovalEmailReviewModal';
 import MobileReservationCard from '../../components/admin/dashboard/MobileReservationCard';
 import ReservationStatusTabs from '../../components/admin/dashboard/ReservationStatusTabs';
 import AdminMobileFab from '../../components/layouts/AdminMobileFab';
@@ -50,6 +51,9 @@ export const ReservationsPage = () => {
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const createModal = useDisclosure();
+  // 承認後に開く承認メールのレビュー画面
+  const reviewModal = useDisclosure();
+  const [reviewReservation, setReviewReservation] = useState<Reservation | null>(null);
   const navigate = useNavigate();
   const isMobile = useBreakpointValue({ base: true, md: false }, { ssr: false });
 
@@ -95,6 +99,12 @@ export const ReservationsPage = () => {
     onClose();
   };
 
+  // 承認成立後、承認メールのレビュー画面を開く
+  const handleApproved = (reservation: Reservation) => {
+    setReviewReservation(reservation);
+    reviewModal.onOpen();
+  };
+
   const handleViewDetail = (id: string) => {
     navigate(`/admin/reservations/${id}`);
   };
@@ -131,6 +141,15 @@ export const ReservationsPage = () => {
       onClose={onClose}
       reservation={selectedReservation}
       onSuccess={handleApprovalSuccess}
+      onApproved={handleApproved}
+    />
+  );
+
+  const reviewDialog = reviewReservation && (
+    <ApprovalEmailReviewModal
+      isOpen={reviewModal.isOpen}
+      onClose={reviewModal.onClose}
+      reservation={reviewReservation}
     />
   );
 
@@ -201,6 +220,7 @@ export const ReservationsPage = () => {
         </VStack>
         <AdminMobileFab onClick={createModal.onOpen} />
         {approvalDialog}
+        {reviewDialog}
         {createDialog}
       </>
     );
@@ -350,6 +370,7 @@ export const ReservationsPage = () => {
       )}
 
       {approvalDialog}
+      {reviewDialog}
       {createDialog}
     </Container>
   );

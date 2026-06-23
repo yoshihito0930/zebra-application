@@ -3,6 +3,9 @@ import type {
   ReservationOption,
   CreateReservationRequest,
   CalendarResponse,
+  ApprovalEmailPreview,
+  SendApprovalEmailRequest,
+  SendApprovalEmailResponse,
 } from '../types';
 import { apiRequest } from './api';
 
@@ -141,6 +144,30 @@ export const approveReservation = async (id: string): Promise<Reservation> => {
     url: `/reservations/${id}/approve`,
   });
   return normalizeReservation(raw);
+};
+
+// 承認メールのプレビュー取得 (admin)
+// 宛先・件名・本文の初期値をバックエンドから取得する。
+export const getApprovalEmailPreview = async (
+  id: string
+): Promise<ApprovalEmailPreview> => {
+  return apiRequest<ApprovalEmailPreview>({
+    method: 'GET',
+    url: `/reservations/${id}/approval-email`,
+  });
+};
+
+// 承認メール送信 (admin)
+// 宛先はリクエストに含めない（バックエンドが予約レコードから再解決する）。
+export const sendApprovalEmail = async (
+  id: string,
+  data: SendApprovalEmailRequest
+): Promise<SendApprovalEmailResponse> => {
+  return apiRequest<SendApprovalEmailResponse>({
+    method: 'POST',
+    url: `/reservations/${id}/approval-email`,
+    data,
+  });
 };
 
 // 予約拒否 (admin) — body は無し

@@ -41,6 +41,7 @@ type ReservationResponse struct {
 	PromotedFrom       string          `json:"promoted_from,omitempty"`
 	PromotedAt         string          `json:"promoted_at,omitempty"`
 	LinkedReservationID string         `json:"linked_reservation_id,omitempty"`
+	ApprovalEmailSentAt string         `json:"approval_email_sent_at,omitempty"`
 	CreatedAt          string          `json:"created_at"`
 	UpdatedAt          string          `json:"updated_at"`
 }
@@ -152,6 +153,9 @@ func BuildReservationResponse(
 	}
 	if r.LinkedReservationID != nil {
 		resp.LinkedReservationID = *r.LinkedReservationID
+	}
+	if r.ApprovalEmailSentAt != nil {
+		resp.ApprovalEmailSentAt = r.ApprovalEmailSentAt.Format("2006-01-02T15:04:05Z07:00")
 	}
 
 	if !r.IsGuest && r.UserID != nil && *r.UserID != "" && userRepo != nil {
