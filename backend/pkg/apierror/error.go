@@ -223,6 +223,14 @@ var (
 		Message:    "指定の時間帯は既存予約の前後59分以内です。第2キープまたはロケハンをご利用ください",
 		StatusCode: http.StatusConflict,
 	}
+
+	// ErrSecondKeepOnly は既存の仮予約の前後1時間以内のため、第2キープとしてのみ予約可能な場合のエラー
+	// （予約不可ではなく、第2キープなら作成可能である点が ErrBufferTimeConflict と異なる）
+	ErrSecondKeepOnly = &APIError{
+		Code:       "SECOND_KEEP_ONLY",
+		Message:    "指定の時間帯は第2キープのみ予約可能です",
+		StatusCode: http.StatusConflict,
+	}
 )
 
 // 422 Unprocessable Entity - 内容不備による処理不能エラー

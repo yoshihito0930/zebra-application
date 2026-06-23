@@ -618,7 +618,7 @@ func TestCreateReservation_BufferTimeConflict(t *testing.T) {
 			wantError: false,
 		},
 		{
-			name:            "仮予約: 既存仮予約との隙間 59 分 → エラー",
+			name:            "仮予約: 既存仮予約との隙間 59 分 → 第2キープのみ可エラー",
 			reservationType: entity.ReservationTypeTentative,
 			startTime:       "09:01",
 			endTime:         "10:01",
@@ -633,7 +633,7 @@ func TestCreateReservation_BufferTimeConflict(t *testing.T) {
 				},
 			},
 			wantError: true,
-			errorType: apierror.ErrBufferTimeConflict,
+			errorType: apierror.ErrSecondKeepOnly,
 		},
 	}
 
@@ -700,6 +700,67 @@ func TestCreateReservation_BufferTimeConflict(t *testing.T) {
 				if err != nil {
 					t.Fatalf("Expected no error, got %v", err)
 				}
+			}
+		})
+	}
+}
+
+// TestEvaluateAvailability は3値可用性判定（不可 / 第2キープのみ可 / 通常）の純粋関数テスト
+// すべて半開区間 [start, end)。ゾーン = [existingStart-1h, existingEnd+1h)。
+func TestEvaluateAvailability(t *testing.T) {
+	// reg は confirmed（本予約 → 不可ゾーン）の既存予約を生成する
+	reg := func(st, et string) *entity.Reservation {
+		return &entity.Reservation{Status: entity.ReservationStatusConfirmed, StartTime: st, EndTime: et}
+	}
+	// ten は tentative（仮予約 → キープゾーン）の既存予約を生成する
+	ten := func(st, et string) *entity.Reservation {
+		return &entity.Reservation{Status: entity.ReservationStatusTentative, StartTime: st, EndTime: et}
+	}
+
+	tests := []struct {
+		name     string
+		reqStart string
+		reqEnd   string
+		existing []*entity.Reservation
+		want     AvailabilityResult
+	}{
+		// --- 基準①: 本予約 10:00-18:00（ゾーン[09:00,19:00)） ---
+		{"本予約10-18, req09-19跨ぎ → 不可", "09:00", "19:00", []*entity.Reservation{reg("10:00", "18:00")}, AvailabilityUnavailable},
+		{"本予約10-18, req内部11-12 → 不可", "11:00", "12:00", []*entity.Reservation{reg("10:00", "18:00")}, AvailabilityUnavailable},
+		{"本予約10-18, req08-09終端がゾーン始点09:00接触 → 通常(半開)", "08:00", "09:00", []*entity.Reservation{reg("10:00", "18:00")}, AvailabilityNormal},
+		{"本予約10-18, req19-20始点がゾーン終端19:00接触 → 通常(半開)", "19:00", "20:00", []*entity.Reservation{reg("10:00", "18:00")}, AvailabilityNormal},
+		{"本予約10-18, req08:30-09:30ゾーン始点跨ぎ → 不可", "08:30", "09:30", []*entity.Reservation{reg("10:00", "18:00")}, AvailabilityUnavailable},
+
+		// --- 基準②: 仮予約 10:00-18:00（ゾーン[09:00,19:00)） ---
+		{"仮予約10-18, req09-19跨ぎ → 第2キープのみ可", "09:00", "19:00", []*entity.Reservation{ten("10:00", "18:00")}, AvailabilitySecondKeepOnly},
+		{"仮予約10-18, req07-08圏外 → 通常", "07:00", "08:00", []*entity.Reservation{ten("10:00", "18:00")}, AvailabilityNormal},
+		{"仮予約10-18, req19-20ゾーン終端接触 → 通常(半開)", "19:00", "20:00", []*entity.Reservation{ten("10:00", "18:00")}, AvailabilityNormal},
+
+		// --- 基準③: 混在 本予約10:00-12:00（ゾーン[09:00,13:00)） + 仮予約13:00-15:00（ゾーン[12:00,16:00)） ---
+		{"混在, req09-13 → 不可(本予約ゾーン)", "09:00", "13:00", []*entity.Reservation{reg("10:00", "12:00"), ten("13:00", "15:00")}, AvailabilityUnavailable},
+		{"混在, req13-16 → 第2キープのみ可(仮予約ゾーンのみ)", "13:00", "16:00", []*entity.Reservation{reg("10:00", "12:00"), ten("13:00", "15:00")}, AvailabilitySecondKeepOnly},
+		{"混在, req06-08圏外 → 通常", "06:00", "08:00", []*entity.Reservation{reg("10:00", "12:00"), ten("13:00", "15:00")}, AvailabilityNormal},
+		{"混在, req12-13重複区間 → 不可(本予約優先)", "12:00", "13:00", []*entity.Reservation{reg("10:00", "12:00"), ten("13:00", "15:00")}, AvailabilityUnavailable},
+		{"混在, req13-14本予約ゾーン終端13:00ちょうど開始 → 第2キープのみ可(半開で本予約側は非ヒット)", "13:00", "14:00", []*entity.Reservation{reg("10:00", "12:00"), ten("13:00", "15:00")}, AvailabilitySecondKeepOnly},
+		{"混在, req09-16両ゾーン跨ぎ → 不可(厳しい方優先)", "09:00", "16:00", []*entity.Reservation{reg("10:00", "12:00"), ten("13:00", "15:00")}, AvailabilityUnavailable},
+
+		// --- 基準④: 境界ケース ---
+		{"本予約10-12, req13-14ゾーン終端13:00ちょうど(gap60) → 通常(半開境界)", "13:00", "14:00", []*entity.Reservation{reg("10:00", "12:00")}, AvailabilityNormal},
+		{"本予約10-12, req12:30-13:30ゾーン内(gap30) → 不可", "12:30", "13:30", []*entity.Reservation{reg("10:00", "12:00")}, AvailabilityUnavailable},
+
+		// --- 日跨ぎ（24時超） ---
+		{"本予約24-26(ゾーン[23:00,27:00)), req25-26 → 不可", "25:00", "26:00", []*entity.Reservation{reg("24:00", "26:00")}, AvailabilityUnavailable},
+		{"本予約24-26, req22-23終端がゾーン始点23:00接触 → 通常(半開)", "22:00", "23:00", []*entity.Reservation{reg("24:00", "26:00")}, AvailabilityNormal},
+
+		// --- ゾーン非生成ステータス・空 ---
+		{"pending既存はゾーン非生成 → 通常", "09:00", "19:00", []*entity.Reservation{{Status: entity.ReservationStatusPending, StartTime: "10:00", EndTime: "18:00"}}, AvailabilityNormal},
+		{"既存なし → 通常", "10:00", "12:00", nil, AvailabilityNormal},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := evaluateAvailability(tt.reqStart, tt.reqEnd, tt.existing); got != tt.want {
+				t.Errorf("evaluateAvailability(%s, %s) = %v, want %v", tt.reqStart, tt.reqEnd, got, tt.want)
 			}
 		})
 	}

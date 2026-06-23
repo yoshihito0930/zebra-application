@@ -61,18 +61,72 @@ type CreateReservationInput struct {
 	Note               *string
 }
 
-// checkBufferTimeConflict は既存予約の前後59分以内に重複がないかチェックする
-// 本予約・仮予約の場合のみチェックを実施（第2キープ・ロケハンは除外）
+// AvailabilityResult は要求時間帯の空き状況を3値で表す
+type AvailabilityResult int
+
+const (
+	// AvailabilityNormal は本予約・仮予約いずれも作成可能な状態
+	AvailabilityNormal AvailabilityResult = iota
+	// AvailabilitySecondKeepOnly は第2キープとしてのみ作成可能な状態（既存仮予約のバッファゾーンに重なる）
+	AvailabilitySecondKeepOnly
+	// AvailabilityUnavailable は予約不可な状態（既存確定予約のバッファゾーンに重なる）
+	AvailabilityUnavailable
+)
+
+// bufferMinutes は既存予約の前後に設ける緩衝時間（分）
+const bufferMinutes = 60
+
+// evaluateAvailability は要求時間帯 [reqStart, reqEnd) に対し、
+// 既存予約から構築したゾーン [start-1h, end+1h) との重複を評価し、最も厳しい結果を返す。
+//
+// ゾーンの種別（重なったときの結論）:
+//   - 既存が confirmed（本予約） → 不可ゾーン   → AvailabilityUnavailable
+//   - 既存が tentative（仮予約）  → キープゾーン → AvailabilitySecondKeepOnly
+//
+// 区間はすべて半開区間 [start, end)。重なり判定は reqStart < zoneEnd && zoneStart < reqEnd。
+// 複数ゾーンに重なる場合は厳しい順に採用する（Unavailable > SecondKeepOnly > Normal）。
+// ゾーン境界は負値・24時超を許容するため分単位の int で扱い、formatTime（負値クランプ）は通さない。
+func evaluateAvailability(reqStart, reqEnd string, existing []*entity.Reservation) AvailabilityResult {
+	reqStartMin := timeToMinutes(reqStart)
+	reqEndMin := timeToMinutes(reqEnd)
+
+	result := AvailabilityNormal
+	for _, r := range existing {
+		var downgrade AvailabilityResult
+		switch r.Status {
+		case entity.ReservationStatusConfirmed:
+			downgrade = AvailabilityUnavailable
+		case entity.ReservationStatusTentative:
+			downgrade = AvailabilitySecondKeepOnly
+		default:
+			// pending/scheduled/waitlisted/cancelled/expired/completed はゾーンを生成しない
+			continue
+		}
+
+		// ゾーン = [existingStart-60, existingEnd+60) を分単位で構築（負値も許容）
+		zoneStart := timeToMinutes(r.StartTime) - bufferMinutes
+		zoneEnd := timeToMinutes(r.EndTime) + bufferMinutes
+
+		// 半開区間の重なり判定: a < d && c < b
+		if reqStartMin < zoneEnd && zoneStart < reqEndMin {
+			// enum 順 Normal(0) < SecondKeepOnly(1) < Unavailable(2) で厳しい方を採用
+			if downgrade > result {
+				result = downgrade
+			}
+		}
+	}
+	return result
+}
+
+// checkBufferTimeConflict は既存予約のバッファゾーンに対する要求時間帯の可否を判定する
+// 本予約のバッファゾーンは予約不可、仮予約のバッファゾーンは第2キープのみ可に格下げする
+// 第2キープは全ゾーンで作成可、ロケハンはバッファ制約を完全に免除する
 // 例: 既存予約が 10:00-12:00 の場合、ちょうど 1 時間後の 13:00 開始は許可される
 func (u *ReservationUsecase) checkBufferTimeConflict(ctx context.Context, studioID string, date time.Time, startTime, endTime string, reservationType entity.ReservationType) error {
-	// 第2キープとロケハンはバッファ時間の制約を受けない
-	if reservationType == entity.ReservationTypeSecondKeep || reservationType == entity.ReservationTypeLocationScout {
+	// ロケハンは従来どおりバッファ制約を完全に免除（ゾーン評価自体を行わない）
+	if reservationType == entity.ReservationTypeLocationScout {
 		return nil
 	}
-
-	// 開始・終了時刻を分単位に変換
-	newStartMin := timeToMinutes(startTime)
-	newEndMin := timeToMinutes(endTime)
 
 	// 同日の予約を全て取得
 	reservations, err := u.reservationRepo.FindByStudioAndDateRange(ctx, studioID, date, date)
@@ -80,32 +134,22 @@ func (u *ReservationUsecase) checkBufferTimeConflict(ctx context.Context, studio
 		return fmt.Errorf("failed to find reservations for buffer time check: %w", err)
 	}
 
-	// confirmed/tentative の予約に対して前後59分のギャップをチェック
-	for _, reservation := range reservations {
-		if reservation.Status != entity.ReservationStatusConfirmed &&
-			reservation.Status != entity.ReservationStatusTentative {
-			continue
+	switch evaluateAvailability(startTime, endTime, reservations) {
+	case AvailabilityUnavailable:
+		// 第2キープは確定予約の隣でも作成可（従来の免除を維持）
+		if reservationType == entity.ReservationTypeSecondKeep {
+			return nil
 		}
-
-		existingStartMin := timeToMinutes(reservation.StartTime)
-		existingEndMin := timeToMinutes(reservation.EndTime)
-
-		// 隙間が 60 分未満（= 59 分以内）なら衝突。ちょうど 60 分空けば許可する。
-		var gap int
-		if newEndMin <= existingStartMin {
-			gap = existingStartMin - newEndMin
-		} else if existingEndMin <= newStartMin {
-			gap = newStartMin - existingEndMin
-		} else {
-			// 時間帯そのものが重なっている場合もバッファ違反として扱う
-			return apierror.ErrBufferTimeConflict
+		return apierror.ErrBufferTimeConflict
+	case AvailabilitySecondKeepOnly:
+		// 第2キープのみ作成可。希望種別が本予約/仮予約でも第2キープに強制（拒否）
+		if reservationType == entity.ReservationTypeSecondKeep {
+			return nil
 		}
-		if gap < 60 {
-			return apierror.ErrBufferTimeConflict
-		}
+		return apierror.ErrSecondKeepOnly
+	default: // AvailabilityNormal
+		return nil
 	}
-
-	return nil
 }
 
 // parseTime は時刻文字列（HH:MM形式）をパースする
