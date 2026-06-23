@@ -329,6 +329,15 @@ export interface APIError {
   };
 }
 
+// 既知のAPIエラーコード（バックエンド pkg/apierror/error.go と対応）
+export const ApiErrorCode = {
+  BufferTimeConflict: 'BUFFER_TIME_CONFLICT',
+  SecondKeepOnly: 'SECOND_KEEP_ONLY',
+  SecondKeepNoPrimary: 'SECOND_KEEP_NO_PRIMARY',
+  ReservationConflict: 'RESERVATION_CONFLICT',
+} as const;
+export type ApiErrorCode = (typeof ApiErrorCode)[keyof typeof ApiErrorCode];
+
 // ページネーション
 export interface Pagination {
   page: number;

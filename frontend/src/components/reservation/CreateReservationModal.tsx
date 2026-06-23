@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -7,6 +7,12 @@ import {
   ModalFooter,
   ModalBody,
   ModalCloseButton,
+  AlertDialog,
+  AlertDialogOverlay,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogBody,
+  AlertDialogFooter,
   Button,
   VStack,
   HStack,
@@ -47,6 +53,8 @@ import ErrorMessage from '../common/ErrorMessage';
 import { useAuthStore } from '../../stores/authStore';
 import { DatePickerField, TimePickerField } from './DateTimePickerFields';
 import type { BlockedSlot, CreateReservationRequest, Reservation } from '../../types';
+import { ApiErrorCode } from '../../types';
+import { getErrorMessage, getErrorCode } from '../../services/api';
 import { INSURANCE_PRICE, INSURANCE_TAX } from '../../utils/reservationPrice';
 
 // 必須入力欄を示す赤いアスタリスク
@@ -159,6 +167,13 @@ export default function CreateReservationModal({
   const showMemberOption = isAuthenticated && !guestOnly;
   const [tabIndex, setTabIndex] = useState(0); // 0: 会員, 1: ゲスト
   // const [guestToken, setGuestToken] = useState<string | null>(null);
+
+  // 第2キープ切替の確認ダイアログ。
+  // SECOND_KEEP_ONLY（既存仮予約のバッファゾーンに重なる）を受けたときに開く。
+  const [secondKeepConfirmOpen, setSecondKeepConfirmOpen] = useState(false);
+  // 直近の送信ペイロードと送信経路（会員/ゲスト）を保持し、第2キープへ切替えて再送信する。
+  const pendingSubmitRef = useRef<{ data: CreateReservationRequest; isGuest: boolean } | null>(null);
+  const cancelSecondKeepRef = useRef<HTMLButtonElement>(null);
 
   // React Queryでプラン・オプション取得
   const { data: plans = [], isLoading: isLoadingPlans, error: plansError } = usePlans(studioId);
@@ -442,54 +457,96 @@ export default function CreateReservationModal({
       shooting_type: validatedData.shooting_type,
     };
 
-    const mutationOptions = {
-      onSuccess: (result: Reservation) => {
-        if (isGuest && result.guest_token) {
-          toast({
-            title: '予約を作成しました',
-            description: '予約確認用のリンクをメールで送信しました。メールをご確認ください。',
-            status: 'success',
-            duration: 8000,
-            isClosable: true,
-          });
-        } else {
-          toast({
-            title: '予約を作成しました',
-            description: '予約の承認をお待ちください',
-            status: 'success',
-            duration: 5000,
-            isClosable: true,
-          });
-        }
+    submitReservation(reservationData, isGuest);
+  };
 
-        reset();
-        onClose();
-        onSuccess?.();
-      },
+  // 予約作成成功時の共通処理（初回送信・第2キープ再送信から呼ぶ）
+  const handleSubmitSuccess = (result: Reservation, isGuest: boolean) => {
+    if (isGuest && result.guest_token) {
+      toast({
+        title: '予約を作成しました',
+        description: '予約確認用のリンクをメールで送信しました。メールをご確認ください。',
+        status: 'success',
+        duration: 8000,
+        isClosable: true,
+      });
+    } else {
+      toast({
+        title: '予約を作成しました',
+        description: '予約の承認をお待ちください',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+
+    pendingSubmitRef.current = null;
+    reset();
+    onClose();
+    onSuccess?.();
+  };
+
+  // エラートーストを表示する共通処理
+  const showErrorToast = (err: unknown) => {
+    toast({
+      title: 'エラー',
+      description: getErrorMessage(err) || '予約の作成に失敗しました',
+      status: 'error',
+      duration: 5000,
+      isClosable: true,
+    });
+  };
+
+  // 予約を送信する。isRetry=true は第2キープ切替後の再送信で、
+  // SECOND_KEEP_ONLY を再度受けてもダイアログを再展開せずエラートーストにフォールバックする。
+  const submitReservation = (
+    data: CreateReservationRequest,
+    isGuest: boolean,
+    isRetry = false
+  ) => {
+    pendingSubmitRef.current = { data, isGuest };
+
+    const mutationOptions = {
+      onSuccess: (result: Reservation) => handleSubmitSuccess(result, isGuest),
       onError: (err: unknown) => {
-        const errorMessage = err instanceof Error ? err.message : '予約の作成に失敗しました';
-        toast({
-          title: 'エラー',
-          description: errorMessage,
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
+        // 既存仮予約のバッファゾーンに重なる申込（第2キープなら作成可）。
+        // 初回送信のときだけ切替確認 CTA を表示する。
+        if (!isRetry && getErrorCode(err) === ApiErrorCode.SecondKeepOnly) {
+          setSecondKeepConfirmOpen(true);
+          return;
+        }
+        // BUFFER_TIME_CONFLICT（予約不可）やその他のエラーはトーストで表示。
+        showErrorToast(err);
       },
     };
 
     // ゲストは認証不要の /reservations/guest、会員は /reservations を叩く
     if (isGuest) {
-      createGuestMutation.mutate(reservationData, mutationOptions);
+      createGuestMutation.mutate(data, mutationOptions);
     } else {
-      createMutation.mutate(reservationData, mutationOptions);
+      createMutation.mutate(data, mutationOptions);
     }
+  };
+
+  // 第2キープ切替確認ダイアログで「第2キープで予約する」を押したとき。
+  // 保持したペイロードの reservation_type を second_keep に上書きして再送信する。
+  const handleConfirmSecondKeep = () => {
+    setSecondKeepConfirmOpen(false);
+    const pending = pendingSubmitRef.current;
+    if (!pending) return;
+    submitReservation(
+      { ...pending.data, reservation_type: 'second_keep' },
+      pending.isGuest,
+      true
+    );
   };
 
   // モーダルを閉じる
   const handleClose = () => {
     reset();
     setTabIndex(0); // タブをリセット
+    setSecondKeepConfirmOpen(false); // 第2キープ確認ダイアログを閉じる
+    pendingSubmitRef.current = null; // 保持した送信ペイロードを破棄
     // setGuestToken(null); // ゲストトークンをリセット
     onClose();
   };
@@ -542,6 +599,7 @@ export default function CreateReservationModal({
   }, [startHour, startMinute, endHour, endMinute, setValue, formatTimeString]);
 
   return (
+    <>
     <Modal isOpen={isOpen} onClose={handleClose} size="3xl" scrollBehavior="inside">
       <ModalOverlay />
       <ModalContent as="form" id="create-reservation-form" onSubmit={handleSubmit(onSubmit)}>
@@ -1238,5 +1296,47 @@ export default function CreateReservationModal({
         </ModalFooter>
       </ModalContent>
     </Modal>
+
+    {/* 第2キープ切替の確認ダイアログ（SECOND_KEEP_ONLY を受けたとき表示） */}
+    <AlertDialog
+      isOpen={secondKeepConfirmOpen}
+      leastDestructiveRef={cancelSecondKeepRef}
+      onClose={() => setSecondKeepConfirmOpen(false)}
+      isCentered
+    >
+      <AlertDialogOverlay>
+        <AlertDialogContent>
+          <AlertDialogHeader fontSize="lg" fontWeight="bold">
+            第2キープで予約しますか？
+          </AlertDialogHeader>
+          <AlertDialogBody>
+            <Text fontSize="sm">
+              ご指定の時間帯は既存の仮予約と近接しているため、第2キープ（仮押さえ）でのみ予約できます。
+              第1候補がキャンセルされた場合に繰り上げ対象となります。
+              第2キープで予約しますか？
+            </Text>
+          </AlertDialogBody>
+          <AlertDialogFooter>
+            <Button
+              ref={cancelSecondKeepRef}
+              variant="ghost"
+              onClick={() => setSecondKeepConfirmOpen(false)}
+            >
+              やめる
+            </Button>
+            <Button
+              colorScheme="brand"
+              ml={3}
+              onClick={handleConfirmSecondKeep}
+              isLoading={createMutation.isPending || createGuestMutation.isPending}
+              loadingText="作成中..."
+            >
+              第2キープで予約する
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialogOverlay>
+    </AlertDialog>
+    </>
   );
 }

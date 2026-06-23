@@ -106,6 +106,17 @@ export const getErrorMessage = (error: unknown): string => {
   return '不明なエラーが発生しました';
 };
 
+// APIエラーからエラーコード（error.code）を取得するヘルパー関数
+// バックエンドの { error: { code, message } } 形式に対応。
+// 取得できない場合は undefined を返す。
+export const getErrorCode = (error: unknown): string | undefined => {
+  if (axios.isAxiosError(error)) {
+    const apiError = error.response?.data as APIError | undefined;
+    return apiError?.error?.code;
+  }
+  return undefined;
+};
+
 // APIリクエストのラッパー関数
 export const apiRequest = async <T>(
   config: AxiosRequestConfig
