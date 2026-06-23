@@ -45,6 +45,7 @@ import { useCreateReservation, useCreateGuestReservation } from '../../hooks/use
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
 import { useAuthStore } from '../../stores/authStore';
+import { DatePickerField, TimePickerField } from './DateTimePickerFields';
 import type { BlockedSlot, CreateReservationRequest, Reservation } from '../../types';
 import { INSURANCE_PRICE, INSURANCE_TAX } from '../../utils/reservationPrice';
 
@@ -623,7 +624,17 @@ export default function CreateReservationModal({
                 {/* 日付・時刻 */}
                 <FormControl isInvalid={!!errors.date}>
                   <FormLabel>日付</FormLabel>
-                  <Input type="date" {...register('date')} />
+                  <Controller
+                    name="date"
+                    control={control}
+                    render={({ field }) => (
+                      <DatePickerField
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                        isInvalid={!!errors.date}
+                      />
+                    )}
+                  />
                   <FormErrorMessage>{String(errors.date?.message || '')}</FormErrorMessage>
                 </FormControl>
 
@@ -643,80 +654,43 @@ export default function CreateReservationModal({
                   )}
                   <FormControl isInvalid={!!errors.start_time}>
                     <FormLabel>開始時刻</FormLabel>
-                    <HStack>
-                      <Select
-                        placeholder="時"
-                        value={startHour ?? ''}
-                        onChange={(e) => setStartHour(e.target.value ? parseInt(e.target.value) : null)}
-                        flex={1}
-                      >
-                        {startHourOptions.map((hour) => {
-                          const disabled = isHourFullyBlocked(hour, blockedTimeRanges);
-                          return (
-                            <option key={hour} value={hour} disabled={disabled}>
-                              {String(hour).padStart(2, '0')}時{disabled && ' (予約不可)'}
-                            </option>
-                          );
-                        })}
-                      </Select>
-                      <Select
-                        placeholder="分"
-                        value={startMinute ?? ''}
-                        onChange={(e) => setStartMinute(e.target.value ? parseInt(e.target.value) : null)}
-                        flex={1}
-                      >
-                        {minuteOptions.map((minute) => {
-                          const disabled = startHour !== null && isTimeSlotDisabled(startHour, minute, blockedTimeRanges);
-                          return (
-                            <option key={minute} value={minute} disabled={disabled}>
-                              {String(minute).padStart(2, '0')}分{disabled && ' (予約不可)'}
-                            </option>
-                          );
-                        })}
-                      </Select>
-                    </HStack>
+                    <TimePickerField
+                      hour={startHour}
+                      minute={startMinute}
+                      onHourChange={setStartHour}
+                      onMinuteChange={setStartMinute}
+                      hourOptions={startHourOptions}
+                      minuteOptions={minuteOptions}
+                      isHourDisabled={(hour) => isHourFullyBlocked(hour, blockedTimeRanges)}
+                      isMinuteDisabled={(minute) =>
+                        startHour !== null && isTimeSlotDisabled(startHour, minute, blockedTimeRanges)
+                      }
+                      isInvalid={!!errors.start_time}
+                    />
                     <FormErrorMessage>{String(errors.start_time?.message || '')}</FormErrorMessage>
                   </FormControl>
 
                   <FormControl isInvalid={!!errors.end_time}>
                     <FormLabel>終了時刻</FormLabel>
-                    <HStack>
-                      <Select
-                        placeholder="時"
-                        value={endHour ?? ''}
-                        onChange={(e) => setEndHour(e.target.value ? parseInt(e.target.value) : null)}
-                        flex={1}
-                      >
-                        {endHourOptions.map((hour) => {
-                          const isOvernight = isOvernightTime(hour);
-                          const disabled = !isOvernight && minuteOptions.every((m) =>
-                            isEndTimeSlotDisabled(hour, m, blockedTimeRanges)
-                          );
-                          return (
-                            <option key={hour} value={hour} disabled={disabled}>
-                              {isOvernight && '翌 '}
-                              {String(hour).padStart(2, '0')}時{disabled && ' (予約不可)'}
-                            </option>
-                          );
-                        })}
-                      </Select>
-                      <Select
-                        placeholder="分"
-                        value={endMinute ?? ''}
-                        onChange={(e) => setEndMinute(e.target.value ? parseInt(e.target.value) : null)}
-                        flex={1}
-                      >
-                        {minuteOptions.map((minute) => {
-                          const disabled = endHour !== null && !isOvernightTime(endHour) &&
-                            isEndTimeSlotDisabled(endHour, minute, blockedTimeRanges);
-                          return (
-                            <option key={minute} value={minute} disabled={disabled}>
-                              {String(minute).padStart(2, '0')}分{disabled && ' (予約不可)'}
-                            </option>
-                          );
-                        })}
-                      </Select>
-                    </HStack>
+                    <TimePickerField
+                      hour={endHour}
+                      minute={endMinute}
+                      onHourChange={setEndHour}
+                      onMinuteChange={setEndMinute}
+                      hourOptions={endHourOptions}
+                      minuteOptions={minuteOptions}
+                      isHourDisabled={(hour) =>
+                        !isOvernightTime(hour) &&
+                        minuteOptions.every((m) => isEndTimeSlotDisabled(hour, m, blockedTimeRanges))
+                      }
+                      isMinuteDisabled={(minute) =>
+                        endHour !== null &&
+                        !isOvernightTime(endHour) &&
+                        isEndTimeSlotDisabled(endHour, minute, blockedTimeRanges)
+                      }
+                      overnightPrefix={(hour) => (isOvernightTime(hour) ? '翌 ' : '')}
+                      isInvalid={!!errors.end_time}
+                    />
                     <FormErrorMessage>{String(errors.end_time?.message || '')}</FormErrorMessage>
                   </FormControl>
                 </VStack>
@@ -1004,7 +978,17 @@ export default function CreateReservationModal({
                       {/* 日付・時刻 */}
                       <FormControl isInvalid={!!errors.date}>
                         <FormLabel>日付</FormLabel>
-                        <Input type="date" {...register('date')} />
+                        <Controller
+                          name="date"
+                          control={control}
+                          render={({ field }) => (
+                            <DatePickerField
+                              value={field.value || ''}
+                              onChange={field.onChange}
+                              isInvalid={!!errors.date}
+                            />
+                          )}
+                        />
                         <FormErrorMessage>{String(errors.date?.message || '')}</FormErrorMessage>
                       </FormControl>
 
@@ -1024,80 +1008,43 @@ export default function CreateReservationModal({
                         )}
                         <FormControl isInvalid={!!errors.start_time}>
                           <FormLabel>開始時刻</FormLabel>
-                          <HStack>
-                            <Select
-                              placeholder="時"
-                              value={startHour ?? ''}
-                              onChange={(e) => setStartHour(e.target.value ? parseInt(e.target.value) : null)}
-                              flex={1}
-                            >
-                              {startHourOptions.map((hour) => {
-                                const disabled = isHourFullyBlocked(hour, blockedTimeRanges);
-                                return (
-                                  <option key={hour} value={hour} disabled={disabled}>
-                                    {String(hour).padStart(2, '0')}時{disabled && ' (予約不可)'}
-                                  </option>
-                                );
-                              })}
-                            </Select>
-                            <Select
-                              placeholder="分"
-                              value={startMinute ?? ''}
-                              onChange={(e) => setStartMinute(e.target.value ? parseInt(e.target.value) : null)}
-                              flex={1}
-                            >
-                              {minuteOptions.map((minute) => {
-                                const disabled = startHour !== null && isTimeSlotDisabled(startHour, minute, blockedTimeRanges);
-                                return (
-                                  <option key={minute} value={minute} disabled={disabled}>
-                                    {String(minute).padStart(2, '0')}分{disabled && ' (予約不可)'}
-                                  </option>
-                                );
-                              })}
-                            </Select>
-                          </HStack>
+                          <TimePickerField
+                            hour={startHour}
+                            minute={startMinute}
+                            onHourChange={setStartHour}
+                            onMinuteChange={setStartMinute}
+                            hourOptions={startHourOptions}
+                            minuteOptions={minuteOptions}
+                            isHourDisabled={(hour) => isHourFullyBlocked(hour, blockedTimeRanges)}
+                            isMinuteDisabled={(minute) =>
+                              startHour !== null && isTimeSlotDisabled(startHour, minute, blockedTimeRanges)
+                            }
+                            isInvalid={!!errors.start_time}
+                          />
                           <FormErrorMessage>{String(errors.start_time?.message || '')}</FormErrorMessage>
                         </FormControl>
 
                         <FormControl isInvalid={!!errors.end_time}>
                           <FormLabel>終了時刻</FormLabel>
-                          <HStack>
-                            <Select
-                              placeholder="時"
-                              value={endHour ?? ''}
-                              onChange={(e) => setEndHour(e.target.value ? parseInt(e.target.value) : null)}
-                              flex={1}
-                            >
-                              {endHourOptions.map((hour) => {
-                                const isOvernight = isOvernightTime(hour);
-                                const disabled = !isOvernight && minuteOptions.every((m) =>
-                                  isEndTimeSlotDisabled(hour, m, blockedTimeRanges)
-                                );
-                                return (
-                                  <option key={hour} value={hour} disabled={disabled}>
-                                    {isOvernight && '翌 '}
-                                    {String(hour).padStart(2, '0')}時{disabled && ' (予約不可)'}
-                                  </option>
-                                );
-                              })}
-                            </Select>
-                            <Select
-                              placeholder="分"
-                              value={endMinute ?? ''}
-                              onChange={(e) => setEndMinute(e.target.value ? parseInt(e.target.value) : null)}
-                              flex={1}
-                            >
-                              {minuteOptions.map((minute) => {
-                                const disabled = endHour !== null && !isOvernightTime(endHour) &&
-                                  isEndTimeSlotDisabled(endHour, minute, blockedTimeRanges);
-                                return (
-                                  <option key={minute} value={minute} disabled={disabled}>
-                                    {String(minute).padStart(2, '0')}分{disabled && ' (予約不可)'}
-                                  </option>
-                                );
-                              })}
-                            </Select>
-                          </HStack>
+                          <TimePickerField
+                            hour={endHour}
+                            minute={endMinute}
+                            onHourChange={setEndHour}
+                            onMinuteChange={setEndMinute}
+                            hourOptions={endHourOptions}
+                            minuteOptions={minuteOptions}
+                            isHourDisabled={(hour) =>
+                              !isOvernightTime(hour) &&
+                              minuteOptions.every((m) => isEndTimeSlotDisabled(hour, m, blockedTimeRanges))
+                            }
+                            isMinuteDisabled={(minute) =>
+                              endHour !== null &&
+                              !isOvernightTime(endHour) &&
+                              isEndTimeSlotDisabled(endHour, minute, blockedTimeRanges)
+                            }
+                            overnightPrefix={(hour) => (isOvernightTime(hour) ? '翌 ' : '')}
+                            isInvalid={!!errors.end_time}
+                          />
                           <FormErrorMessage>{String(errors.end_time?.message || '')}</FormErrorMessage>
                         </FormControl>
                       </VStack>
