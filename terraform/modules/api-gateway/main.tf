@@ -256,9 +256,12 @@ resource "aws_api_gateway_resource" "inquiries_id_close" {
 
 # ==================== メソッドとLambda統合 ====================
 
-# Lambda統合を作成するモジュール（再利用可能）
-module "lambda_integration" {
-  for_each = {
+# Lambda統合の定義（ルート集合）。
+# deployment の再デプロイトリガでは、この map の computed 値（invoke_arn/resource.id）ではなく
+# キー集合（ルート名）を参照する。computed 値を hash に含めると plan/apply 間で
+# 値が変わり "Provider produced inconsistent final plan" を引き起こすため。
+locals {
+  lambda_integrations = {
     # 認証
     "auth_signup"  = { resource = aws_api_gateway_resource.auth_signup.id, method = "POST", invoke_arn = var.lambda_functions.auth_signup.invoke_arn, auth = false }
     "auth_login"   = { resource = aws_api_gateway_resource.auth_login.id, method = "POST", invoke_arn = var.lambda_functions.auth_login.invoke_arn, auth = false }
@@ -310,6 +313,11 @@ module "lambda_integration" {
     "studio_get"    = { resource = aws_api_gateway_resource.studios_id.id, method = "GET", invoke_arn = var.lambda_functions.studio_get.invoke_arn, auth = false }
     "studio_update" = { resource = aws_api_gateway_resource.studios_id.id, method = "PATCH", invoke_arn = var.lambda_functions.studio_update.invoke_arn, auth = true }
   }
+}
+
+# Lambda統合を作成するモジュール（再利用可能）
+module "lambda_integration" {
+  for_each = local.lambda_integrations
 
   source = "./method"
 
@@ -326,20 +334,25 @@ module "lambda_integration" {
 resource "aws_api_gateway_deployment" "main" {
   rest_api_id = aws_api_gateway_rest_api.main.id
 
-  # すべてのメソッドに依存
-  depends_on = [module.lambda_integration]
+  # メソッド/統合/GatewayResponse の更新後に再デプロイされる順序を保証
+  depends_on = [
+    module.lambda_integration,
+    aws_api_gateway_gateway_response.unauthorized,
+    aws_api_gateway_gateway_response.access_denied,
+    aws_api_gateway_gateway_response.default_4xx,
+    aws_api_gateway_gateway_response.default_5xx,
+  ]
 
   # デプロイメントを強制的に更新
   # 2026-05-13: drift 復旧のため redeploy_nonce を追加。手動で bump することで強制再デプロイ可能。
   # 2026-05-15: GatewayResponse を triggers に含め、401/403 への CORS ヘッダー追加がデプロイされるようにする。
+  # 2026-06-23: module.lambda_integration（computed値を含む）と GatewayResponse 参照をトリガから除外し、
+  #   ルートのキー集合（plan時に確定）に置換。computed 値を hash に含めると plan/apply 間で
+  #   値が変わり "Provider produced inconsistent final plan" になるため。
+  #   ルートの追加・削除は keys() に反映され、メソッド/認可/CORS の変更は redeploy_nonce の bump で反映する。
   triggers = {
     redeployment = sha1(jsonencode([
-      aws_api_gateway_rest_api.main.body,
-      module.lambda_integration,
-      aws_api_gateway_gateway_response.unauthorized,
-      aws_api_gateway_gateway_response.access_denied,
-      aws_api_gateway_gateway_response.default_4xx,
-      aws_api_gateway_gateway_response.default_5xx,
+      keys(local.lambda_integrations),
       var.redeploy_nonce,
     ]))
   }

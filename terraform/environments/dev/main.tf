@@ -228,7 +228,8 @@ module "api_gateway" {
 
   allowed_origin = var.allowed_origin
   # CORS の integration_response / gateway_response を変更したため deployment を再生成する
-  redeploy_nonce = "2026-06-06-widget-cors-allowed-origin"
+  # 2026-06-23: 承認メールのレビューゲート新規ルート（GET/POST /reservations/{id}/approval-email）を確実に再デプロイ
+  redeploy_nonce = "2026-06-23-approval-email-review-gate"
 }
 
 # SES（メール送信）
