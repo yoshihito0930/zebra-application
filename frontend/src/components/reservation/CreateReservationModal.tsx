@@ -604,7 +604,14 @@ export default function CreateReservationModal({
       <ModalOverlay />
       <ModalContent as="form" id="create-reservation-form" onSubmit={handleSubmit(onSubmit)}>
         <ModalHeader>新規予約作成</ModalHeader>
-        <ModalCloseButton />
+        {/* resetCSS={false} のウィジェットでは svg{display:block} リセットが効かず、
+            内部のインライン SVG がクリックを奪い閉じられない。svg を pointer-events:none に
+            してクリックを button 本体へ届かせる。onClick で handleClose を明示し、×でも
+            フォーム状態の後始末（reset / tabIndex）が走るようにする（キャンセルと挙動統一）。 */}
+        <ModalCloseButton
+          onClick={handleClose}
+          sx={{ svg: { pointerEvents: 'none', display: 'block' } }}
+        />
         <ModalBody>
             {isLoadingData && <LoadingSpinner />}
 

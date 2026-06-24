@@ -247,6 +247,14 @@ const theme = extendTheme({
       baseStyle: {
         control: {
           borderRadius: 'sm',
+          // 埋め込みウィジェットは resetCSS={false} のため Chakra 既定の
+          // borderColor:'inherit' が色解決できず未チェック枠が消える。
+          // 既定相当（2px / gray.300）を明示する（SPA では見た目不変）。
+          borderWidth: '2px',
+          borderColor: 'gray.300',
+          _hover: {
+            borderColor: 'gray.400',
+          },
           _checked: {
             bg: 'brand.300',
             borderColor: 'brand.300',
@@ -261,6 +269,12 @@ const theme = extendTheme({
     Radio: {
       baseStyle: {
         control: {
+          // Checkbox と同様、resetCSS={false} で未チェック枠が消えるため明示。
+          borderWidth: '2px',
+          borderColor: 'gray.300',
+          _hover: {
+            borderColor: 'gray.400',
+          },
           _checked: {
             bg: 'brand.300',
             borderColor: 'brand.300',
@@ -287,6 +301,10 @@ const theme = extendTheme({
       baseStyle: {
         dialog: {
           borderRadius: 'lg',
+          // 埋め込みウィジェット（disableGlobalStyle + resetCSS={false}）では
+          // 既定の白背景(--modal-bg)が確実に適用されず、ホスト body のグレーが
+          // フッター等で透ける。白を明示する（SPA では見た目不変）。
+          bg: 'white',
         },
       },
     },
