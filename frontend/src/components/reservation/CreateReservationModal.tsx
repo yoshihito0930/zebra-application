@@ -614,10 +614,14 @@ export default function CreateReservationModal({
 
             {!isLoadingData && !dataError && (
               <Tabs index={tabIndex} onChange={handleTabChange} variant="enclosed" colorScheme="brand" isLazy>
-                <TabList>
-                  {showMemberOption && <Tab>会員として予約</Tab>}
-                  <Tab>{showMemberOption ? 'ゲストとして予約' : '予約内容の入力'}</Tab>
-                </TabList>
+                {/* タブ見出しは会員/ゲストの2タブがある admin 文脈のみ表示する。
+                    ゲスト専用（公開／ウィジェット）では単独タブになり冗長なため非表示。 */}
+                {showMemberOption && (
+                  <TabList>
+                    <Tab>会員として予約</Tab>
+                    <Tab>ゲストとして予約</Tab>
+                  </TabList>
+                )}
 
                 <TabPanels>
                   {showMemberOption && (
