@@ -289,6 +289,7 @@ function TimeRow({ label, selected, disabled, onClick }: TimeRowProps) {
       w="100%"
       px="12px"
       py="10px"
+      border="none"
       borderRadius="9px"
       fontSize="15px"
       display="flex"

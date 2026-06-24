@@ -102,6 +102,11 @@ const theme = extendTheme({
       baseStyle: {
         fontWeight: 'semibold',
         borderRadius: 'md',
+        // 埋め込みウィジェットは resetCSS={false} のため Chakra のグローバル
+        // 枠線リセット（border-width: 0）が当たらず、ブラウザ既定のボタン枠が
+        // 漏れる。コンポーネント側で明示的に打ち消す（SPA では実害なし）。
+        // 枠線が必要な outline バリアントは下で復元する。
+        border: 'none',
       },
       sizes: {
         sm: {
@@ -148,7 +153,9 @@ const theme = extendTheme({
           },
         },
         outline: (props: { colorScheme: string }) => ({
-          borderColor: props.colorScheme === 'brand' ? 'brand.300' : undefined,
+          // baseStyle で border: none にしているため、枠線が要る outline は復元する
+          border: '1px solid',
+          borderColor: props.colorScheme === 'brand' ? 'brand.300' : 'currentColor',
           color: props.colorScheme === 'brand' ? 'brand.600' : undefined,
           _hover: {
             bg: props.colorScheme === 'brand' ? 'brand.50' : undefined,
