@@ -18,7 +18,7 @@ import {
 import { ArrowLeft, CheckCircle, Calendar as CalendarIcon, User, Mail, Phone, Building, Edit } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useReservation } from '../../hooks/useReservations';
-import { calculateReservationTotal } from '../../utils/reservationPrice';
+import { calculateReservationTotal, calculateUsageHours } from '../../utils/reservationPrice';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import StatusBadge from '../../components/common/StatusBadge';
@@ -306,7 +306,8 @@ export const ReservationDetailPage = () => {
                         利用時間
                       </Text>
                       <Text fontWeight="medium">
-                        {reservation.start_time} - {reservation.end_time}
+                        {reservation.start_time} - {reservation.end_time}（
+                        {calculateUsageHours(reservation.start_time, reservation.end_time)}時間）
                       </Text>
                     </Box>
 
@@ -314,9 +315,8 @@ export const ReservationDetailPage = () => {
                       <Text fontSize="sm" color="gray.500" mb={1}>
                         プラン
                       </Text>
-                      <Text fontWeight="medium">{reservation.plan_name}</Text>
-                      <Text fontSize="sm" color="gray.600">
-                        ¥{reservation.plan_price.toLocaleString()}
+                      <Text fontWeight="medium">
+                        {reservation.plan_name}（¥{reservation.plan_price.toLocaleString()}-）
                       </Text>
                     </Box>
 

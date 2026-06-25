@@ -16,6 +16,7 @@ import {
 import { ArrowLeft, Calendar as CalendarIcon, User, Mail, Phone, Building } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useReservation } from '../../hooks/useReservations';
+import { calculateReservationTotal, calculateUsageHours } from '../../utils/reservationPrice';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import StatusBadge from '../../components/common/StatusBadge';
@@ -223,7 +224,8 @@ export const ReservationDetailPage = () => {
                         利用時間
                       </Text>
                       <Text fontWeight="medium">
-                        {reservation.start_time} - {reservation.end_time}
+                        {reservation.start_time} - {reservation.end_time}（
+                        {calculateUsageHours(reservation.start_time, reservation.end_time)}時間）
                       </Text>
                     </Box>
 
@@ -231,9 +233,8 @@ export const ReservationDetailPage = () => {
                       <Text fontSize="sm" color="gray.500" mb={1}>
                         プラン
                       </Text>
-                      <Text fontWeight="medium">{reservation.plan_name}</Text>
-                      <Text fontSize="sm" color="gray.600">
-                        ¥{reservation.plan_price.toLocaleString()}
+                      <Text fontWeight="medium">
+                        {reservation.plan_name}（¥{reservation.plan_price.toLocaleString()}-）
                       </Text>
                     </Box>
 
@@ -326,59 +327,50 @@ export const ReservationDetailPage = () => {
               <Divider my={6} />
 
               {/* 料金 */}
-              <Box bg="gray.50" p={4} borderRadius="md">
-                <VStack align="stretch" spacing={2}>
-                  <HStack justify="space-between">
-                    <Text>プラン料金</Text>
-                    <Text fontWeight="medium">¥{reservation.plan_price.toLocaleString()}</Text>
-                  </HStack>
-                  {reservation.options.length > 0 && (
-                    <HStack justify="space-between">
-                      <Text>オプション料金</Text>
-                      <Text fontWeight="medium">
-                        ¥{reservation.options.reduce((sum, opt) => sum + opt.price, 0).toLocaleString()}
-                      </Text>
-                    </HStack>
-                  )}
-                  <HStack justify="space-between">
-                    <Text>小計</Text>
-                    <Text fontWeight="medium">
-                      ¥
-                      {(
-                        reservation.plan_price +
-                        reservation.options.reduce((sum, opt) => sum + opt.price, 0)
-                      ).toLocaleString()}
-                    </Text>
-                  </HStack>
-                  <HStack justify="space-between">
-                    <Text>消費税</Text>
-                    <Text fontWeight="medium">
-                      ¥
-                      {Math.floor(
-                        reservation.plan_price * reservation.plan_tax_rate +
-                          reservation.options.reduce((sum, opt) => sum + opt.price * opt.tax_rate, 0)
-                      ).toLocaleString()}
-                    </Text>
-                  </HStack>
-                  <Divider />
-                  <HStack justify="space-between">
-                    <Text fontSize="lg" fontWeight="bold">
-                      合計
-                    </Text>
-                    <Text fontSize="lg" fontWeight="bold" color="brand.600">
-                      ¥
-                      {(
-                        reservation.plan_price +
-                        reservation.options.reduce((sum, opt) => sum + opt.price, 0) +
-                        Math.floor(
-                          reservation.plan_price * reservation.plan_tax_rate +
-                            reservation.options.reduce((sum, opt) => sum + opt.price * opt.tax_rate, 0)
-                        )
-                      ).toLocaleString()}
-                    </Text>
-                  </HStack>
-                </VStack>
-              </Box>
+              {(() => {
+                const price = calculateReservationTotal(reservation);
+                return (
+                  <Box bg="gray.50" p={4} borderRadius="md">
+                    <VStack align="stretch" spacing={2}>
+                      <HStack justify="space-between">
+                        <Text>
+                          プラン料金（¥{reservation.plan_price.toLocaleString()} × {price.hours}時間）
+                        </Text>
+                        <Text fontWeight="medium">¥{price.planTotal.toLocaleString()}</Text>
+                      </HStack>
+                      {reservation.options.length > 0 && (
+                        <HStack justify="space-between">
+                          <Text>オプション料金</Text>
+                          <Text fontWeight="medium">¥{price.optionsTotal.toLocaleString()}</Text>
+                        </HStack>
+                      )}
+                      {price.insuranceTotal > 0 && (
+                        <HStack justify="space-between">
+                          <Text>機材保険</Text>
+                          <Text fontWeight="medium">¥{price.insuranceTotal.toLocaleString()}</Text>
+                        </HStack>
+                      )}
+                      <HStack justify="space-between">
+                        <Text>小計</Text>
+                        <Text fontWeight="medium">¥{price.subtotal.toLocaleString()}</Text>
+                      </HStack>
+                      <HStack justify="space-between">
+                        <Text>消費税</Text>
+                        <Text fontWeight="medium">¥{price.tax.toLocaleString()}</Text>
+                      </HStack>
+                      <Divider />
+                      <HStack justify="space-between">
+                        <Text fontSize="lg" fontWeight="bold">
+                          合計
+                        </Text>
+                        <Text fontSize="lg" fontWeight="bold" color="brand.600">
+                          ¥{price.total.toLocaleString()}
+                        </Text>
+                      </HStack>
+                    </VStack>
+                  </Box>
+                );
+              })()}
             </Box>
 
             {/* 仮予約の期限通知 */}

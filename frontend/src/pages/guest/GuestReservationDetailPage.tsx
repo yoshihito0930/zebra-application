@@ -35,6 +35,7 @@ import {
   useCancelGuestReservation,
 } from '../../hooks/useGuestReservations';
 import { useStudio } from '../../hooks/useStudio';
+import { calculateReservationTotal, calculateUsageHours } from '../../utils/reservationPrice';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import StatusBadge from '../../components/common/StatusBadge';
@@ -264,7 +265,8 @@ export default function GuestReservationDetailPage() {
                     時間:
                   </Text>
                   <Text fontSize="sm" fontWeight="medium">
-                    {reservation.start_time} 〜 {reservation.end_time}
+                    {reservation.start_time} 〜 {reservation.end_time}（
+                    {calculateUsageHours(reservation.start_time, reservation.end_time)}時間）
                   </Text>
                 </HStack>
 
@@ -273,16 +275,7 @@ export default function GuestReservationDetailPage() {
                     プラン:
                   </Text>
                   <Text fontSize="sm" fontWeight="medium">
-                    {reservation.plan_name}
-                  </Text>
-                </HStack>
-
-                <HStack>
-                  <Text fontSize="sm" color="gray.600">
-                    料金:
-                  </Text>
-                  <Text fontSize="sm" fontWeight="medium">
-                    ¥{reservation.plan_price.toLocaleString()}
+                    {reservation.plan_name}（¥{reservation.plan_price.toLocaleString()}-）
                   </Text>
                 </HStack>
 
@@ -356,6 +349,60 @@ export default function GuestReservationDetailPage() {
                 )}
               </VStack>
             </Box>
+
+            <Divider />
+
+            {/* 料金 */}
+            {(() => {
+              const price = calculateReservationTotal(reservation);
+              return (
+                <Box bg="gray.50" p={4} borderRadius="md">
+                  <VStack align="stretch" spacing={2}>
+                    <HStack justify="space-between">
+                      <Text fontSize="sm">
+                        プラン料金（¥{reservation.plan_price.toLocaleString()} × {price.hours}時間）
+                      </Text>
+                      <Text fontSize="sm" fontWeight="medium">
+                        ¥{price.planTotal.toLocaleString()}
+                      </Text>
+                    </HStack>
+                    {reservation.options.length > 0 && (
+                      <HStack justify="space-between">
+                        <Text fontSize="sm">オプション料金</Text>
+                        <Text fontSize="sm" fontWeight="medium">
+                          ¥{price.optionsTotal.toLocaleString()}
+                        </Text>
+                      </HStack>
+                    )}
+                    {price.insuranceTotal > 0 && (
+                      <HStack justify="space-between">
+                        <Text fontSize="sm">機材保険</Text>
+                        <Text fontSize="sm" fontWeight="medium">
+                          ¥{price.insuranceTotal.toLocaleString()}
+                        </Text>
+                      </HStack>
+                    )}
+                    <HStack justify="space-between">
+                      <Text fontSize="sm">小計</Text>
+                      <Text fontSize="sm" fontWeight="medium">
+                        ¥{price.subtotal.toLocaleString()}
+                      </Text>
+                    </HStack>
+                    <HStack justify="space-between">
+                      <Text fontSize="sm">消費税</Text>
+                      <Text fontSize="sm" fontWeight="medium">¥{price.tax.toLocaleString()}</Text>
+                    </HStack>
+                    <Divider />
+                    <HStack justify="space-between">
+                      <Text fontWeight="bold">合計</Text>
+                      <Text fontWeight="bold" color="brand.600">
+                        ¥{price.total.toLocaleString()}
+                      </Text>
+                    </HStack>
+                  </VStack>
+                </Box>
+              );
+            })()}
 
             <Divider />
 
