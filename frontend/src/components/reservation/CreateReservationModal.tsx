@@ -290,7 +290,16 @@ export default function CreateReservationModal({
   const calculateTotalPrice = () => {
     const selectedPlan = plans.find((p) => p.plan_id === selectedPlanId);
     if (!selectedPlan)
-      return { subtotal: 0, tax: 0, total: 0, hours: 0, insuranceTotal: 0 };
+      return {
+        subtotal: 0,
+        tax: 0,
+        total: 0,
+        hours: 0,
+        insuranceTotal: 0,
+        planPrice: 0,
+        optionsPrice: 0,
+        planUnitPrice: 0,
+      };
 
     const usageHours = calculateUsageHours();
 
@@ -311,7 +320,16 @@ export default function CreateReservationModal({
     const tax = planTax + optionsTax + insuranceTax;
     const total = subtotal + tax;
 
-    return { subtotal, tax, total, hours: usageHours, insuranceTotal };
+    return {
+      subtotal,
+      tax,
+      total,
+      hours: usageHours,
+      insuranceTotal,
+      planPrice,
+      optionsPrice,
+      planUnitPrice: selectedPlan.price,
+    };
   };
 
   const priceInfo = calculateTotalPrice();
@@ -905,6 +923,20 @@ export default function CreateReservationModal({
                         <Text fontSize="sm" fontWeight="medium">{priceInfo.hours}時間</Text>
                       </HStack>
                     )}
+                    {priceInfo.hours > 0 && (
+                      <HStack justify="space-between">
+                        <Text fontSize="sm" color="gray.600">
+                          プラン料金（¥{priceInfo.planUnitPrice.toLocaleString()} × {priceInfo.hours}時間）
+                        </Text>
+                        <Text fontSize="sm" fontWeight="medium">¥{priceInfo.planPrice.toLocaleString()}</Text>
+                      </HStack>
+                    )}
+                    {priceInfo.optionsPrice > 0 && (
+                      <HStack justify="space-between">
+                        <Text fontSize="sm" color="gray.600">オプション料金</Text>
+                        <Text fontSize="sm" fontWeight="medium">¥{priceInfo.optionsPrice.toLocaleString()}</Text>
+                      </HStack>
+                    )}
                     {priceInfo.insuranceTotal > 0 && (
                       <HStack justify="space-between">
                         <Text>機材保険</Text>
@@ -1257,6 +1289,20 @@ export default function CreateReservationModal({
                             <HStack justify="space-between">
                               <Text fontSize="sm" color="gray.600">利用時間</Text>
                               <Text fontSize="sm" fontWeight="medium">{priceInfo.hours}時間</Text>
+                            </HStack>
+                          )}
+                          {priceInfo.hours > 0 && (
+                            <HStack justify="space-between">
+                              <Text fontSize="sm" color="gray.600">
+                                プラン料金（¥{priceInfo.planUnitPrice.toLocaleString()} × {priceInfo.hours}時間）
+                              </Text>
+                              <Text fontSize="sm" fontWeight="medium">¥{priceInfo.planPrice.toLocaleString()}</Text>
+                            </HStack>
+                          )}
+                          {priceInfo.optionsPrice > 0 && (
+                            <HStack justify="space-between">
+                              <Text fontSize="sm" color="gray.600">オプション料金</Text>
+                              <Text fontSize="sm" fontWeight="medium">¥{priceInfo.optionsPrice.toLocaleString()}</Text>
                             </HStack>
                           )}
                           {priceInfo.insuranceTotal > 0 && (
