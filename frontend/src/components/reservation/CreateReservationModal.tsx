@@ -52,6 +52,7 @@ import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorMessage from '../common/ErrorMessage';
 import { useAuthStore } from '../../stores/authStore';
 import { DatePickerField, TimePickerField } from './DateTimePickerFields';
+import { useWidgetPortalRef } from '../../widget/WidgetPortalContext';
 import type { BlockedSlot, CreateReservationRequest, Reservation } from '../../types';
 import { ApiErrorCode } from '../../types';
 import { getErrorMessage, getErrorCode } from '../../services/api';
@@ -163,6 +164,8 @@ export default function CreateReservationModal({
 }: CreateReservationModalProps) {
   const toast = useToast();
   const { isAuthenticated } = useAuthStore();
+  // ウィジェット（Shadow DOM）では shadow 内へ Portal する。SPA では undefined → document.body。
+  const portalRef = useWidgetPortalRef();
   // 会員予約タブを表示するか。guestOnly（公開／ウィジェット）のときは常にゲストのみ。
   const showMemberOption = isAuthenticated && !guestOnly;
   const [tabIndex, setTabIndex] = useState(0); // 0: 会員, 1: ゲスト
@@ -600,18 +603,21 @@ export default function CreateReservationModal({
 
   return (
     <>
-    <Modal isOpen={isOpen} onClose={handleClose} size="3xl" scrollBehavior="inside">
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      size="3xl"
+      scrollBehavior="inside"
+      portalProps={portalRef ? { containerRef: portalRef } : undefined}
+    >
       <ModalOverlay />
       <ModalContent as="form" id="create-reservation-form" onSubmit={handleSubmit(onSubmit)}>
         <ModalHeader>新規予約作成</ModalHeader>
-        {/* resetCSS={false} のウィジェットでは svg{display:block} リセットが効かず、
-            内部のインライン SVG がクリックを奪い閉じられない。svg を pointer-events:none に
-            してクリックを button 本体へ届かせる。onClick で handleClose を明示し、×でも
-            フォーム状態の後始末（reset / tabIndex）が走るようにする（キャンセルと挙動統一）。 */}
-        <ModalCloseButton
-          onClick={handleClose}
-          sx={{ svg: { pointerEvents: 'none', display: 'block' } }}
-        />
+        {/* onClick で handleClose を明示し、×でもフォーム状態の後始末（reset / tabIndex）が
+            走るようにする（フッターのキャンセルと挙動を統一）。
+            ※ かつてウィジェットで svg がクリックを奪う/ヘッダーが重なる問題があったが、
+              現在は Shadow DOM 隔離 + resetCSS でホスト CSS が侵入しなくなり解消済み。 */}
+        <ModalCloseButton onClick={handleClose} />
         <ModalBody>
             {isLoadingData && <LoadingSpinner />}
 

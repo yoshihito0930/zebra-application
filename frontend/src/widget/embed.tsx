@@ -30,9 +30,23 @@ function mountInto(el: HTMLElement) {
 
   el.setAttribute(MOUNTED_ATTR, 'true');
 
-  createRoot(el).render(
+  // Shadow DOM で隔離する。ホストページのグローバル CSS（footer{background}、
+  // header{z-index}、* リセット等）がウィジェット内部へカスケード侵入するのを
+  // 構造的に遮断する。mode:'open' は将来のデバッグ/検証で shadow を辿れるように。
+  // attachShadow は二重呼び出しで例外を投げるため el.shadowRoot で再利用する。
+  const shadow = el.shadowRoot ?? el.attachShadow({ mode: 'open' });
+
+  // Emotion/Chakra はここに <style> を注入する（document.head ではなく shadow 内）。
+  const styleHost = document.createElement('div');
+  styleHost.setAttribute('data-zebra-styles', '');
+  // React アプリ本体と、Modal/Toast の Portal がここに描画される。
+  const appRoot = document.createElement('div');
+  appRoot.setAttribute('data-zebra-app', '');
+  shadow.append(styleHost, appRoot);
+
+  createRoot(appRoot).render(
     <StrictMode>
-      <WidgetRoot config={config} />
+      <WidgetRoot config={config} styleHost={styleHost} portalContainer={appRoot} />
     </StrictMode>,
   );
 }

@@ -16,6 +16,7 @@ import {
 } from '@chakra-ui/react';
 import { Clock } from 'lucide-react';
 import type { CalendarReservation } from '../../types';
+import { useWidgetPortalRef } from '../../widget/WidgetPortalContext';
 
 interface DayDetailModalProps {
   isOpen: boolean;
@@ -33,6 +34,8 @@ export default function DayDetailModal({
   onCreateReservation,
 }: DayDetailModalProps) {
   const bgColor = useColorModeValue('white', 'gray.800');
+  // ウィジェット（Shadow DOM）では shadow 内へ Portal する。SPA では undefined → document.body。
+  const portalRef = useWidgetPortalRef();
 
   // 日付をフォーマット（例: 2026年4月21日（月））
   const formatDate = (dateStr: string) => {
@@ -64,7 +67,13 @@ export default function DayDetailModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="xl" scrollBehavior="inside">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="xl"
+      scrollBehavior="inside"
+      portalProps={portalRef ? { containerRef: portalRef } : undefined}
+    >
       <ModalOverlay />
       <ModalContent bg={bgColor}>
         <ModalHeader>
